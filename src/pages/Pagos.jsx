@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2 } from 'lucide-react'
 const hoy = () => format(new Date(), 'yyyy-MM-dd')
 
 const EMPTY_PAGO = {
-  cliente_id: '', tipo: 'sesion', importe: '', metodo_pago: 'efectivo', notas: '', fecha_pago: hoy()
+  cliente_id: '', tipo: 'sesion', importe: '', metodo_pago: 'efectivo',
+  notas: '', fecha_pago: hoy(), fecha_sesion: hoy()
 }
 
 export default function Pagos() {
@@ -63,12 +64,13 @@ export default function Pagos() {
       estado: 'pagado',
       mes_facturado: mesStr,
       fecha_pago: form.fecha_pago || hoy(),
+      fecha_sesion: form.fecha_sesion || null,
       metodo_pago: form.metodo_pago || null,
       notas: form.notas || null,
     })
     setSaving(false)
     setModal(false)
-    setForm({ ...EMPTY_PAGO, fecha_pago: hoy() })
+    setForm({ ...EMPTY_PAGO, fecha_pago: hoy(), fecha_sesion: hoy() })
     cargarPagos()
   }
 
@@ -140,106 +142,11 @@ export default function Pagos() {
                 <th>Tipo</th>
                 <th>Importe</th>
                 <th>Método</th>
+                <th>Fecha sesión</th>
                 <th>Fecha pago</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {pagosFiltrados.map(p => (
-                <tr key={p.id}>
-                  <td><span className="font-medium">{p.clientes?.nombre}</span></td>
-                  <td><span className={`badge ${p.tipo === 'mensualidad' ? 'badge-blue' : 'badge-gray'}`}>{p.tipo}</span></td>
-                  <td className="mono">{p.importe}€</td>
-                  <td style={{ color: 'var(--text2)', fontSize: 12.5 }}>{p.metodo_pago || '—'}</td>
-                  <td className="mono" style={{ fontSize: 12.5, color: 'var(--text2)' }}>
-                    {p.fecha_pago ? format(new Date(p.fecha_pago + 'T12:00:00'), 'dd/MM/yyyy') : '—'}
-                  </td>
-                  <td>
-                    <span className={`badge ${p.estado === 'pagado' ? 'badge-green' : 'badge-orange'}`}>
-                      {p.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex gap-2">
-                      {p.estado === 'pendiente' ? (
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent)' }} onClick={() => marcarPagado(p)} title="Marcar como pagado">
-                          <CheckCircle2 size={13} />
-                        </button>
-                      ) : (
-                        <button className="btn btn-ghost btn-sm" onClick={() => marcarPendiente(p)} title="Marcar como pendiente">
-                          ↩
-                        </button>
-                      )}
-                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminar(p.id)} title="Eliminar">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {modal && (
-        <div className="modal-backdrop" onClick={() => setModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">Añadir pago / sesión</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModal(false)}><X size={14} /></button>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Cliente *</label>
-                <select className="form-select" value={form.cliente_id} onChange={e => setForm(f => ({ ...f, cliente_id: e.target.value }))}>
-                  <option value="">Selecciona...</option>
-                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tipo</label>
-                <select className="form-select" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
-                  <option value="sesion">Sesión</option>
-                  <option value="mensualidad">Mensualidad</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Importe (€) *</label>
-                <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Fecha de pago</label>
-                <input className="form-input" type="date" value={form.fecha_pago} onChange={e => setForm(f => ({ ...f, fecha_pago: e.target.value }))} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Método de pago</label>
-                <select className="form-select" value={form.metodo_pago} onChange={e => setForm(f => ({ ...f, metodo_pago: e.target.value }))}>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="bizum">Bizum</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notas</label>
-                <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarPago} disabled={saving}>
-                {saving ? 'Guardando...' : 'Guardar como pagado'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+              {pag
