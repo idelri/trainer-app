@@ -2,8 +2,6 @@ import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 
-// Se ejecuta al cargar la app. Si es un mes nuevo, genera las mensualidades pendientes
-// para todos los clientes activos que aún no las tengan.
 export function useGenerarPagosMensuales() {
   useEffect(() => {
     generarSiNecesario()
@@ -13,7 +11,10 @@ export function useGenerarPagosMensuales() {
 async function generarSiNecesario() {
   const mesActual = format(new Date(), 'yyyy-MM')
 
-  // Clientes activos con su tarifa
+  // Verificar si ya se generaron este mes (usando localStorage como flag)
+  const flagKey = `pagos_generados_${mesActual}`
+  if (localStorage.getItem(flagKey)) return
+
   const { data: clientes } = await supabase
     .from('clientes')
     .select('id, nombre, servicios(tarifa_mensual)')
@@ -21,7 +22,6 @@ async function generarSiNecesario() {
 
   if (!clientes || clientes.length === 0) return
 
-  // Pagos tipo mensualidad que ya existen este mes
   const { data: pagosExistentes } = await supabase
     .from('pagos')
     .select('cliente_id')
@@ -30,7 +30,6 @@ async function generarSiNecesario() {
 
   const clientesConPago = new Set((pagosExistentes || []).map(p => p.cliente_id))
 
-  // Generar solo los que faltan
   const nuevos = clientes
     .filter(c => !clientesConPago.has(c.id))
     .map(c => ({
@@ -43,6 +42,8 @@ async function generarSiNecesario() {
 
   if (nuevos.length > 0) {
     await supabase.from('pagos').insert(nuevos)
-    console.log(`✓ Generadas ${nuevos.length} mensualidades para ${mesActual}`)
   }
+
+  // Marcar como generado para este mes
+  localStorage.setItem(flagKey, '1')
 }
