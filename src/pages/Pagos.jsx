@@ -4,8 +4,10 @@ import { format, subMonths, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2 } from 'lucide-react'
 
+const hoy = () => format(new Date(), 'yyyy-MM-dd')
+
 const EMPTY_PAGO = {
-  cliente_id: '', tipo: 'sesion', importe: '', metodo_pago: 'efectivo', notas: ''
+  cliente_id: '', tipo: 'sesion', importe: '', metodo_pago: 'efectivo', notas: '', fecha_pago: hoy()
 }
 
 export default function Pagos() {
@@ -16,7 +18,7 @@ export default function Pagos() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY_PAGO)
   const [saving, setSaving] = useState(false)
-  const [filtro, setFiltro] = useState('todos') // todos | pendiente | pagado
+  const [filtro, setFiltro] = useState('todos')
 
   const mesStr = format(mes, 'yyyy-MM')
   const mesLabel = format(mes, 'MMMM yyyy', { locale: es })
@@ -42,8 +44,7 @@ export default function Pagos() {
   }
 
   async function marcarPagado(pago) {
-    const fecha = format(new Date(), 'yyyy-MM-dd')
-    await supabase.from('pagos').update({ estado: 'pagado', fecha_pago: fecha }).eq('id', pago.id)
+    await supabase.from('pagos').update({ estado: 'pagado', fecha_pago: hoy() }).eq('id', pago.id)
     cargarPagos()
   }
 
@@ -61,13 +62,13 @@ export default function Pagos() {
       importe: parseFloat(form.importe),
       estado: 'pagado',
       mes_facturado: mesStr,
-      fecha_pago: format(new Date(), 'yyyy-MM-dd'),
+      fecha_pago: form.fecha_pago || hoy(),
       metodo_pago: form.metodo_pago || null,
       notas: form.notas || null,
     })
     setSaving(false)
     setModal(false)
-    setForm(EMPTY_PAGO)
+    setForm({ ...EMPTY_PAGO, fecha_pago: hoy() })
     cargarPagos()
   }
 
@@ -93,7 +94,6 @@ export default function Pagos() {
         </button>
       </div>
 
-      {/* Navegación de mes */}
       <div className="flex items-center gap-3" style={{ marginBottom: 20 }}>
         <button className="btn btn-ghost btn-sm" onClick={() => setMes(m => subMonths(m, 1))}>
           <ChevronLeft size={14} />
@@ -102,11 +102,9 @@ export default function Pagos() {
         <button className="btn btn-ghost btn-sm" onClick={() => setMes(m => addMonths(m, 1))}>
           <ChevronRight size={14} />
         </button>
-
-        {/* Filtro */}
         <div className="flex gap-2 ml-auto">
           {['todos', 'pendiente', 'pagado'].map(f => (
-            <button key={f} className={`btn btn-ghost btn-sm ${filtro === f ? 'active' : ''}`}
+            <button key={f} className="btn btn-ghost btn-sm"
               style={filtro === f ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
               onClick={() => setFiltro(f)}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -115,7 +113,6 @@ export default function Pagos() {
         </div>
       </div>
 
-      {/* Resumen rápido */}
       <div className="flex gap-3" style={{ marginBottom: 20 }}>
         <div style={{ padding: '10px 16px', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', flex: 1 }}>
           <div style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>Cobrado</div>
@@ -127,7 +124,6 @@ export default function Pagos() {
         </div>
       </div>
 
-      {/* Tabla de pagos */}
       {loading ? (
         <div className="empty"><p>Cargando...</p></div>
       ) : pagosFiltrados.length === 0 ? (
@@ -157,7 +153,7 @@ export default function Pagos() {
                   <td className="mono">{p.importe}€</td>
                   <td style={{ color: 'var(--text2)', fontSize: 12.5 }}>{p.metodo_pago || '—'}</td>
                   <td className="mono" style={{ fontSize: 12.5, color: 'var(--text2)' }}>
-                    {p.fecha_pago ? format(new Date(p.fecha_pago), 'dd/MM/yyyy') : '—'}
+                    {p.fecha_pago ? format(new Date(p.fecha_pago + 'T12:00:00'), 'dd/MM/yyyy') : '—'}
                   </td>
                   <td>
                     <span className={`badge ${p.estado === 'pagado' ? 'badge-green' : 'badge-orange'}`}>
@@ -187,7 +183,6 @@ export default function Pagos() {
         </div>
       )}
 
-      {/* Modal nueva sesión */}
       {modal && (
         <div className="modal-backdrop" onClick={() => setModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -218,16 +213,22 @@ export default function Pagos() {
                 <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
               </div>
               <div className="form-group">
+                <label className="form-label">Fecha de pago</label>
+                <input className="form-input" type="date" value={form.fecha_pago} onChange={e => setForm(f => ({ ...f, fecha_pago: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
                 <label className="form-label">Método de pago</label>
                 <select className="form-select" value={form.metodo_pago} onChange={e => setForm(f => ({ ...f, metodo_pago: e.target.value }))}>
                   <option value="efectivo">Efectivo</option>
                   <option value="bizum">Bizum</option>
                 </select>
               </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notas</label>
-              <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión 19/5, extra..." />
+              <div className="form-group">
+                <label className="form-label">Notas</label>
+                <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
+              </div>
             </div>
 
             <div className="modal-footer">
