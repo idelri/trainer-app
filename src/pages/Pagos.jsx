@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2, Pencil } from 'lucide-react'
 
 const hoy = () => format(new Date(), 'yyyy-MM-dd')
 
@@ -17,6 +17,7 @@ export default function Pagos() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
+  const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(EMPTY_PAGO)
   const [saving, setSaving] = useState(false)
   const [filtro, setFiltro] = useState('todos')
@@ -54,23 +55,56 @@ export default function Pagos() {
     cargarPagos()
   }
 
+  function abrirEditar(p) {
+    setEditando(p)
+    setForm({
+      cliente_id: p.cliente_id,
+      tipo: p.tipo,
+      importe: p.importe,
+      metodo_pago: p.metodo_pago || 'efectivo',
+      notas: p.notas || '',
+      fecha_pago: p.fecha_pago || hoy(),
+      fecha_sesion: p.fecha_sesion || '',
+    })
+    setModal(true)
+  }
+
+  function abrirNuevo() {
+    setEditando(null)
+    setForm({ ...EMPTY_PAGO, fecha_pago: hoy(), fecha_sesion: hoy() })
+    setModal(true)
+  }
+
   async function guardarPago() {
     if (!form.cliente_id || !form.importe) return
     setSaving(true)
-    await supabase.from('pagos').insert({
-      cliente_id: form.cliente_id,
-      tipo: form.tipo,
-      importe: parseFloat(form.importe),
-      estado: 'pagado',
-      mes_facturado: mesStr,
-      fecha_pago: form.fecha_pago || hoy(),
-      fecha_sesion: form.fecha_sesion || null,
-      metodo_pago: form.metodo_pago || null,
-      notas: form.notas || null,
-    })
+
+    if (editando) {
+      await supabase.from('pagos').update({
+        tipo: form.tipo,
+        importe: parseFloat(form.importe),
+        metodo_pago: form.metodo_pago || null,
+        notas: form.notas || null,
+        fecha_pago: form.fecha_pago || null,
+        fecha_sesion: form.fecha_sesion || null,
+      }).eq('id', editando.id)
+    } else {
+      await supabase.from('pagos').insert({
+        cliente_id: form.cliente_id,
+        tipo: form.tipo,
+        importe: parseFloat(form.importe),
+        estado: 'pagado',
+        mes_facturado: mesStr,
+        fecha_pago: form.fecha_pago || hoy(),
+        fecha_sesion: form.fecha_sesion || null,
+        metodo_pago: form.metodo_pago || null,
+        notas: form.notas || null,
+      })
+    }
+
     setSaving(false)
     setModal(false)
-    setForm({ ...EMPTY_PAGO, fecha_pago: hoy(), fecha_sesion: hoy() })
+    setEditando(null)
     cargarPagos()
   }
 
@@ -91,7 +125,7 @@ export default function Pagos() {
           <h2 className="page-title">Pagos</h2>
           <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{mesLabel}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setModal(true)}>
+        <button className="btn btn-primary" onClick={abrirNuevo}>
           <Plus size={14} /> Añadir sesión
         </button>
       </div>
@@ -177,6 +211,9 @@ export default function Pagos() {
                           ↩
                         </button>
                       )}
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)} title="Editar">
+                        <Pencil size={13} />
+                      </button>
                       <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminar(p.id)} title="Eliminar">
                         <X size={13} />
                       </button>
@@ -190,14 +227,14 @@ export default function Pagos() {
       )}
 
       {modal && (
-        <div className="modal-backdrop" onClick={() => setModal(false)}>
+        <div className="modal-backdrop" onClick={() => { setModal(false); setEditando(null) }}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">Añadir pago / sesión</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModal(false)}><X size={14} /></button>
+              <span className="modal-title">{editando ? 'Editar pago' : 'Añadir pago / sesión'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setModal(false); setEditando(null) }}><X size={14} /></button>
             </div>
 
-            <div className="form-row">
+            {!editando && (
               <div className="form-group">
                 <label className="form-label">Cliente *</label>
                 <select className="form-select" value={form.cliente_id} onChange={e => setForm(f => ({ ...f, cliente_id: e.target.value }))}>
@@ -205,12 +242,19 @@ export default function Pagos() {
                   {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
+            )}
+
+            <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Tipo</label>
                 <select className="form-select" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
                   <option value="sesion">Sesión</option>
                   <option value="mensualidad">Mensualidad</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Importe (€) *</label>
+                <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
               </div>
             </div>
             <div className="form-row">
@@ -225,26 +269,22 @@ export default function Pagos() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Importe (€) *</label>
-                <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
-              </div>
-              <div className="form-group">
                 <label className="form-label">Método de pago</label>
                 <select className="form-select" value={form.metodo_pago} onChange={e => setForm(f => ({ ...f, metodo_pago: e.target.value }))}>
                   <option value="efectivo">Efectivo</option>
                   <option value="bizum">Bizum</option>
                 </select>
               </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notas</label>
-              <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
+              <div className="form-group">
+                <label className="form-label">Notas</label>
+                <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
+              </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
+              <button className="btn btn-ghost" onClick={() => { setModal(false); setEditando(null) }}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarPago} disabled={saving}>
-                {saving ? 'Guardando...' : 'Guardar como pagado'}
+                {saving ? 'Guardando...' : editando ? 'Guardar cambios' : 'Guardar como pagado'}
               </button>
             </div>
           </div>
