@@ -253,3 +253,85 @@ export default function Pagos() {
                           ↩
                         </button>
                       )}
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)} title="Editar">
+                        <Pencil size={13} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminar(p.id)} title="Eliminar">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal && (
+        <div className="modal-backdrop" onClick={() => { setModal(false); setEditando(null) }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{editando ? 'Editar pago' : 'Añadir pago / sesión'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setModal(false); setEditando(null) }}><X size={14} /></button>
+            </div>
+
+            {!editando && (
+              <div className="form-group">
+                <label className="form-label">Cliente *</label>
+                <select className="form-select" value={form.cliente_id} onChange={e => setForm(f => ({ ...f, cliente_id: e.target.value }))}>
+                  <option value="">Selecciona...</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <select className="form-select" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
+                  <option value="sesion">Sesión</option>
+                  <option value="mensualidad">Mensualidad</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Importe (€) *</label>
+                <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha sesión</label>
+                <input className="form-input" type="date" value={form.fecha_sesion} onChange={e => setForm(f => ({ ...f, fecha_sesion: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha de pago</label>
+                <input className="form-input" type="date" value={form.fecha_pago} onChange={e => setForm(f => ({ ...f, fecha_pago: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Método de pago</label>
+                <select className="form-select" value={form.metodo_pago} onChange={e => setForm(f => ({ ...f, metodo_pago: e.target.value }))}>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="bizum">Bizum</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Notas</label>
+                <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => { setModal(false); setEditando(null) }}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarPago} disabled={saving}>
+                {saving ? 'Guardando...' : editando ? 'Guardar cambios' : 'Guardar como pagado'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
