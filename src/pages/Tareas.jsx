@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, subMonths, addMonths, parseISO } from 'date-fns'
+import { format, addDays, addWeeks, addMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 
