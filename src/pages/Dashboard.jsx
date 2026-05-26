@@ -147,3 +147,68 @@ export default function Dashboard() {
                   {m.total}€
                 </div>
               )}
+              <div style={{
+                width: rango > 6 ? '60%' : '50%',
+                height: `${Math.max((m.total / maxValor) * 100, m.total > 0 ? 3 : 0)}%`,
+                background: m.mes === mesActual ? 'var(--accent)' : 'var(--accent-light)',
+                borderRadius: '3px 3px 0 0',
+                transition: 'height 0.3s ease',
+                minHeight: m.total > 0 ? 3 : 0,
+                border: m.mes === mesActual ? 'none' : '1px solid var(--border)',
+              }} />
+              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                {m.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="card">
+          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+            <AlertCircle size={15} color="var(--warning)" />
+            <span className="font-medium" style={{ fontSize: 14 }}>Sin pagar este mes</span>
+            <span className="badge badge-orange ml-auto">{pendientes.length}</span>
+          </div>
+          {pendientes.length === 0
+            ? <p className="text-muted text-sm">¡Todo cobrado este mes! 🎉</p>
+            : pendientes.map(p => (
+              <div key={p.id} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="font-medium" style={{ fontSize: 13.5 }}>{p.clientes?.nombre}</div>
+                  <div className="text-muted text-sm">{p.tipo}</div>
+                </div>
+                <div className="mono" style={{ fontSize: 13 }}>{p.importe}€</div>
+              </div>
+            ))
+          }
+        </div>
+
+        <div className="card">
+          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
+            <Clock size={15} color="var(--accent)" />
+            <span className="font-medium" style={{ fontSize: 14 }}>Tareas pendientes</span>
+            <span className="badge badge-blue ml-auto">{tareasPendientes.length}</span>
+          </div>
+          {tareasPendientes.length === 0
+            ? <p className="text-muted text-sm">Sin tareas pendientes.</p>
+            : tareasPendientes.map(t => (
+              <div key={t.id} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div className="font-medium" style={{ fontSize: 13.5 }}>{t.titulo}</div>
+                  {t.clientes && <div className="text-muted text-sm">{t.clientes.nombre}</div>}
+                </div>
+                {t.fecha_limite && (
+                  <div className="text-sm text-muted mono">
+                    {format(new Date(t.fecha_limite), 'dd/MM')}
+                  </div>
+                )}
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  )
+}
