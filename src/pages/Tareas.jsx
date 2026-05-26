@@ -158,7 +158,6 @@ export default function Tareas() {
         </button>
       </div>
 
-      {/* Pestañas */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
         {PESTANAS.map(p => {
           const count = contarPestana(p.key)
@@ -194,12 +193,8 @@ export default function Tareas() {
           <p>{pestana === 'hecho' ? 'Ninguna tarea completada aún' : 'Sin tareas en esta categoría 🎉'}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {mostrar.map(t => (
-            <TareaCard key={t.id} t={t} onToggle={toggleEstado} onEliminar={eliminar}
-              RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />
-          ))}
-        </div>
+        <TareasAgrupadas tareas={mostrar} onToggle={toggleEstado} onEliminar={eliminar}
+          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />
       )}
 
       {modal && (
@@ -283,42 +278,100 @@ export default function Tareas() {
   )
 }
 
-function TareaCard({ t, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
-  const [expandido, setExpandido] = useState(false)
+function TareasAgrupadas({ tareas, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+  const grupos = []
+  const vistas = {}
+  tareas.forEach(t => {
+    if (!vistas[t.titulo]) {
+      vistas[t.titulo] = { titulo: t.titulo, recurrencia: t.recurrencia, fecha_limite: t.fecha_limite, notas: t.notas, items: [] }
+      grupos.push(vistas[t.titulo])
+    }
+    vistas[t.titulo].items.push(t)
+  })
 
   return (
-    <div className="card" style={{ padding: '12px 16px' }}>
-      <div className="flex items-center gap-3">
-        <button onClick={() => onToggle(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', flexShrink: 0, display: 'flex' }}>
-          {t.estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-        </button>
-        <div style={{ flex: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {grupos.map(g => (
+        <GrupoTarea key={g.titulo} grupo={g} onToggle={onToggle} onEliminar={onEliminar}
+          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />
+      ))}
+    </div>
+  )
+}
+
+function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+  const [expandido, setExpandido] = useState(false)
+  const tieneMultiples = grupo.items.length > 1
+  const todosDone = grupo.items.every(t => t.estado === 'hecho')
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-            <span className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
-              {t.titulo}
+            <span className="font-medium" style={{ color: todosDone ? 'var(--text3)' : 'var(--text)', textDecoration: todosDone ? 'line-through' : 'none' }}>
+              {grupo.titulo}
             </span>
-            {t.recurrencia && (
-              <span className={`badge ${RECURRENCIA_COLOR[t.recurrencia]}`} style={{ fontSize: 10 }}>
-                <RefreshCw size={9} /> {RECURRENCIA_LABEL[t.recurrencia]}
+            {grupo.recurrencia && (
+              <span className={`badge ${RECURRENCIA_COLOR[grupo.recurrencia]}`} style={{ fontSize: 10 }}>
+                <RefreshCw size={9} /> {RECURRENCIA_LABEL[grupo.recurrencia]}
+              </span>
+            )}
+            {tieneMultiples && (
+              <span className="badge badge-gray" style={{ fontSize: 10 }}>
+                {grupo.items.length} clientes
               </span>
             )}
           </div>
           <div className="flex gap-3 mt-1" style={{ flexWrap: 'wrap' }}>
-            {t.fecha_limite && (
+            {grupo.fecha_limite && (
               <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
-                {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
+                {format(new Date(grupo.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
               </span>
             )}
-            {t.clientes && (
-              <span className="text-sm text-muted">{t.clientes.nombre}</span>
+            {!tieneMultiples && grupo.items[0].clientes && (
+              <span className="text-sm text-muted">{grupo.items[0].clientes.nombre}</span>
             )}
           </div>
-          {t.notas && <div className="text-sm text-muted mt-1">{t.notas}</div>}
+          {grupo.notas && <div className="text-sm text-muted mt-1">{grupo.notas}</div>}
         </div>
-        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => onEliminar(t.id)}>
-          <X size={13} />
-        </button>
+
+        <div className="flex gap-2 items-center">
+          {!tieneMultiples && (
+            <>
+              <button onClick={() => onToggle(grupo.items[0])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: grupo.items[0].estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', display: 'flex' }}>
+                {grupo.items[0].estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              </button>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onEliminar(grupo.items[0].id)}>
+                <X size={13} />
+              </button>
+            </>
+          )}
+          {tieneMultiples && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setExpandido(e => !e)} style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+              {expandido ? '▲ Ocultar' : '▼ Ver clientes'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {tieneMultiples && expandido && (
+        <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+          {grupo.items.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: '1px solid var(--border)' }}>
+              <button onClick={() => onToggle(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', display: 'flex', flexShrink: 0 }}>
+                {t.estado === 'hecho' ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+              </button>
+              <span style={{ flex: 1, fontSize: 13, color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)', textDecoration: t.estado === 'hecho' ? 'line-through' : 'none' }}>
+                {t.clientes?.nombre || 'Sin cliente'}
+              </span>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onEliminar(t.id)}>
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
