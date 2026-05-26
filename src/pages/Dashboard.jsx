@@ -193,19 +193,30 @@ export default function Dashboard() {
           </div>
           {tareasPendientes.length === 0
             ? <p className="text-muted text-sm">Sin tareas pendientes.</p>
-            : tareasPendientes.map(t => (
-              <div key={t.id} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ flex: 1 }}>
-                  <div className="font-medium" style={{ fontSize: 13.5 }}>{t.titulo}</div>
-                  {t.clientes && <div className="text-muted text-sm">{t.clientes.nombre}</div>}
-                </div>
-                {t.fecha_limite && (
-                  <div className="text-sm text-muted mono">
-                    {format(new Date(t.fecha_limite), 'dd/MM')}
+            : (() => {
+                const grupos = []
+                const vistas = {}
+                tareasPendientes.forEach(t => {
+                  if (!vistas[t.titulo]) {
+                    vistas[t.titulo] = { titulo: t.titulo, fecha_limite: t.fecha_limite, count: 0 }
+                    grupos.push(vistas[t.titulo])
+                  }
+                  vistas[t.titulo].count++
+                })
+                return grupos.map(g => (
+                  <div key={g.titulo} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="font-medium" style={{ fontSize: 13.5 }}>{g.titulo}</div>
+                      {g.count > 1 && <div className="text-muted text-sm">{g.count} clientes</div>}
+                    </div>
+                    {g.fecha_limite && (
+                      <div className="text-sm text-muted mono">
+                        {format(new Date(g.fecha_limite + 'T12:00:00'), 'dd/MM')}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))
+                ))
+              })()
           }
         </div>
       </div>
