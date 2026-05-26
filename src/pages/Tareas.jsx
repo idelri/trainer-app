@@ -1,214 +1,266 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, addDays, addWeeks, addMonths, subMonths, parseISO } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, X, CheckCircle2, Circle, RefreshCw } from 'lucide-react'
 
-const RANGOS = [
-  { label: '3 meses', value: 3 },
-  { label: '6 meses', value: 6 },
-  { label: '12 meses', value: 12 },
-]
+const EMPTY_TAREA = { titulo: '', clientes_ids: [], fecha_limite: '', notas: '', recurrencia: '' }
 
-export default function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [pendientes, setPendientes] = useState([])
-  const [tareasPendientes, setTareasPendientes] = useState([])
-  const [historico, setHistorico] = useState([])
+async function generarSiguienteRecurrente(tarea, clienteId) {
+  if (!tarea.recurrencia || !tarea.fecha_limite) return
+  const base = parseISO(tarea.fecha_limite)
+  let siguiente
+  if (tarea.recurrencia === 'diaria') siguiente = addDays(base, 1)
+  else if (tarea.recurrencia === 'semanal') siguiente = addWeeks(base, 1)
+  else if (tarea.recurrencia === 'mensual') siguiente = addMonths(base, 1)
+  else return
+
+  await supabase.from('tareas').insert({
+    titulo: tarea.titulo,
+    cliente_id: clienteId,
+    fecha_limite: format(siguiente, 'yyyy-MM-dd'),
+    notas: tarea.notas,
+    recurrencia: tarea.recurrencia,
+    tarea_origen_id: tarea.tarea_origen_id || tarea.id,
+    estado: 'pendiente',
+  })
+}
+
+export default function Tareas() {
+  const [tareas, setTareas] = useState([])
+  const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [rango, setRango] = useState(6)
-  const [mesFin, setMesFin] = useState(new Date())
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState(EMPTY_TAREA)
+  const [saving, setSaving] = useState(false)
+  const [filtro, setFiltro] = useState('pendiente')
 
-  const mesActual = format(new Date(), 'yyyy-MM')
-  const mesLabel = format(new Date(), 'MMMM yyyy', { locale: es })
-
-  useEffect(() => { cargar() }, [rango, mesFin])
+  useEffect(() => { cargarClientes(); cargar() }, [])
 
   async function cargar() {
-    const meses = Array.from({ length: rango }, (_, i) =>
-      format(subMonths(mesFin, rango - 1 - i), 'yyyy-MM')
-    )
-
-    const [
-      { data: pagosDelMes },
-      { data: clientesActivos },
-      { data: tareas },
-      { data: todosPagos }
-    ] = await Promise.all([
-      supabase.from('pagos').select('*, clientes(nombre)').eq('mes_facturado', mesActual),
-      supabase.from('clientes').select('id').eq('estado', 'activo'),
-      supabase.from('tareas').select('*, clientes(nombre)').eq('estado', 'pendiente')
-        .order('fecha_limite', { ascending: true, nullsFirst: false }).limit(5),
-      supabase.from('pagos').select('mes_facturado, estado, importe').in('mes_facturado', meses)
-    ])
-
-    const pagados = (pagosDelMes || []).filter(p => p.estado === 'pagado')
-    const pend = (pagosDelMes || []).filter(p => p.estado === 'pendiente')
-
-    setStats({
-      ingresosCobrados: pagados.reduce((s, p) => s + p.importe, 0),
-      ingresosPendientes: pend.reduce((s, p) => s + p.importe, 0),
-      totalPagados: pagados.length,
-      totalPendientes: pend.length,
-      clientesActivos: clientesActivos?.length || 0,
-    })
-    setPendientes(pend)
-    setTareasPendientes(tareas || [])
-
-    const porMes = meses.map(m => {
-      const p = (todosPagos || []).filter(p => p.mes_facturado === m && p.estado === 'pagado')
-      return {
-        mes: m,
-        label: format(new Date(m + '-01'), rango > 6 ? 'MMM yy' : 'MMM', { locale: es }),
-        total: p.reduce((s, x) => s + x.importe, 0)
-      }
-    })
-    setHistorico(porMes)
+    const { data } = await supabase
+      .from('tareas')
+      .select('*, clientes(nombre, estado)')
+      .order('estado')
+      .order('fecha_limite', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+    setTareas(data || [])
     setLoading(false)
   }
 
-  if (loading) return <div className="empty"><p>Cargando...</p></div>
+  async function cargarClientes() {
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, nombre')
+      .eq('estado', 'activo')
+      .order('nombre')
+    setClientes(data || [])
+  }
 
-  const maxValor = Math.max(...historico.map(m => m.total), 1)
-  const mesFinLabel = format(mesFin, 'MMM yyyy', { locale: es })
-  const mesInicioLabel = format(subMonths(mesFin, rango - 1), 'MMM yyyy', { locale: es })
+  function toggleClienteForm(id) {
+    setForm(f => {
+      const ids = f.clientes_ids.includes(id)
+        ? f.clientes_ids.filter(x => x !== id)
+        : [...f.clientes_ids, id]
+      return { ...f, clientes_ids: ids }
+    })
+  }
+
+  function toggleTodos() {
+    setForm(f => ({
+      ...f,
+      clientes_ids: f.clientes_ids.length === clientes.length ? [] : clientes.map(c => c.id)
+    }))
+  }
+
+  async function toggleEstado(t) {
+    const nuevo = t.estado === 'pendiente' ? 'hecho' : 'pendiente'
+    await supabase.from('tareas').update({ estado: nuevo }).eq('id', t.id)
+    if (nuevo === 'hecho' && t.recurrencia) {
+      await generarSiguienteRecurrente(t, t.cliente_id)
+    }
+    cargar()
+  }
+
+  async function guardar() {
+    if (!form.titulo.trim()) return
+    setSaving(true)
+    const clientesAInsertar = form.clientes_ids.length > 0 ? form.clientes_ids : [null]
+    await Promise.all(clientesAInsertar.map(clienteId =>
+      supabase.from('tareas').insert({
+        titulo: form.titulo.trim(),
+        cliente_id: clienteId,
+        fecha_limite: form.fecha_limite || null,
+        notas: form.notas || null,
+        recurrencia: form.recurrencia || null,
+        estado: 'pendiente',
+      })
+    ))
+    setSaving(false)
+    setModal(false)
+    setForm(EMPTY_TAREA)
+    cargar()
+  }
+
+  async function eliminar(id) {
+    if (!window.confirm('¿Eliminar esta tarea?')) return
+    await supabase.from('tareas').delete().eq('id', id)
+    cargar()
+  }
+
+  const RECURRENCIA_LABEL = { diaria: 'Diaria', semanal: 'Semanal', mensual: 'Mensual' }
+  const RECURRENCIA_COLOR = { diaria: 'badge-red', semanal: 'badge-blue', mensual: 'badge-orange' }
+
+  const pendientes = tareas.filter(t => t.estado === 'pendiente')
+  const hechas = tareas.filter(t => t.estado === 'hecho')
+  const mostrar = filtro === 'pendiente' ? pendientes : hechas
+  const todosSeleccionados = form.clientes_ids.length === clientes.length && clientes.length > 0
+
+  if (loading) return <div className="empty"><p>Cargando...</p></div>
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Dashboard</h2>
-          <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{mesLabel}</p>
+          <h2 className="page-title">Tareas</h2>
+          <p className="page-subtitle">{pendientes.length} pendientes</p>
         </div>
+        <button className="btn btn-primary" onClick={() => setModal(true)}>
+          <Plus size={14} /> Nueva tarea
+        </button>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="label">Cobrado este mes</div>
-          <div className="value green">{stats.ingresosCobrados.toFixed(0)}€</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">Pendiente de cobro</div>
-          <div className="value orange">{stats.ingresosPendientes.toFixed(0)}€</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">Pagos completados</div>
-          <div className="value">{stats.totalPagados}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">Pagos pendientes</div>
-          <div className="value red">{stats.totalPendientes}</div>
-        </div>
-        <div className="stat-card">
-          <div className="label">Clientes activos</div>
-          <div className="value">{stats.clientesActivos}</div>
-        </div>
+      <div className="flex gap-2" style={{ marginBottom: 20 }}>
+        {['pendiente', 'hecho'].map(f => (
+          <button key={f} className="btn btn-ghost btn-sm"
+            style={filtro === f ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
+            onClick={() => setFiltro(f)}>
+            {f === 'pendiente' ? `Pendientes (${pendientes.length})` : `Hechas (${hechas.length})`}
+          </button>
+        ))}
       </div>
 
-      {/* Gráfica */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="flex items-center gap-3" style={{ marginBottom: 20 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Ingresos cobrados</span>
-          <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'capitalize' }}>
-            {mesInicioLabel} — {mesFinLabel}
-          </span>
-
-          {/* Selector de rango */}
-          <div className="flex gap-1 ml-auto">
-            {RANGOS.map(r => (
-              <button key={r.value} className="btn btn-ghost btn-sm"
-                style={rango === r.value ? { background: 'var(--bg2)', fontWeight: 500 } : { fontSize: 11 }}
-                onClick={() => setRango(r.value)}>
-                {r.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Navegación de periodo */}
-          <div className="flex gap-1">
-            <button className="btn btn-ghost btn-sm" title="Periodo anterior"
-              onClick={() => setMesFin(m => subMonths(m, rango))}>
-              <ChevronLeft size={13} />
-            </button>
-            <button className="btn btn-ghost btn-sm" title="Periodo siguiente"
-              onClick={() => setMesFin(m => addMonths(m, rango))}
-              disabled={format(addMonths(mesFin, 1), 'yyyy-MM') > mesActual}>
-              <ChevronRight size={13} />
-            </button>
-          </div>
+      {mostrar.length === 0 ? (
+        <div className="empty">
+          <CheckCircle2 size={40} />
+          <p>{filtro === 'pendiente' ? 'Sin tareas pendientes 🎉' : 'Ninguna tarea completada aún'}</p>
         </div>
-
-        {/* Barras */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: rango > 6 ? 4 : 6, height: 140, padding: '0 4px' }}>
-          {historico.map(m => (
-            <div key={m.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-              {m.total > 0 && (
-                <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
-                  {m.total}€
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {mostrar.map(t => (
+            <div key={t.id} className="card" style={{ padding: '14px 16px' }}>
+              <div className="flex items-center gap-3">
+                <button onClick={() => toggleEstado(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', flexShrink: 0, display: 'flex' }}>
+                  {t.estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                </button>
+                <div style={{ flex: 1 }}>
+                  <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+                    <span className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
+                      {t.titulo}
+                    </span>
+                    {t.recurrencia && (
+                      <span className={`badge ${RECURRENCIA_COLOR[t.recurrencia]}`} style={{ fontSize: 10 }}>
+                        <RefreshCw size={9} /> {RECURRENCIA_LABEL[t.recurrencia]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3 mt-1" style={{ flexWrap: 'wrap' }}>
+                    {t.clientes && (
+                      <span className="text-sm text-muted">{t.clientes.nombre}</span>
+                    )}
+                    {t.fecha_limite && (
+                      <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
+                        {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
+                      </span>
+                    )}
+                  </div>
+                  {t.notas && <div className="text-sm text-muted mt-1">{t.notas}</div>}
                 </div>
-              )}
-              <div style={{
-                width: rango > 6 ? '60%' : '50%',
-                height: `${Math.max((m.total / maxValor) * 100, m.total > 0 ? 3 : 0)}%`,
-                background: m.mes === mesActual ? 'var(--accent)' : 'var(--accent-light)',
-                borderRadius: '3px 3px 0 0',
-                transition: 'height 0.3s ease',
-                minHeight: m.total > 0 ? 3 : 0,
-                border: m.mes === mesActual ? 'none' : '1px solid var(--border)',
-              }} />
-              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
-                {m.label}
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminar(t.id)}>
+                  <X size={13} />
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div className="card">
-          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
-            <AlertCircle size={15} color="var(--warning)" />
-            <span className="font-medium" style={{ fontSize: 14 }}>Sin pagar este mes</span>
-            <span className="badge badge-orange ml-auto">{pendientes.length}</span>
-          </div>
-          {pendientes.length === 0
-            ? <p className="text-muted text-sm">¡Todo cobrado este mes! 🎉</p>
-            : pendientes.map(p => (
-              <div key={p.id} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ flex: 1 }}>
-                  <div className="font-medium" style={{ fontSize: 13.5 }}>{p.clientes?.nombre}</div>
-                  <div className="text-muted text-sm">{p.tipo}</div>
-                </div>
-                <div className="mono" style={{ fontSize: 13 }}>{p.importe}€</div>
-              </div>
-            ))
-          }
-        </div>
+      {modal && (
+        <div className="modal-backdrop" onClick={() => setModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva tarea</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModal(false)}><X size={14} /></button>
+            </div>
 
-        <div className="card">
-          <div className="flex items-center gap-2" style={{ marginBottom: 16 }}>
-            <Clock size={15} color="var(--accent)" />
-            <span className="font-medium" style={{ fontSize: 14 }}>Tareas pendientes</span>
-            <span className="badge badge-blue ml-auto">{tareasPendientes.length}</span>
-          </div>
-          {tareasPendientes.length === 0
-            ? <p className="text-muted text-sm">Sin tareas pendientes.</p>
-            : tareasPendientes.map(t => (
-              <div key={t.id} className="flex items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ flex: 1 }}>
-                  <div className="font-medium" style={{ fontSize: 13.5 }}>{t.titulo}</div>
-                  {t.clientes && <div className="text-muted text-sm">{t.clientes.nombre}</div>}
-                </div>
-                {t.fecha_limite && (
-                  <div className="text-sm text-muted mono">
-                    {format(new Date(t.fecha_limite), 'dd/MM')}
+            <div className="form-group">
+              <label className="form-label">Tarea *</label>
+              <input className="form-input" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Revisar plan de Blanca" autoFocus />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Clientes (opcional)</label>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                <div onClick={toggleTodos} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', cursor: 'pointer', background: todosSeleccionados ? 'var(--accent-light)' : 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${todosSeleccionados ? 'var(--accent)' : 'var(--border2)'}`, background: todosSeleccionados ? 'var(--accent)' : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {todosSeleccionados && <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>✓</span>}
                   </div>
-                )}
+                  <span style={{ fontSize: 13, fontWeight: 500, color: todosSeleccionados ? 'var(--accent-text)' : 'var(--text)' }}>Todos los clientes activos</span>
+                </div>
+                {clientes.map(c => {
+                  const sel = form.clientes_ids.includes(c.id)
+                  return (
+                    <div key={c.id} onClick={() => toggleClienteForm(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: sel ? 'var(--accent-light)' : 'white', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? 'var(--accent)' : 'var(--border2)'}`, background: sel ? 'var(--accent)' : 'white', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {sel && <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>✓</span>}
+                      </div>
+                      <span style={{ fontSize: 13, color: sel ? 'var(--accent-text)' : 'var(--text)' }}>{c.nombre}</span>
+                    </div>
+                  )
+                })}
               </div>
-            ))
-          }
+              {form.clientes_ids.length > 0 && (
+                <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+                  Se creará una tarea separada para cada cliente seleccionado ({form.clientes_ids.length})
+                </p>
+              )}
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Recurrencia</label>
+                <select className="form-select" value={form.recurrencia} onChange={e => setForm(f => ({ ...f, recurrencia: e.target.value }))}>
+                  <option value="">Sin repetición</option>
+                  <option value="diaria">Diaria</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual">Mensual</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">{form.recurrencia ? 'Primera fecha límite' : 'Fecha límite'}</label>
+                <input className="form-input" type="date" value={form.fecha_limite} onChange={e => setForm(f => ({ ...f, fecha_limite: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Notas</label>
+              <textarea className="form-textarea" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} />
+            </div>
+
+            {form.recurrencia && (
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+                Al marcar como hecha, se creará automáticamente la siguiente con la fecha correspondiente.
+              </p>
+            )}
+
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardar} disabled={saving}>
+                {saving ? 'Guardando...' : 'Crear tarea'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
