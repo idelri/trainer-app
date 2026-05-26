@@ -38,7 +38,7 @@ export default function Dashboard() {
       supabase.from('pagos').select('*, clientes(nombre)').eq('mes_facturado', mesActual),
       supabase.from('clientes').select('id').eq('estado', 'activo'),
       supabase.from('tareas').select('*, clientes(nombre)').eq('estado', 'pendiente')
-        .order('fecha_limite', { ascending: true, nullsFirst: false }).limit(5),
+        .order('fecha_limite', { ascending: true, nullsFirst: false }).limit(50),
       supabase.from('pagos').select('mes_facturado, estado, importe').in('mes_facturado', meses)
     ])
 
