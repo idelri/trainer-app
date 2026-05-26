@@ -284,6 +284,8 @@ export default function Tareas() {
 }
 
 function TareaCard({ t, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+  const [expandido, setExpandido] = useState(false)
+
   return (
     <div className="card" style={{ padding: '12px 16px' }}>
       <div className="flex items-center gap-3">
@@ -302,11 +304,13 @@ function TareaCard({ t, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COL
             )}
           </div>
           <div className="flex gap-3 mt-1" style={{ flexWrap: 'wrap' }}>
-            {t.clientes && <span className="text-sm text-muted">{t.clientes.nombre}</span>}
             {t.fecha_limite && (
               <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
                 {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
               </span>
+            )}
+            {t.clientes && (
+              <span className="text-sm text-muted">{t.clientes.nombre}</span>
             )}
           </div>
           {t.notas && <div className="text-sm text-muted mt-1">{t.notas}</div>}
