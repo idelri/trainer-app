@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, subMonths, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, CheckCircle2, Pencil, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 
 const hoy = () => format(new Date(), 'yyyy-MM-dd')
 
 const EMPTY_PAGO = {
   cliente_id: '', tipo: 'sesion', importe: '', metodo_pago: 'efectivo',
   notas: '', fecha_pago: hoy(), fecha_sesion: hoy()
+}
+
+function SortIcon({ col, sortCol, sortDir }) {
+  if (sortCol !== col) return <ChevronsUpDown size={11} style={{ opacity: 0.3 }} />
+  return sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
 }
 
 export default function Pagos() {
@@ -21,6 +26,8 @@ export default function Pagos() {
   const [form, setForm] = useState(EMPTY_PAGO)
   const [saving, setSaving] = useState(false)
   const [filtro, setFiltro] = useState('todos')
+  const [sortCol, setSortCol] = useState('estado')
+  const [sortDir, setSortDir] = useState('asc')
 
   const mesStr = format(mes, 'yyyy-MM')
   const mesLabel = format(mes, 'MMMM yyyy', { locale: es })
@@ -39,10 +46,36 @@ export default function Pagos() {
       .from('pagos')
       .select('*, clientes(nombre)')
       .eq('mes_facturado', mesStr)
-      .order('estado')
-      .order('created_at', { ascending: false })
     setPagos(data || [])
     setLoading(false)
+  }
+
+  function toggleSort(col) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  function sortPagos(list) {
+    return [...list].sort((a, b) => {
+      let va, vb
+      switch (sortCol) {
+        case 'nombre': va = a.clientes?.nombre || ''; vb = b.clientes?.nombre || ''; break
+        case 'tipo': va = a.tipo; vb = b.tipo; break
+        case 'importe': va = a.importe; vb = b.importe; break
+        case 'metodo': va = a.metodo_pago || ''; vb = b.metodo_pago || ''; break
+        case 'fecha_sesion': va = a.fecha_sesion || ''; vb = b.fecha_sesion || ''; break
+        case 'fecha_pago': va = a.fecha_pago || ''; vb = b.fecha_pago || ''; break
+        case 'estado': va = a.estado; vb = b.estado; break
+        default: va = ''; vb = ''
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
   }
 
   async function marcarPagado(pago) {
@@ -78,7 +111,6 @@ export default function Pagos() {
   async function guardarPago() {
     if (!form.cliente_id || !form.importe) return
     setSaving(true)
-
     if (editando) {
       await supabase.from('pagos').update({
         tipo: form.tipo,
@@ -101,7 +133,6 @@ export default function Pagos() {
         notas: form.notas || null,
       })
     }
-
     setSaving(false)
     setModal(false)
     setEditando(null)
@@ -115,8 +146,11 @@ export default function Pagos() {
   }
 
   const pagosFiltrados = filtro === 'todos' ? pagos : pagos.filter(p => p.estado === filtro)
+  const pagsOrdenados = sortPagos(pagosFiltrados)
   const totalCobrado = pagos.filter(p => p.estado === 'pagado').reduce((s, p) => s + p.importe, 0)
   const totalPendiente = pagos.filter(p => p.estado === 'pendiente').reduce((s, p) => s + p.importe, 0)
+
+  const thStyle = { cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }
 
   return (
     <div>
@@ -162,7 +196,7 @@ export default function Pagos() {
 
       {loading ? (
         <div className="empty"><p>Cargando...</p></div>
-      ) : pagosFiltrados.length === 0 ? (
+      ) : pagsOrdenados.length === 0 ? (
         <div className="empty">
           <CheckCircle2 size={40} />
           <p>No hay pagos {filtro !== 'todos' ? `con estado "${filtro}"` : ''} en {mesLabel}</p>
@@ -172,18 +206,26 @@ export default function Pagos() {
           <table>
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Tipo</th>
-                <th>Importe</th>
-                <th>Método</th>
-                <th>Fecha sesión</th>
-                <th>Fecha pago</th>
-                <th>Estado</th>
+                {[
+                  { key: 'nombre', label: 'Cliente' },
+                  { key: 'tipo', label: 'Tipo' },
+                  { key: 'importe', label: 'Importe' },
+                  { key: 'metodo', label: 'Método' },
+                  { key: 'fecha_sesion', label: 'Fecha sesión' },
+                  { key: 'fecha_pago', label: 'Fecha pago' },
+                  { key: 'estado', label: 'Estado' },
+                ].map(({ key, label }) => (
+                  <th key={key} style={thStyle} onClick={() => toggleSort(key)}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {label} <SortIcon col={key} sortCol={sortCol} sortDir={sortDir} />
+                    </span>
+                  </th>
+                ))}
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {pagosFiltrados.map(p => (
+              {pagsOrdenados.map(p => (
                 <tr key={p.id}>
                   <td><span className="font-medium">{p.clientes?.nombre}</span></td>
                   <td><span className={`badge ${p.tipo === 'mensualidad' ? 'badge-blue' : 'badge-gray'}`}>{p.tipo}</span></td>
@@ -211,85 +253,3 @@ export default function Pagos() {
                           ↩
                         </button>
                       )}
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)} title="Editar">
-                        <Pencil size={13} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminar(p.id)} title="Eliminar">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {modal && (
-        <div className="modal-backdrop" onClick={() => { setModal(false); setEditando(null) }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{editando ? 'Editar pago' : 'Añadir pago / sesión'}</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setModal(false); setEditando(null) }}><X size={14} /></button>
-            </div>
-
-            {!editando && (
-              <div className="form-group">
-                <label className="form-label">Cliente *</label>
-                <select className="form-select" value={form.cliente_id} onChange={e => setForm(f => ({ ...f, cliente_id: e.target.value }))}>
-                  <option value="">Selecciona...</option>
-                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
-            )}
-
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Tipo</label>
-                <select className="form-select" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
-                  <option value="sesion">Sesión</option>
-                  <option value="mensualidad">Mensualidad</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Importe (€) *</label>
-                <input className="form-input" type="number" value={form.importe} onChange={e => setForm(f => ({ ...f, importe: e.target.value }))} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Fecha sesión</label>
-                <input className="form-input" type="date" value={form.fecha_sesion} onChange={e => setForm(f => ({ ...f, fecha_sesion: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Fecha de pago</label>
-                <input className="form-input" type="date" value={form.fecha_pago} onChange={e => setForm(f => ({ ...f, fecha_pago: e.target.value }))} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Método de pago</label>
-                <select className="form-select" value={form.metodo_pago} onChange={e => setForm(f => ({ ...f, metodo_pago: e.target.value }))}>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="bizum">Bizum</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notas</label>
-                <input className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Sesión extra, descuento..." />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => { setModal(false); setEditando(null) }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarPago} disabled={saving}>
-                {saving ? 'Guardando...' : editando ? 'Guardar cambios' : 'Guardar como pagado'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
