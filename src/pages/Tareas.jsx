@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, addDays, addWeeks, addMonths, parseISO, isToday, isTomorrow, isThisWeek, isPast, startOfDay } from 'date-fns'
-import { Plus, X, CheckCircle2, Circle, RefreshCw } from 'lucide-react'
+import { Plus, X, CheckCircle2, Circle, RefreshCw, Clock } from 'lucide-react'
 
 const EMPTY_TAREA = { titulo: '', clientes_ids: [], fecha_limite: '', notas: '', recurrencia: '' }
 
@@ -44,6 +44,28 @@ const PESTANAS = [
   { key: 'sin_fecha', label: 'Sin fecha', color: 'var(--text3)' },
   { key: 'hecho', label: 'Hechas' },
 ]
+
+const ESTADO_SIGUIENTE = {
+  pendiente: 'en_proceso',
+  en_proceso: 'hecho',
+  hecho: 'pendiente',
+}
+
+const ESTADO_ICON = {
+  pendiente: (size) => <Circle size={size} />,
+  en_proceso: (size) => <Clock size={size} />,
+  hecho: (size) => <CheckCircle2 size={size} />,
+}
+
+const ESTADO_COLOR = {
+  pendiente: 'var(--text3)',
+  en_proceso: 'var(--warning)',
+  hecho: 'var(--accent)',
+}
+
+const ESTADO_BADGE = {
+  en_proceso: { label: 'En proceso', cls: 'badge-orange' },
+}
 
 export default function Tareas() {
   const [tareas, setTareas] = useState([])
@@ -89,7 +111,7 @@ export default function Tareas() {
   }
 
   async function toggleEstado(t) {
-    const nuevo = t.estado === 'pendiente' ? 'hecho' : 'pendiente'
+    const nuevo = ESTADO_SIGUIENTE[t.estado] || 'pendiente'
     await supabase.from('tareas').update({ estado: nuevo }).eq('id', t.id)
     if (nuevo === 'hecho' && t.recurrencia) {
       await generarSiguienteRecurrente(t, t.cliente_id)
@@ -126,7 +148,7 @@ export default function Tareas() {
   const RECURRENCIA_LABEL = { diaria: 'Diaria', semanal: 'Semanal', mensual: 'Mensual' }
   const RECURRENCIA_COLOR = { diaria: 'badge-red', semanal: 'badge-blue', mensual: 'badge-orange' }
 
-  const pendientes = tareas.filter(t => t.estado === 'pendiente')
+  const pendientes = tareas.filter(t => t.estado !== 'hecho')
   const hechas = tareas.filter(t => t.estado === 'hecho')
   const todosSeleccionados = form.clientes_ids.length === clientes.length && clientes.length > 0
 
@@ -194,7 +216,8 @@ export default function Tareas() {
         </div>
       ) : (
         <TareasAgrupadas tareas={mostrar} onToggle={toggleEstado} onEliminar={eliminar}
-          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />
+          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR}
+          ESTADO_ICON={ESTADO_ICON} ESTADO_COLOR={ESTADO_COLOR} ESTADO_BADGE={ESTADO_BADGE} />
       )}
 
       {modal && (
@@ -278,7 +301,7 @@ export default function Tareas() {
   )
 }
 
-function TareasAgrupadas({ tareas, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+function TareasAgrupadas({ tareas, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR, ESTADO_ICON, ESTADO_COLOR, ESTADO_BADGE }) {
   const grupos = []
   const vistas = {}
   tareas.forEach(t => {
@@ -293,16 +316,19 @@ function TareasAgrupadas({ tareas, onToggle, onEliminar, RECURRENCIA_LABEL, RECU
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {grupos.map(g => (
         <GrupoTarea key={g.titulo} grupo={g} onToggle={onToggle} onEliminar={onEliminar}
-          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />
+          RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR}
+          ESTADO_ICON={ESTADO_ICON} ESTADO_COLOR={ESTADO_COLOR} ESTADO_BADGE={ESTADO_BADGE} />
       ))}
     </div>
   )
 }
 
-function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR, ESTADO_ICON, ESTADO_COLOR, ESTADO_BADGE }) {
   const [expandido, setExpandido] = useState(false)
   const tieneMultiples = grupo.items.length > 1
   const todosDone = grupo.items.every(t => t.estado === 'hecho')
+  const item = grupo.items[0]
+  const enProceso = grupo.items.some(t => t.estado === 'en_proceso')
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -317,6 +343,14 @@ function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCI
                 <RefreshCw size={9} /> {RECURRENCIA_LABEL[grupo.recurrencia]}
               </span>
             )}
+            {!tieneMultiples && ESTADO_BADGE[item.estado] && (
+              <span className={`badge ${ESTADO_BADGE[item.estado].cls}`} style={{ fontSize: 10 }}>
+                {ESTADO_BADGE[item.estado].label}
+              </span>
+            )}
+            {tieneMultiples && enProceso && (
+              <span className="badge badge-orange" style={{ fontSize: 10 }}>En proceso</span>
+            )}
             {tieneMultiples && (
               <span className="badge badge-gray" style={{ fontSize: 10 }}>
                 {grupo.items.length} clientes
@@ -329,8 +363,8 @@ function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCI
                 {format(new Date(grupo.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
               </span>
             )}
-            {!tieneMultiples && grupo.items[0].clientes && (
-              <span className="text-sm text-muted">{grupo.items[0].clientes.nombre}</span>
+            {!tieneMultiples && item.clientes && (
+              <span className="text-sm text-muted">{item.clientes.nombre}</span>
             )}
           </div>
           {grupo.notas && <div className="text-sm text-muted mt-1">{grupo.notas}</div>}
@@ -339,10 +373,11 @@ function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCI
         <div className="flex gap-2 items-center">
           {!tieneMultiples && (
             <>
-              <button onClick={() => onToggle(grupo.items[0])} style={{ background: 'none', border: 'none', cursor: 'pointer', color: grupo.items[0].estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', display: 'flex' }}>
-                {grupo.items[0].estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+              <button onClick={() => onToggle(item)} title="Cambiar estado"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: ESTADO_COLOR[item.estado], display: 'flex', flexShrink: 0 }}>
+                {ESTADO_ICON[item.estado](18)}
               </button>
-              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onEliminar(grupo.items[0].id)}>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onEliminar(item.id)}>
                 <X size={13} />
               </button>
             </>
@@ -359,12 +394,18 @@ function GrupoTarea({ grupo, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCI
         <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
           {grupo.items.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', borderBottom: '1px solid var(--border)' }}>
-              <button onClick={() => onToggle(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', display: 'flex', flexShrink: 0 }}>
-                {t.estado === 'hecho' ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+              <button onClick={() => onToggle(t)} title="Cambiar estado"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: ESTADO_COLOR[t.estado], display: 'flex', flexShrink: 0 }}>
+                {ESTADO_ICON[t.estado](16)}
               </button>
               <span style={{ flex: 1, fontSize: 13, color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)', textDecoration: t.estado === 'hecho' ? 'line-through' : 'none' }}>
                 {t.clientes?.nombre || 'Sin cliente'}
               </span>
+              {ESTADO_BADGE[t.estado] && (
+                <span className={`badge ${ESTADO_BADGE[t.estado].cls}`} style={{ fontSize: 10 }}>
+                  {ESTADO_BADGE[t.estado].label}
+                </span>
+              )}
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onEliminar(t.id)}>
                 <X size={13} />
               </button>
