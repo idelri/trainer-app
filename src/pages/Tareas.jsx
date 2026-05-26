@@ -52,9 +52,9 @@ const ESTADO_SIGUIENTE = {
 }
 
 const ESTADO_ICON = {
-  pendiente: (size) => <Circle size={size} />,
-  en_proceso: (size) => <Clock size={size} />,
-  hecho: (size) => <CheckCircle2 size={size} />,
+  pendiente: (size) => <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>⭕</span>,
+  en_proceso: (size) => <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>🔄</span>,
+  hecho: (size) => <span style={{ fontSize: size * 0.7, lineHeight: 1 }}>✅</span>,
 }
 
 const ESTADO_COLOR = {
@@ -119,25 +119,27 @@ export default function Tareas() {
     cargar()
   }
 
-  async function guardar() {
-    if (!form.titulo.trim()) return
-    setSaving(true)
-    const clientesAInsertar = form.clientes_ids.length > 0 ? form.clientes_ids : [null]
-    await Promise.all(clientesAInsertar.map(clienteId =>
-      supabase.from('tareas').insert({
-        titulo: form.titulo.trim(),
-        cliente_id: clienteId,
-        fecha_limite: form.fecha_limite || null,
-        notas: form.notas || null,
-        recurrencia: form.recurrencia || null,
-        estado: 'pendiente',
-      })
-    ))
-    setSaving(false)
-    setModal(false)
-    setForm(EMPTY_TAREA)
-    cargar()
+  async function toggleEstado(t) {
+  const nuevo = ESTADO_SIGUIENTE[t.estado] || 'pendiente'
+  await supabase.from('tareas').update({ estado: nuevo }).eq('id', t.id)
+  // Solo genera siguiente recurrente si pasa a hecho POR PRIMERA VEZ
+  // (comprobamos que antes era en_proceso, no hecho)
+  if (nuevo === 'hecho' && t.recurrencia && t.estado !== 'hecho') {
+    // Verificar que no existe ya una tarea recurrente futura igual
+    const { data: existente } = await supabase
+      .from('tareas')
+      .select('id')
+      .eq('titulo', t.titulo)
+      .eq('tarea_origen_id', t.tarea_origen_id || t.id)
+      .neq('id', t.id)
+      .eq('estado', 'pendiente')
+      .limit(1)
+    if (!existente || existente.length === 0) {
+      await generarSiguienteRecurrente(t, t.cliente_id)
+    }
   }
+  cargar()
+}
 
   async function eliminar(id) {
     if (!window.confirm('¿Eliminar esta tarea?')) return
