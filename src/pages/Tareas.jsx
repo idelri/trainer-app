@@ -1,9 +1,29 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format } from 'date-fns'
-import { Plus, X, CheckCircle2, Circle } from 'lucide-react'
+import { format, addDays, addWeeks, addMonths, parseISO } from 'date-fns'
+import { Plus, X, CheckCircle2, Circle, RefreshCw } from 'lucide-react'
 
-const EMPTY_TAREA = { titulo: '', cliente_id: '', fecha_limite: '', notas: '' }
+const EMPTY_TAREA = { titulo: '', cliente_id: '', fecha_limite: '', notas: '', recurrencia: '' }
+
+async function generarSiguienteRecurrente(tarea) {
+  if (!tarea.recurrencia || !tarea.fecha_limite) return
+  const base = parseISO(tarea.fecha_limite)
+  let siguiente
+  if (tarea.recurrencia === 'diaria') siguiente = addDays(base, 1)
+  else if (tarea.recurrencia === 'semanal') siguiente = addWeeks(base, 1)
+  else if (tarea.recurrencia === 'mensual') siguiente = addMonths(base, 1)
+  else return
+
+  await supabase.from('tareas').insert({
+    titulo: tarea.titulo,
+    cliente_id: tarea.cliente_id,
+    fecha_limite: format(siguiente, 'yyyy-MM-dd'),
+    notas: tarea.notas,
+    recurrencia: tarea.recurrencia,
+    tarea_origen_id: tarea.tarea_origen_id || tarea.id,
+    estado: 'pendiente',
+  })
+}
 
 export default function Tareas() {
   const [tareas, setTareas] = useState([])
@@ -35,6 +55,9 @@ export default function Tareas() {
   async function toggleEstado(t) {
     const nuevo = t.estado === 'pendiente' ? 'hecho' : 'pendiente'
     await supabase.from('tareas').update({ estado: nuevo }).eq('id', t.id)
+    if (nuevo === 'hecho' && t.recurrencia) {
+      await generarSiguienteRecurrente(t)
+    }
     cargar()
   }
 
@@ -46,6 +69,7 @@ export default function Tareas() {
       cliente_id: form.cliente_id || null,
       fecha_limite: form.fecha_limite || null,
       notas: form.notas || null,
+      recurrencia: form.recurrencia || null,
       estado: 'pendiente',
     })
     setSaving(false)
@@ -59,6 +83,9 @@ export default function Tareas() {
     await supabase.from('tareas').delete().eq('id', id)
     cargar()
   }
+
+  const RECURRENCIA_LABEL = { diaria: 'Diaria', semanal: 'Semanal', mensual: 'Mensual' }
+  const RECURRENCIA_COLOR = { diaria: 'badge-red', semanal: 'badge-blue', mensual: 'badge-orange' }
 
   const pendientes = tareas.filter(t => t.estado === 'pendiente')
   const hechas = tareas.filter(t => t.estado === 'hecho')
@@ -102,14 +129,21 @@ export default function Tareas() {
                   {t.estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                 </button>
                 <div style={{ flex: 1 }}>
-                  <div className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
-                    {t.titulo}
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
+                      {t.titulo}
+                    </span>
+                    {t.recurrencia && (
+                      <span className={`badge ${RECURRENCIA_COLOR[t.recurrencia]}`} style={{ fontSize: 10 }}>
+                        <RefreshCw size={9} /> {RECURRENCIA_LABEL[t.recurrencia]}
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-3 mt-1">
                     {t.clientes && <span className="text-sm text-muted">{t.clientes.nombre}</span>}
                     {t.fecha_limite && (
                       <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
-                        {format(new Date(t.fecha_limite), 'dd/MM/yyyy')}
+                        {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
                       </span>
                     )}
                   </div>
@@ -144,7 +178,20 @@ export default function Tareas() {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Fecha límite (opcional)</label>
+                <label className="form-label">Recurrencia</label>
+                <select className="form-select" value={form.recurrencia} onChange={e => setForm(f => ({ ...f, recurrencia: e.target.value }))}>
+                  <option value="">Sin repetición</option>
+                  <option value="diaria">Diaria</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual">Mensual</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">
+                  {form.recurrencia ? 'Primera fecha límite' : 'Fecha límite (opcional)'}
+                </label>
                 <input className="form-input" type="date" value={form.fecha_limite} onChange={e => setForm(f => ({ ...f, fecha_limite: e.target.value }))} />
               </div>
             </div>
@@ -152,6 +199,11 @@ export default function Tareas() {
               <label className="form-label">Notas</label>
               <textarea className="form-textarea" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} />
             </div>
+            {form.recurrencia && (
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+                Al marcar como hecha, se creará automáticamente la siguiente tarea con la fecha correspondiente.
+              </p>
+            )}
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardar} disabled={saving}>
