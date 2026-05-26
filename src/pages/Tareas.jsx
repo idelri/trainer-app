@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, addDays, addWeeks, addMonths, subMonths, parseISO } from 'date-fns'
+import { format, addDays, addWeeks, addMonths, subMonths, parseISO, isToday, isTomorrow, isThisWeek, isPast, startOfDay } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { Plus, X, CheckCircle2, Circle, RefreshCw } from 'lucide-react'
 
 const EMPTY_TAREA = { titulo: '', clientes_ids: [], fecha_limite: '', notas: '', recurrencia: '' }
@@ -13,7 +14,6 @@ async function generarSiguienteRecurrente(tarea, clienteId) {
   else if (tarea.recurrencia === 'semanal') siguiente = addWeeks(base, 1)
   else if (tarea.recurrencia === 'mensual') siguiente = addMonths(base, 1)
   else return
-
   await supabase.from('tareas').insert({
     titulo: tarea.titulo,
     cliente_id: clienteId,
@@ -24,6 +24,25 @@ async function generarSiguienteRecurrente(tarea, clienteId) {
     estado: 'pendiente',
   })
 }
+
+function getGrupo(fecha_limite) {
+  if (!fecha_limite) return 'sin_fecha'
+  const d = parseISO(fecha_limite)
+  if (isPast(startOfDay(d)) && !isToday(d)) return 'vencidas'
+  if (isToday(d)) return 'hoy'
+  if (isTomorrow(d)) return 'manana'
+  if (isThisWeek(d, { weekStartsOn: 1 })) return 'esta_semana'
+  return 'mas_adelante'
+}
+
+const GRUPOS = [
+  { key: 'vencidas', label: 'Vencidas', color: 'var(--danger)' },
+  { key: 'hoy', label: 'Hoy', color: 'var(--accent)' },
+  { key: 'manana', label: 'Mañana', color: 'var(--warning)' },
+  { key: 'esta_semana', label: 'Esta semana', color: 'var(--info)' },
+  { key: 'mas_adelante', label: 'Más adelante', color: 'var(--text3)' },
+  { key: 'sin_fecha', label: 'Sin fecha', color: 'var(--text3)' },
+]
 
 export default function Tareas() {
   const [tareas, setTareas] = useState([])
@@ -49,10 +68,7 @@ export default function Tareas() {
 
   async function cargarClientes() {
     const { data } = await supabase
-      .from('clientes')
-      .select('id, nombre')
-      .eq('estado', 'activo')
-      .order('nombre')
+      .from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
     setClientes(data || [])
   }
 
@@ -112,8 +128,13 @@ export default function Tareas() {
 
   const pendientes = tareas.filter(t => t.estado === 'pendiente')
   const hechas = tareas.filter(t => t.estado === 'hecho')
-  const mostrar = filtro === 'pendiente' ? pendientes : hechas
   const todosSeleccionados = form.clientes_ids.length === clientes.length && clientes.length > 0
+
+  // Agrupar pendientes por día
+  const grupos = GRUPOS.map(g => ({
+    ...g,
+    tareas: pendientes.filter(t => getGrupo(t.fecha_limite) === g.key)
+  })).filter(g => g.tareas.length > 0)
 
   if (loading) return <div className="empty"><p>Cargando...</p></div>
 
@@ -139,49 +160,39 @@ export default function Tareas() {
         ))}
       </div>
 
-      {mostrar.length === 0 ? (
-        <div className="empty">
-          <CheckCircle2 size={40} />
-          <p>{filtro === 'pendiente' ? 'Sin tareas pendientes 🎉' : 'Ninguna tarea completada aún'}</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {mostrar.map(t => (
-            <div key={t.id} className="card" style={{ padding: '14px 16px' }}>
-              <div className="flex items-center gap-3">
-                <button onClick={() => toggleEstado(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', flexShrink: 0, display: 'flex' }}>
-                  {t.estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                </button>
-                <div style={{ flex: 1 }}>
-                  <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
-                    <span className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
-                      {t.titulo}
-                    </span>
-                    {t.recurrencia && (
-                      <span className={`badge ${RECURRENCIA_COLOR[t.recurrencia]}`} style={{ fontSize: 10 }}>
-                        <RefreshCw size={9} /> {RECURRENCIA_LABEL[t.recurrencia]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-3 mt-1" style={{ flexWrap: 'wrap' }}>
-                    {t.clientes && (
-                      <span className="text-sm text-muted">{t.clientes.nombre}</span>
-                    )}
-                    {t.fecha_limite && (
-                      <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
-                        {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
-                      </span>
-                    )}
-                  </div>
-                  {t.notas && <div className="text-sm text-muted mt-1">{t.notas}</div>}
-                </div>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminar(t.id)}>
-                  <X size={13} />
-                </button>
+      {filtro === 'pendiente' ? (
+        grupos.length === 0 ? (
+          <div className="empty">
+            <CheckCircle2 size={40} />
+            <p>Sin tareas pendientes 🎉</p>
+          </div>
+        ) : (
+          grupos.map(g => (
+            <div key={g.key} style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: g.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: g.color, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {g.label}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>({g.tareas.length})</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {g.tareas.map(t => <TareaCard key={t.id} t={t} onToggle={toggleEstado} onEliminar={eliminar} RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />)}
               </div>
             </div>
-          ))}
-        </div>
+          ))
+        )
+      ) : (
+        hechas.length === 0 ? (
+          <div className="empty">
+            <CheckCircle2 size={40} />
+            <p>Ninguna tarea completada aún</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {hechas.map(t => <TareaCard key={t.id} t={t} onToggle={toggleEstado} onEliminar={eliminar} RECURRENCIA_LABEL={RECURRENCIA_LABEL} RECURRENCIA_COLOR={RECURRENCIA_COLOR} />)}
+          </div>
+        )
       )}
 
       {modal && (
@@ -261,6 +272,42 @@ export default function Tareas() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function TareaCard({ t, onToggle, onEliminar, RECURRENCIA_LABEL, RECURRENCIA_COLOR }) {
+  return (
+    <div className="card" style={{ padding: '12px 16px' }}>
+      <div className="flex items-center gap-3">
+        <button onClick={() => onToggle(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.estado === 'hecho' ? 'var(--accent)' : 'var(--text3)', flexShrink: 0, display: 'flex' }}>
+          {t.estado === 'hecho' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+        </button>
+        <div style={{ flex: 1 }}>
+          <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+            <span className="font-medium" style={{ textDecoration: t.estado === 'hecho' ? 'line-through' : 'none', color: t.estado === 'hecho' ? 'var(--text3)' : 'var(--text)' }}>
+              {t.titulo}
+            </span>
+            {t.recurrencia && (
+              <span className={`badge ${RECURRENCIA_COLOR[t.recurrencia]}`} style={{ fontSize: 10 }}>
+                <RefreshCw size={9} /> {RECURRENCIA_LABEL[t.recurrencia]}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3 mt-1" style={{ flexWrap: 'wrap' }}>
+            {t.clientes && <span className="text-sm text-muted">{t.clientes.nombre}</span>}
+            {t.fecha_limite && (
+              <span className="text-sm mono" style={{ color: 'var(--text3)' }}>
+                {format(new Date(t.fecha_limite + 'T12:00:00'), 'dd/MM/yyyy')}
+              </span>
+            )}
+          </div>
+          {t.notas && <div className="text-sm text-muted mt-1">{t.notas}</div>}
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => onEliminar(t.id)}>
+          <X size={13} />
+        </button>
+      </div>
     </div>
   )
 }
