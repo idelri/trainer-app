@@ -13,16 +13,23 @@ async function generarSiguienteRecurrente(tarea, clienteId) {
   else if (tarea.recurrencia === 'semanal') siguiente = addWeeks(base, 1)
   else if (tarea.recurrencia === 'mensual') siguiente = addMonths(base, 1)
   else return
+
+  const fechaSiguiente = format(siguiente, 'yyyy-MM-dd')
+
+  // Comprobar si ya existe para ESTE cliente concreto
   const { data: existente } = await supabase
-    .from('tareas').select('id')
+    .from('tareas')
+    .select('id')
     .eq('titulo', tarea.titulo)
-    .eq('estado', 'pendiente')
+    .eq('cliente_id', clienteId)
+    .eq('fecha_limite', fechaSiguiente)
     .limit(1)
+
   if (!existente || existente.length === 0) {
     await supabase.from('tareas').insert({
       titulo: tarea.titulo,
       cliente_id: clienteId,
-      fecha_limite: format(siguiente, 'yyyy-MM-dd'),
+      fecha_limite: fechaSiguiente,
       notas: tarea.notas,
       recurrencia: tarea.recurrencia,
       tarea_origen_id: tarea.tarea_origen_id || tarea.id,
