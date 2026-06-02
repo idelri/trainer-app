@@ -70,6 +70,8 @@ export default function Dashboard() {
   if (loading) return <div className="empty"><p>Cargando...</p></div>
 
   const maxValor = Math.max(...historico.map(m => m.total), 1)
+const valoresConDatos = historico.filter(m => m.total > 0).map(m => m.total)
+const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7 : 0
   const mesFinLabel = format(mesFin, 'MMM yyyy', { locale: es })
   const mesInicioLabel = format(subMonths(mesFin, rango - 1), 'MMM yyyy', { locale: es })
 
