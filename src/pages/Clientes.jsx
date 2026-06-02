@@ -77,17 +77,26 @@ export default function Clientes() {
 
     if (clienteId) {
       const datosServicio = {
-        cliente_id: clienteId,
         modalidad: servicio.modalidad,
         tarifa_mensual: parseFloat(servicio.tarifa_mensual) || 0,
         tarifa_sesion: servicio.tarifa_sesion ? parseFloat(servicio.tarifa_sesion) : null,
         deporte: servicio.deporte || null,
         dispositivo: servicio.dispositivo || null,
       }
-      if (modal === 'nuevo' || !modal.servicioId) {
-        await supabase.from('servicios').insert(datosServicio)
+
+      // Buscar si ya existe un servicio para este cliente
+      const { data: servicioExistente } = await supabase
+        .from('servicios')
+        .select('id')
+        .eq('cliente_id', clienteId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (servicioExistente) {
+        await supabase.from('servicios').update(datosServicio).eq('id', servicioExistente.id)
       } else {
-        await supabase.from('servicios').update(datosServicio).eq('id', modal.servicioId)
+        await supabase.from('servicios').insert({ ...datosServicio, cliente_id: clienteId })
       }
     }
 
