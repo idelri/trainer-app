@@ -138,31 +138,44 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Barras */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: rango > 6 ? 4 : 6, height: 140, padding: '0 4px' }}>
-          {historico.map(m => (
-            <div key={m.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-              {m.total > 0 && (
-                <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
-                  {m.total}€
+        {/* Eje Y + Barras */}
+        <div style={{ display: 'flex', gap: 8, height: 160 }}>
+          {/* Eje Y */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 20, paddingTop: 4, flexShrink: 0 }}>
+            {[maxValor, Math.round((maxValor + minValor) / 2), Math.round(minValor)].map(v => (
+              <span key={v} style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{v}€</span>
+            ))}
+          </div>
+          {/* Barras */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: rango > 6 ? 4 : 8, flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: 8 }}>
+            {historico.map(m => {
+              const altura = m.total > 0
+                ? Math.max(((m.total - minValor) / (maxValor - minValor + 1)) * 80 + 15, 15)
+                : 0
+              return (
+                <div key={m.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                  {m.total > 0 && (
+                    <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: m.mes === mesActual ? 'var(--accent)' : 'var(--text2)', fontWeight: m.mes === mesActual ? 600 : 400 }}>
+                      {m.total}€
+                    </div>
+                  )}
+                  <div style={{
+                    width: rango > 6 ? '55%' : '45%',
+                    height: `${altura}%`,
+                    background: m.mes === mesActual ? 'var(--accent)' : 'var(--accent-light)',
+                    borderRadius: '4px 4px 0 0',
+                    transition: 'height 0.4s ease',
+                    border: m.mes === mesActual ? 'none' : '1px solid var(--border)',
+                    minHeight: m.total > 0 ? 4 : 0,
+                  }} />
+                  <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                    {m.label}
+                  </div>
                 </div>
-              )}
-              <div style={{
-                width: rango > 6 ? '60%' : '50%',
-                height: `${Math.max((m.total / maxValor) * 100, m.total > 0 ? 3 : 0)}%`,
-                background: m.mes === mesActual ? 'var(--accent)' : 'var(--accent-light)',
-                borderRadius: '3px 3px 0 0',
-                transition: 'height 0.3s ease',
-                minHeight: m.total > 0 ? 3 : 0,
-                border: m.mes === mesActual ? 'none' : '1px solid var(--border)',
-              }} />
-              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
-                {m.label}
-              </div>
-            </div>
-          ))}
+              )
+            })}
+          </div>
         </div>
-      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <div className="card">
