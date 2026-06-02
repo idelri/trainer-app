@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, subMonths, addMonths, parseISO } from 'date-fns'
+import { format, subMonths, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { AlertCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -70,8 +70,8 @@ export default function Dashboard() {
   if (loading) return <div className="empty"><p>Cargando...</p></div>
 
   const maxValor = Math.max(...historico.map(m => m.total), 1)
-const valoresConDatos = historico.filter(m => m.total > 0).map(m => m.total)
-const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7 : 0
+  const valoresConDatos = historico.filter(m => m.total > 0).map(m => m.total)
+  const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7 : 0
   const mesFinLabel = format(mesFin, 'MMM yyyy', { locale: es })
   const mesInicioLabel = format(subMonths(mesFin, rango - 1), 'MMM yyyy', { locale: es })
 
@@ -114,8 +114,6 @@ const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7
           <span style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'capitalize' }}>
             {mesInicioLabel} — {mesFinLabel}
           </span>
-
-          {/* Selector de rango */}
           <div className="flex gap-1 ml-auto">
             {RANGOS.map(r => (
               <button key={r.value} className="btn btn-ghost btn-sm"
@@ -125,8 +123,6 @@ const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7
               </button>
             ))}
           </div>
-
-          {/* Navegación de periodo */}
           <div className="flex gap-1">
             <button className="btn btn-ghost btn-sm" title="Periodo anterior"
               onClick={() => setMesFin(m => subMonths(m, rango))}>
@@ -140,15 +136,12 @@ const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7
           </div>
         </div>
 
-        {/* Eje Y + Barras */}
         <div style={{ display: 'flex', gap: 8, height: 160 }}>
-          {/* Eje Y */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 20, paddingTop: 4, flexShrink: 0 }}>
             {[maxValor, Math.round((maxValor + minValor) / 2), Math.round(minValor)].map(v => (
               <span key={v} style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{v}€</span>
             ))}
           </div>
-          {/* Barras */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: rango > 6 ? 4 : 8, flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: 8 }}>
             {historico.map(m => {
               const altura = m.total > 0
@@ -178,6 +171,7 @@ const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7
             })}
           </div>
         </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
         <div className="card">
@@ -233,3 +227,8 @@ const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7
                 ))
               })()
           }
+        </div>
+      </div>
+    </div>
+  )
+}
