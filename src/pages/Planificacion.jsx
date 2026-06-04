@@ -380,15 +380,17 @@ export default function Planificacion() {
           {vista === 'timeline' && (
             <div className="card" style={{ overflowX: 'auto' }}>
               <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
+
+                {/* Competiciones */}
                 {competiciones.length > 0 && (
-                  <div style={{ display: 'flex', marginBottom: 8, position: 'relative', height: 32 }}>
+                  <div style={{ display: 'flex', marginBottom: 8, position: 'relative', height: 28 }}>
                     {competiciones.map(comp => {
                       const semanaComp = differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio))
                       const pct = (semanaComp / totalSemanas) * 100
                       return (
                         <div key={comp.id} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-                          <Trophy size={14} color="var(--danger)" />
-                          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 2 }}>
+                          <Trophy size={13} color="var(--danger)" />
+                          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 1 }}>
                             {comp.nombre}
                           </div>
                         </div>
@@ -397,20 +399,21 @@ export default function Planificacion() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
+                {/* Bloques */}
+                <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
                   {bloques.map(b => {
                     const width = (b.semanas / totalSemanas) * 100
                     return (
                       <div key={b.id} style={{ width: `${width}%`, minWidth: 40 }}>
                         <div style={{
-                          background: b.color || '#2d6a4f', borderRadius: 4, padding: '6px 8px',
-                          cursor: 'pointer', height: 52, overflow: 'hidden',
+                          background: b.color || '#2d6a4f', borderRadius: '4px 4px 0 0', padding: '5px 8px',
+                          cursor: 'pointer', height: 40, overflow: 'hidden',
                         }} onClick={() => abrirEditarBloque(b)}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {b.nombre}
                           </div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
-                            {b.semanas} semanas
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>
+                            {b.semanas}s
                           </div>
                         </div>
                       </div>
@@ -418,24 +421,62 @@ export default function Planificacion() {
                   })}
                 </div>
 
-                <div style={{ display: 'flex', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+                {/* Sub bloques */}
+                <div style={{ display: 'flex', gap: 2, marginBottom: 3, position: 'relative', height: 28 }}>
+                  {bloques.map(b => {
+                    const subsBloque = subbloques[b.id] || []
+                    const bloquePct = (b.semanas / totalSemanas) * 100
+                    const bloqueOffset = bloques.slice(0, bloques.indexOf(b)).reduce((s, x) => s + (x.semanas / totalSemanas) * 100, 0)
+                    return subsBloque.map(sub => {
+                      const subWidth = ((sub.semana_fin - sub.semana_inicio + 1) / totalSemanas) * 100
+                      const subOffset = bloqueOffset + ((sub.semana_inicio - 1) / totalSemanas) * 100
+                      return (
+                        <div key={sub.id} style={{
+                          position: 'absolute',
+                          left: `${subOffset}%`,
+                          width: `${subWidth}%`,
+                          height: 28,
+                          background: b.color ? b.color + 'aa' : '#2d6a4f88',
+                          borderRadius: 3,
+                          padding: '3px 6px',
+                          overflow: 'hidden',
+                          border: `1px solid ${b.color || '#2d6a4f'}`,
+                        }}>
+                          <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {sub.nombre}
+                          </div>
+                        </div>
+                      )
+                    })
+                  })}
+                </div>
+
+                {/* Semanas */}
+                <div style={{ display: 'flex', borderTop: '1px solid var(--border)', paddingTop: 2 }}>
+                  {Array.from({ length: totalSemanas }, (_, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--mono)', borderLeft: i % 4 === 0 ? '1px solid var(--border)' : 'none' }}>
+                      {i % 2 === 0 ? `S${i + 1}` : ''}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Meses */}
+                <div style={{ display: 'flex', marginTop: 2 }}>
                   {Array.from({ length: totalSemanas }, (_, i) => {
                     const fecha = addWeeks(parseISO(planificacion.fecha_inicio), i)
                     const esPrimeroDelMes = i === 0 || format(fecha, 'MM') !== format(addWeeks(parseISO(planificacion.fecha_inicio), i - 1), 'MM')
                     return (
-                      <div key={i} style={{ flex: 1, position: 'relative', minHeight: 32 }}>
+                      <div key={i} style={{ flex: 1, position: 'relative', height: 16 }}>
                         {esPrimeroDelMes && (
                           <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--accent)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--accent)', paddingLeft: 3, fontWeight: 600 }}>
                             {format(fecha, 'MMM yyyy', { locale: es })}
                           </div>
                         )}
-                        <div style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--text3)', paddingLeft: 2 }}>
-                          S{i + 1}
-                        </div>
                       </div>
                     )
                   })}
                 </div>
+
               </div>
             </div>
           )}
