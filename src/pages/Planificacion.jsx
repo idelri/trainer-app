@@ -313,9 +313,20 @@ export default function Planificacion() {
               </button>
             </>
           )}
-          <button className="btn btn-ghost" onClick={() => { setFormPlan(EMPTY_PLAN); setModalPlan(true) }}>
-            <Plus size={13} /> Nueva planificación
-          </button>
+          {planificacion && (
+            <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={async () => {
+              if (!window.confirm(`¿Eliminar la planificación "${planificacion.nombre}"? Se borrarán todos sus bloques y sub bloques.`)) return
+              await supabase.from('planificaciones').delete().eq('id', planificacion.id)
+              setPlanificacion(null)
+              setBloques([])
+              setSemanas({})
+              setSubbloques({})
+              setCompeticiones([])
+              cargarPlanificacion()
+            }}>
+              <X size={13} /> Eliminar
+            </button>
+          )}
         </div>
       </div>
 
