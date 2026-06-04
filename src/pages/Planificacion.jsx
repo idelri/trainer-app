@@ -943,6 +943,23 @@ export default function Planificacion() {
                             const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
                             return (
                               <div key={num} style={{ borderBottom: '1px solid var(--border)' }}>
+                                {(() => {
+                                  const fechaSemana = addWeeks(parseISO(b.fecha_inicio), num - 1)
+                                  const compSemana = competiciones.filter(c => {
+                                    const fc = parseISO(c.fecha)
+                                    const fe = addWeeks(fechaSemana, 1)
+                                    return fc >= fechaSemana && fc < fe
+                                  })
+                                  return compSemana.map(comp => (
+                                    <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: 'var(--danger-light)', borderBottom: '1px solid var(--danger)', cursor: 'pointer' }}
+                                      onClick={() => { setFormComp({ nombre: comp.nombre, fecha: comp.fecha, tipo: comp.tipo || '', objetivo: comp.objetivo || '', notas: comp.notas || '' }); setModalComp({ ...comp }) }}>
+                                      <Trophy size={12} color="var(--danger)" />
+                                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)' }}>{comp.nombre}</span>
+                                      <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(comp.fecha), 'dd MMM', { locale: es })}</span>
+                                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={e => { e.stopPropagation(); eliminarComp(comp.id) }}><X size={11} /></button>
+                                    </div>
+                                  ))
+                                })()}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer' }}
                                   onClick={() => abrirSemana(b.id, num)}>
                                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
