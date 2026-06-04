@@ -564,19 +564,20 @@ export default function Planificacion() {
                 const abierto = bloqueAbierto === b.id
                 return (
                   <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
-                    <div style={{ padding: '12px 16px', background: 'var(--bg)' }}>
+                   <div style={{ padding: '12px 16px', background: 'var(--bg)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
                         onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
                         {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
                         <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
                         <button className="btn btn-ghost btn-sm ml-auto" onClick={e => {
-                        e.stopPropagation()
-                        setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
-                        setModalSubbloque({ bloque_id: b.id })
-                      }}>
-                        <Plus size={12} /> Sub bloque
-                      </button>
+                          e.stopPropagation()
+                          setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
+                          setModalSubbloque({ bloque_id: b.id })
+                        }}>
+                          <Plus size={12} /> Sub bloque
+                        </button>
+                      </div>
                     </div>
                     {abierto && (
                       <div style={{ borderTop: '1px solid var(--border)' }}>
