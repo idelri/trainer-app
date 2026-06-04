@@ -436,7 +436,7 @@ export default function Planificacion() {
                 const fase = FASES[b.fase] || FASES.general
                 const carga = CARGAS[b.carga] || CARGAS.media
                 return (
-                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${fase.color}` }}>
+                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
                     <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                       <div style={{ flex: 1 }}>
                         <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
