@@ -590,9 +590,6 @@ export default function Planificacion() {
                   )}
                 </div>
               ))}
-                  </div>
-                </div>
-              ))}
 
               {bloques.length === 0 && <div className="empty"><Layers size={40} /><p>No hay bloques. Añade el primero.</p></div>}
             </div>
