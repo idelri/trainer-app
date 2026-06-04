@@ -387,21 +387,20 @@ export default function Planificacion() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-                {Object.entries(FASES).map(([k, v]) => (
-                  <div key={k} className="flex items-center gap-1">
-                    <div style={{ width: 10, height: 10, borderRadius: 2, background: v.color }} />
-                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{v.label}</span>
-                  </div>
-                ))}
-                <span style={{ color: 'var(--border)', margin: '0 4px' }}>|</span>
-                <span style={{ fontSize: 11, color: 'var(--text3)' }}>Borde = carga:</span>
-                {Object.entries(CARGAS).map(([k, v]) => (
-                  <div key={k} className="flex items-center gap-1">
-                    <div style={{ width: 3, height: 10, background: v.color }} />
-                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{v.label}</span>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', marginTop: 4 }}>
+                {Array.from({ length: totalSemanas }, (_, i) => {
+                  const fecha = addWeeks(parseISO(planificacion.fecha_inicio), i)
+                  const esPrimeroDelMes = i === 0 || format(fecha, 'MM') !== format(addWeeks(parseISO(planificacion.fecha_inicio), i - 1), 'MM')
+                  return (
+                    <div key={i} style={{ flex: 1, position: 'relative' }}>
+                      {esPrimeroDelMes && (
+                        <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text2)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--border)', paddingLeft: 3 }}>
+                          {format(fecha, 'MMM yyyy', { locale: es })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
