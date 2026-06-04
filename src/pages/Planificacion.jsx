@@ -473,7 +473,6 @@ export default function Planificacion() {
                       onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
                       {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: fase.color, color: 'white', fontFamily: 'var(--mono)' }}>{fase.label}</span>
                       <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
                     </div>
                     {abierto && (
