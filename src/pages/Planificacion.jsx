@@ -227,6 +227,18 @@ export default function Planificacion() {
         <div className="flex gap-2">
           {planificacion && clienteSeleccionado && (
             <>
+              <button className="btn btn-ghost" onClick={() => {
+                setFormPlan({
+                  cliente_id: planificacion.cliente_id,
+                  nombre: planificacion.nombre,
+                  fecha_inicio: planificacion.fecha_inicio,
+                  fecha_fin: planificacion.fecha_fin,
+                  notas: planificacion.notas || ''
+                })
+                setModalPlan('editar')
+              }}>
+                Editar
+              </button>
               <button className="btn btn-ghost" onClick={() => { setFormComp(EMPTY_COMP); setModalComp(true) }}>
                 <Trophy size={13} /> Competición
               </button>
