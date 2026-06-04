@@ -206,6 +206,11 @@ export default function Planificacion() {
     await supabase.from('competiciones').delete().eq('id', id)
     cargarPlanificacion()
   }
+  async function eliminarComp(id) {
+    if (!window.confirm('¿Eliminar esta competición?')) return
+    await supabase.from('competiciones').delete().eq('id', id)
+    cargarPlanificacion()
+  }
 
   function abrirNuevoBloque() {
     const fechaInicio = bloques.length > 0
