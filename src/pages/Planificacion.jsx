@@ -808,10 +808,7 @@ export default function Planificacion() {
                 <input className="form-input" type="number" min="1" value={formSubbloque.semana_fin} onChange={e => setFormSubbloque(f => ({ ...f, semana_fin: e.target.value }))} />
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Objetivo</label>
-              <input className="form-input" value={formSubbloque.objetivo} onChange={e => setFormSubbloque(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Adaptación al volumen" />
-            </div>
+          
             <div className="form-group">
               <label className="form-label">Notas</label>
               <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: Énfasis en técnica de carrera..." />
