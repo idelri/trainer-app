@@ -266,12 +266,12 @@ export default function Planificacion() {
           )}
           <button className="btn btn-ghost" onClick={() => { setFormPlan(EMPTY_PLAN); setModalPlan(true) }}>
             <Plus size={13} /> Nueva planificación
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-3 items-center" style={{ marginBottom: 20 }}>
-        <select className="form-select" style={{ maxWidth: 260 }}
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {b.nombre}
+                          </div>
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                            {b.semanas} semanas
+                          </div>
           value={clienteSeleccionado || ''}
           onChange={e => { setClienteSeleccionado(e.target.value || null); setPlanificacion(null); setBloques([]) }}>
           <option value="">Selecciona un cliente...</option>
