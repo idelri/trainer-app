@@ -95,20 +95,32 @@ export default function Planificacion() {
   }
 
   async function guardarPlan() {
-    if (!formPlan.nombre || !formPlan.fecha_inicio || !formPlan.fecha_fin || !formPlan.cliente_id) return
+    if (!formPlan.nombre || !formPlan.fecha_inicio || !formPlan.fecha_fin) return
     setSaving(true)
-    await supabase.from('planificaciones').insert({
-      cliente_id: formPlan.cliente_id,
-      nombre: formPlan.nombre,
-      fecha_inicio: formPlan.fecha_inicio,
-      fecha_fin: formPlan.fecha_fin,
-      notas: formPlan.notas || null,
-    })
-    setSaving(false)
-    setModalPlan(false)
-    setClienteSeleccionado(formPlan.cliente_id)
+    if (modalPlan === 'editar') {
+      await supabase.from('planificaciones').update({
+        nombre: formPlan.nombre,
+        fecha_inicio: formPlan.fecha_inicio,
+        fecha_fin: formPlan.fecha_fin,
+        notas: formPlan.notas || null,
+      }).eq('id', planificacion.id)
+      setSaving(false)
+      setModalPlan(false)
+      cargarPlanificacion()
+    } else {
+      if (!formPlan.cliente_id) return
+      await supabase.from('planificaciones').insert({
+        cliente_id: formPlan.cliente_id,
+        nombre: formPlan.nombre,
+        fecha_inicio: formPlan.fecha_inicio,
+        fecha_fin: formPlan.fecha_fin,
+        notas: formPlan.notas || null,
+      })
+      setSaving(false)
+      setModalPlan(false)
+      setClienteSeleccionado(formPlan.cliente_id)
+    }
   }
-
   async function guardarBloque() {
     if (!formBloque.nombre || !formBloque.fecha_inicio) return
     setSaving(true)
