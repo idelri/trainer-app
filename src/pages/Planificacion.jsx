@@ -700,46 +700,135 @@ export default function Planificacion() {
               {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Bloque.</p></div>}
             </div>
           )}
-          {vista === 'micro' && (
+         {vista === 'micro' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {bloques.map((b, idx) => {
                 const semsBloque = semanas[b.id] || []
+                const subsBloque = subbloques[b.id] || []
                 const abierto = bloqueAbierto === b.id
                 return (
                   <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'var(--bg)' }}
-                      onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
-                      {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
+
+                    {/* Cabecera bloque */}
+                    <div style={{ padding: '12px 16px', background: 'var(--bg)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                        onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
+                        {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
+                        {b.objetivo && (
+                          <button className="btn btn-ghost btn-sm" title={objetivoVisible[b.id] ? 'Ocultar info bloque' : 'Ver info bloque'}
+                            onClick={e => { e.stopPropagation(); setObjetivoVisible(v => ({ ...v, [b.id]: !v[b.id] })) }}
+                            style={{ color: objetivoVisible[b.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                            <Layers size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Objetivo bloque desplegable */}
+                      {objetivoVisible[b.id] && b.objetivo && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo bloque</div>
+                          <div>
+                            {b.objetivo.split('\n').filter(l => l.trim()).map((linea, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
+                                <span style={{ fontSize: 13 }}>{linea}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Semanas agrupadas por sub bloque */}
                     {abierto && (
                       <div style={{ borderTop: '1px solid var(--border)' }}>
-                        {Array.from({ length: b.semanas }, (_, i) => {
-                          const num = i + 1
-                          const sem = semsBloque.find(s => s.numero === num)
-                          const fechaSem = format(addWeeks(parseISO(b.fecha_inicio), i), 'dd MMM', { locale: es })
-                          const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
-                          return (
-                            <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                              onClick={() => abrirSemana(b.id, num)}>
-                              <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                        {subsBloque.length > 0 ? (
+                          subsBloque.map(sub => {
+                            const semsDelSub = Array.from(
+                              { length: sub.semana_fin - sub.semana_inicio + 1 },
+                              (_, i) => sub.semana_inicio + i
+                            )
+                            return (
+                              <div key={sub.id}>
+                                {/* Cabecera sub bloque */}
+                                <div style={{ padding: '8px 16px', background: 'var(--bg2)', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
+                                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
+                                  <span style={{ fontWeight: 600, fontSize: 12 }}>{sub.nombre}</span>
+                                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>S{sub.semana_inicio}–S{sub.semana_fin}</span>
+                                  {sub.notas && (
+                                    <button className="btn btn-ghost btn-sm"
+                                      title={objetivoVisible[sub.id] ? 'Ocultar contenidos' : 'Ver contenidos'}
+                                      onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))}
+                                      style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                                      <Layers size={12} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Contenidos sub bloque desplegable */}
+                                {objetivoVisible[sub.id] && sub.notas && (
+                                  <div style={{ padding: '8px 16px 8px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                                    {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5, opacity: 0.7 }} />
+                                        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Semanas del sub bloque */}
+                                {semsDelSub.map(num => {
+                                  const sem = semsBloque.find(s => s.numero === num)
+                                  const fechaSem = format(addWeeks(parseISO(b.fecha_inicio), num - 1), 'dd MMM', { locale: es })
+                                  const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
+                                  return (
+                                    <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                                      onClick={() => abrirSemana(b.id, num)}>
+                                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                                      </div>
+                                      <div style={{ flex: 1 }}>
+                                        {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
+                                        {sem?.notas && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sem.notas}</div>}
+                                      </div>
+                                      <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{fechaSem}</div>
+                                    </div>
+                                  )
+                                })}
                               </div>
-                              <div style={{ flex: 1 }}>
-                                {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
-                                {sem?.notas && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sem.notas}</div>}
+                            )
+                          })
+                        ) : (
+                          /* Sin sub bloques — mostrar semanas directamente */
+                          Array.from({ length: b.semanas }, (_, i) => {
+                            const num = i + 1
+                            const sem = semsBloque.find(s => s.numero === num)
+                            const fechaSem = format(addWeeks(parseISO(b.fecha_inicio), i), 'dd MMM', { locale: es })
+                            const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
+                            return (
+                              <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                                onClick={() => abrirSemana(b.id, num)}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
+                                  {sem?.notas && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sem.notas}</div>}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{fechaSem}</div>
                               </div>
-                              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{fechaSem}</div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })
+                        )}
                       </div>
                     )}
                   </div>
                 )
               })}
-              {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Macro.</p></div>}
+              {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Bloque.</p></div>}
             </div>
           )}
         </>
