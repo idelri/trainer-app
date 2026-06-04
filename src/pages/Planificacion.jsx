@@ -173,14 +173,24 @@ export default function Planificacion() {
   async function guardarComp() {
     if (!formComp.nombre || !formComp.fecha) return
     setSaving(true)
-    await supabase.from('competiciones').insert({
-      cliente_id: clienteSeleccionado,
-      nombre: formComp.nombre,
-      fecha: formComp.fecha,
-      tipo: formComp.tipo || null,
-      objetivo: formComp.objetivo || null,
-      notas: formComp.notas || null,
-    })
+    if (modalComp?.id) {
+      await supabase.from('competiciones').update({
+        nombre: formComp.nombre,
+        fecha: formComp.fecha,
+        tipo: formComp.tipo || null,
+        objetivo: formComp.objetivo || null,
+        notas: formComp.notas || null,
+      }).eq('id', modalComp.id)
+    } else {
+      await supabase.from('competiciones').insert({
+        cliente_id: clienteSeleccionado,
+        nombre: formComp.nombre,
+        fecha: formComp.fecha,
+        tipo: formComp.tipo || null,
+        objetivo: formComp.objetivo || null,
+        notas: formComp.notas || null,
+      })
+    }
     setSaving(false)
     setModalComp(false)
     cargarPlanificacion()
