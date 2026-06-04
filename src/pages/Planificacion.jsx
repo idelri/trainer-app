@@ -467,7 +467,7 @@ export default function Planificacion() {
               })()}
 
               {/* Resumen */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
+              <div style={{ display: gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
                 {[
                  { label: 'Bloques', value: bloques.length },
                 { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
