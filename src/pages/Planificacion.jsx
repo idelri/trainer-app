@@ -748,9 +748,9 @@ export default function Planificacion() {
                 <input className="form-input" type="date" value={formBloque.fecha_inicio} onChange={e => setFormBloque(f => ({ ...f, fecha_inicio: e.target.value }))} />
               </div>
             </div>
-            <div className="form-group">
+           <div className="form-group">
               <label className="form-label">Objetivo del bloque</label>
-              <input className="form-input" value={formBloque.objetivo} onChange={e => setFormBloque(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Desarrollar base aeróbica" />
+              <textarea className="form-textarea" value={formBloque.objetivo} onChange={e => setFormBloque(f => ({ ...f, objetivo: e.target.value }))} placeholder={"Ej: Desarrollar base aeróbica\nMejorar técnica de carrera"} />
             </div>
             <div className="form-group">
               <label className="form-label">Contenidos</label>
