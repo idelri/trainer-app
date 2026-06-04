@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Clientes from './pages/Clientes'
 import Pagos from './pages/Pagos'
 import Tareas from './pages/Tareas'
+import Planificacion from './pages/Planificacion'
 import Login from './pages/Login'
 import './index.css'
 
@@ -14,6 +15,7 @@ const NAV = [
   { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
   { id: 'pagos',     label: 'Pagos',     icon: EuroIcon },
   { id: 'tareas',    label: 'Tareas',    icon: CheckIcon },
+  { id: 'planificacion', label: 'Plan.', icon: CalendarIcon },
 ]
 
 export default function App() {
@@ -35,7 +37,7 @@ export default function App() {
   if (authLoading) return null
   if (!session) return <Login />
 
-  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, tareas: Tareas }
+  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, tareas: Tareas, planificacion: Planificacion }
   const Page = PAGES[page]
 
   return (
@@ -70,7 +72,6 @@ export default function App() {
   )
 }
 
-// Inline icons (no external dep issues)
 function HomeIcon() {
   return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
 }
@@ -82,4 +83,7 @@ function EuroIcon() {
 }
 function CheckIcon() {
   return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+}
+function CalendarIcon() {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 }
