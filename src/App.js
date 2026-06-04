@@ -7,6 +7,7 @@ import Clientes from './pages/Clientes'
 import Pagos from './pages/Pagos'
 import Tareas from './pages/Tareas'
 import Planificacion from './pages/Planificacion'
+import PlanPublica from './pages/PlanPublica'
 import Login from './pages/Login'
 import './index.css'
 
@@ -22,8 +23,18 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [page, setPage] = useState('dashboard')
   const [authLoading, setAuthLoading] = useState(true)
+  const [publicToken, setPublicToken] = useState(null)
 
   useEffect(() => {
+    // Detectar si es una URL pública /plan/TOKEN
+    const path = window.location.pathname
+    const match = path.match(/^\/plan\/([a-f0-9]+)$/)
+    if (match) {
+      setPublicToken(match[1])
+      setAuthLoading(false)
+      return
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthLoading(false)
@@ -35,6 +46,10 @@ export default function App() {
   useGenerarPagosMensuales()
 
   if (authLoading) return null
+
+  // Vista pública
+  if (publicToken) return <PlanPublica token={publicToken} />
+
   if (!session) return <Login />
 
   const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, tareas: Tareas, planificacion: Planificacion }
