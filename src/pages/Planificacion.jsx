@@ -562,18 +562,15 @@ export default function Planificacion() {
               <label className="form-label">Nombre *</label>
               <input className="form-input" value={formBloque.nombre} onChange={e => setFormBloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Base aeróbica" autoFocus />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Fase</label>
-                <select className="form-select" value={formBloque.fase} onChange={e => setFormBloque(f => ({ ...f, fase: e.target.value }))}>
-                  {Object.entries(FASES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Carga</label>
-                <select className="form-select" value={formBloque.carga} onChange={e => setFormBloque(f => ({ ...f, carga: e.target.value }))}>
-                  {Object.entries(CARGAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+            <div className="form-group">
+              <label className="form-label">Color del bloque</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                {COLORES.map(c => (
+                  <div key={c} onClick={() => setFormBloque(f => ({ ...f, color: c }))}
+                    style={{ width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer',
+                      border: formBloque.color === c ? '3px solid var(--text)' : '3px solid transparent',
+                      transition: 'border 0.15s' }} />
+                ))}
               </div>
             </div>
             <div className="form-row">
