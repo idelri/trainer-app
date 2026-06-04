@@ -682,17 +682,36 @@ export default function Planificacion() {
                                   </button>
                                 </div>
                               </div>
-                              {objetivoVisible[sub.id] && sub.notas && (
+                              {objetivoVisible[sub.id] && (
                                 <div style={{ padding: '0 16px 12px 30px' }}>
-                                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
-                                  <div>
-                                    {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
-                                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
-                                        <span style={{ fontSize: 13 }}>{linea}</span>
+                                  {sub.notas && (
+                                    <>
+                                      <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
+                                      <div style={{ marginBottom: 10 }}>
+                                        {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
+                                            <span style={{ fontSize: 13 }}>{linea}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
+                                    </>
+                                  )}
+                                  {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                                    <div>
+                                      <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Zonas</div>
+                                      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
+                                        {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981' }} />}
+                                        {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b' }} />}
+                                        {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444' }} />}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                        {sub.zona1_2 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {sub.zona1_2}%</span>}
+                                        {sub.zona3_4 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {sub.zona3_4}%</span>}
+                                        {sub.zona5 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {sub.zona5}%</span>}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
