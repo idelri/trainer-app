@@ -468,11 +468,43 @@ export default function Planificacion() {
                 )}
                 {/* Semanas */}
                 <div style={{ display: 'flex', borderTop: '1px solid var(--border)', paddingTop: 2 }}>
-                  {Array.from({ length: totalSemanas }, (_, i) => (
-                    <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--mono)', borderLeft: i % 4 === 0 ? '1px solid var(--border)' : 'none' }}>
-                      {`S${i + 1}`}
-                    </div>
-                  ))}
+                  {Array.from({ length: totalSemanas }, (_, i) => {
+                    // Encontrar qué bloque contiene esta semana
+                    let semanaGlobal = i + 1
+                    let bloqueDeEstaSemana = null
+                    let semanaEnBloque = null
+                    let acum = 0
+                    for (const b of bloques) {
+                      if (semanaGlobal > acum && semanaGlobal <= acum + b.semanas) {
+                        bloqueDeEstaSemana = b
+                        semanaEnBloque = semanaGlobal - acum
+                        break
+                      }
+                      acum += b.semanas
+                    }
+                    return (
+                      <div key={i}
+                        onClick={() => {
+                          if (bloqueDeEstaSemana) {
+                            setVista('micro')
+                            setBloqueAbierto(bloqueDeEstaSemana.id)
+                          }
+                        }}
+                        style={{
+                          flex: 1, textAlign: 'center', fontSize: 8, color: bloqueDeEstaSemana ? 'var(--accent)' : 'var(--text3)',
+                          fontFamily: 'var(--mono)', borderLeft: i % 4 === 0 ? '1px solid var(--border)' : 'none',
+                          cursor: bloqueDeEstaSemana ? 'pointer' : 'default',
+                          padding: '2px 0',
+                          borderRadius: 2,
+                        }}
+                        onMouseEnter={e => { if (bloqueDeEstaSemana) e.currentTarget.style.background = 'var(--accent-light)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                        title={bloqueDeEstaSemana ? `${bloqueDeEstaSemana.nombre} · Semana ${semanaEnBloque}` : ''}
+                      >
+                        {`S${i + 1}`}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {/* Meses */}
