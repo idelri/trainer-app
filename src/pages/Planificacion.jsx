@@ -20,7 +20,12 @@ const CARGAS = {
 }
 
 const EMPTY_PLAN = { cliente_id: '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '' }
-const EMPTY_BLOQUE = { nombre: '', fase: 'general', carga: 'media', semanas: 4, fecha_inicio: '', objetivo: '', contenidos: '' }
+const COLORES = [
+  '#2d6a4f', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6',
+  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6b7280'
+]
+
+const EMPTY_BLOQUE = { nombre: '', fase: 'general', carga: 'media', semanas: 4, fecha_inicio: '', objetivo: '', contenidos: '', color: '#2d6a4f' }
 const EMPTY_COMP = { nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' }
 
 export default function Planificacion() {
