@@ -510,7 +510,16 @@ export default function Planificacion() {
                       const semanaComp = differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio))
                       const pct = (semanaComp / totalSemanas) * 100
                       return (
-                        <div key={comp.id} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+                       <div key={comp.id} onClick={() => {
+                          setFormComp({
+                            nombre: comp.nombre,
+                            fecha: comp.fecha,
+                            tipo: comp.tipo || '',
+                            objetivo: comp.objetivo || '',
+                            notas: comp.notas || '',
+                          })
+                          setModalComp({ ...comp })
+                        }} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, cursor: 'pointer' }}>
                           <Trophy size={13} color="var(--danger)" />
                           <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 1, textAlign: 'center' }}>
                             {comp.nombre}
