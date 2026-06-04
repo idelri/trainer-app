@@ -489,9 +489,9 @@ export default function Planificacion() {
                 { label: 'Semanas', value: totalSemanas },
                 { label: 'Bloques', value: bloques.length },
                 { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
-                { label: 'Competiciones', value: competiciones.length },
+                { label: 'Compet.', value: competiciones.length },
               ].map(s => (
-                <div key={s.label} className="stat-card">
+                <div key={s.label} className="stat-card" style={{ padding: '10px 14px' }}>
                   <div className="label">{s.label}</div>
                   <div className="value">{s.value}</div>
                 </div>
