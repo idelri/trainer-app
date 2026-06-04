@@ -428,7 +428,7 @@ export default function Planificacion() {
                             notas: sub.notas || '',
                           })
                           setModalSubbloque({ ...sub, bloque_id: b.id })
-                        }} style={{
+                        }} title={sub.nombre} style={{
                           position: 'absolute',
                           left: `${subOffset}%`,
                           width: `${subWidth}%`,
