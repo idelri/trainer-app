@@ -378,13 +378,6 @@ export default function Planificacion() {
                   })}
                 </div>
 
-                <div style={{ display: 'flex' }}>
-                  {Array.from({ length: totalSemanas }, (_, i) => (
-                    <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--mono)', borderLeft: i % 4 === 0 ? '1px solid var(--border)' : 'none', paddingLeft: 2 }}>
-                      {i % 4 === 0 ? `S${i + 1}` : ''}
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div style={{ display: 'flex', marginTop: 4 }}>
