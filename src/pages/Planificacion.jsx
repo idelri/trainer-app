@@ -606,29 +606,7 @@ export default function Planificacion() {
 
           {vista === 'macro' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {competiciones.length > 0 && (
-                <div className="card" style={{ padding: '14px 16px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
-                    🏆 Competiciones
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {competiciones.map(comp => (
-                      <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--danger)' }}>
-                        <Trophy size={12} color="var(--danger)" />
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)' }}>{comp.nombre}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                            {format(parseISO(comp.fecha), 'dd MMM yyyy', { locale: es })}
-                          </div>
-                        </div>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 4 }} onClick={() => eliminarComp(comp.id)}>
-                          <X size={11} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              
 
               {bloques.map((b, idx) => (
                 <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
