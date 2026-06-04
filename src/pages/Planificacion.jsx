@@ -37,6 +37,7 @@ export default function Planificacion() {
   const [semanas, setSemanas] = useState({})
   const [vista, setVista] = useState('timeline')
   const [bloqueAbierto, setBloqueAbierto] = useState(null)
+  const [objetivoVisible, setObjetivoVisible] = useState({})
   const [loading, setLoading] = useState(false)
   const [modalPlan, setModalPlan] = useState(false)
   const [modalBloque, setModalBloque] = useState(null)
