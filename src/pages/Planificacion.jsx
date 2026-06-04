@@ -363,9 +363,8 @@ export default function Planificacion() {
                     return (
                       <div key={b.id} style={{ width: `${width}%`, minWidth: 40 }}>
                         <div style={{
-                          background: fase.color, borderRadius: 4, padding: '6px 8px',
+                          background: b.color || '#2d6a4f', borderRadius: 4, padding: '6px 8px',
                           cursor: 'pointer', height: 52, overflow: 'hidden',
-                          borderLeft: `3px solid ${carga.color}`,
                         }} onClick={() => abrirEditarBloque(b)}>
                           <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {b.nombre}
