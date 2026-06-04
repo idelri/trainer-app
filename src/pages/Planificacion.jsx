@@ -469,10 +469,10 @@ export default function Planificacion() {
               {/* Resumen */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
                 {[
-                  { label: 'Semanas', value: totalSemanas },
-                  { label: 'Bloques', value: bloques.length },
-                  { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
-                  { label: 'Competiciones', value: competiciones.length },
+                 { label: 'Bloques', value: bloques.length },
+                { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
+                { label: 'Semanas', value: totalSemanas },
+                { label: 'Compet.', value: competiciones.length },
                 ].map(s => (
                   <div key={s.label} className="stat-card">
                     <div className="label">{s.label}</div>
