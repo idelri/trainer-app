@@ -996,6 +996,47 @@ export default function Planificacion() {
               <label className="form-label">Contenidos</label>
               <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes suaves\nTécnica de carrera"} style={{ minHeight: 120 }} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Distribución de zonas</label>
+              {[
+                { key: 'zona1_2', label: 'Z1-Z2', sublabel: 'Recuperación / Base', color: '#10b981' },
+                { key: 'zona3_4', label: 'Z3-Z4', sublabel: 'Ritmos específicos / Calidad', color: '#f59e0b' },
+                { key: 'zona5', label: 'Z5-Z5+', sublabel: 'Techo', color: '#ef4444' },
+              ].map(zona => (
+                <div key={zona.key} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>{zona.sublabel}</span>
+                    </div>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSubbloque[zona.key]}%</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={formSubbloque[zona.key]}
+                    onChange={e => {
+                      const val = parseInt(e.target.value)
+                      const resto = 100 - val
+                      const otrasZonas = ['zona1_2', 'zona3_4', 'zona5'].filter(k => k !== zona.key)
+                      const totalOtras = otrasZonas.reduce((s, k) => s + (formSubbloque[k] || 0), 0)
+                      const nuevasZonas = {}
+                      if (totalOtras === 0) {
+                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round(resto / 2) })
+                      } else {
+                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round((formSubbloque[k] / totalOtras) * resto) })
+                      }
+                      setFormSubbloque(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
+                    }}
+                    style={{ width: '100%', accentColor: zona.color }} />
+                </div>
+              ))}
+              {/* Barra visual */}
+              {(formSubbloque.zona1_2 + formSubbloque.zona3_4 + formSubbloque.zona5) > 0 && (
+                <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', marginTop: 4 }}>
+                  {formSubbloque.zona1_2 > 0 && <div style={{ width: `${formSubbloque.zona1_2}%`, background: '#10b981' }} />}
+                  {formSubbloque.zona3_4 > 0 && <div style={{ width: `${formSubbloque.zona3_4}%`, background: '#f59e0b' }} />}
+                  {formSubbloque.zona5 > 0 && <div style={{ width: `${formSubbloque.zona5}%`, background: '#ef4444' }} />}
+                </div>
+              )}
+            </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSubbloque} disabled={saving}>
