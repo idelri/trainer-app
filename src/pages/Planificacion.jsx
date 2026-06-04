@@ -418,32 +418,73 @@ export default function Planificacion() {
 
       {!loading && planificacion && (
         <>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
-              <div className="label">Inicio</div>
-              <div style={{ fontWeight: 500, marginTop: 4, fontFamily: 'var(--mono)', fontSize: 13 }}>
-                {format(parseISO(planificacion.fecha_inicio), 'dd MMM yyyy', { locale: es })}
+         {/* Panel de control */}
+          {vista === 'timeline' && (
+            <>
+              {/* Barra de progreso */}
+              {(() => {
+                const hoy = new Date()
+                const inicio = parseISO(planificacion.fecha_inicio)
+                const fin = parseISO(planificacion.fecha_fin)
+                const totalDias = (fin - inicio) / (1000 * 60 * 60 * 24)
+                const diasTranscurridos = Math.max(0, Math.min((hoy - inicio) / (1000 * 60 * 60 * 24), totalDias))
+                const pct = Math.round((diasTranscurridos / totalDias) * 100)
+                const semanaActual = Math.max(1, Math.min(Math.ceil(diasTranscurridos / 7), totalSemanas))
+                const enCurso = hoy >= inicio && hoy <= fin
+                return (
+                  <div className="card" style={{ marginBottom: 16, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {enCurso ? 'En curso' : hoy < inicio ? 'No iniciada' : 'Completada'}
+                      </span>
+                      <span style={{ fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--text2)' }}>
+                        {enCurso ? `Semana ${semanaActual} / ${totalSemanas}` : `${totalSemanas} semanas`}
+                      </span>
+                    </div>
+                    <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: enCurso ? 'var(--accent)' : hoy < inicio ? 'var(--border2)' : 'var(--accent)', borderRadius: 5, transition: 'width 0.5s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(inicio, 'dd MMM yyyy', { locale: es })}</span>
+                      <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600 }}>{pct}%</span>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(fin, 'dd MMM yyyy', { locale: es })}</span>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Resumen */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: 'Semanas', value: totalSemanas },
+                  { label: 'Bloques', value: bloques.length },
+                  { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
+                  { label: 'Competiciones', value: competiciones.length },
+                ].map(s => (
+                  <div key={s.label} className="stat-card">
+                    <div className="label">{s.label}</div>
+                    <div className="value">{s.value}</div>
+                  </div>
+                ))}
               </div>
+            </>
+          )}
+
+          {vista !== 'timeline' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 16 }}>
+              {[
+                { label: 'Semanas', value: totalSemanas },
+                { label: 'Bloques', value: bloques.length },
+                { label: 'Sub bloques', value: Object.values(subbloques).flat().length },
+                { label: 'Competiciones', value: competiciones.length },
+              ].map(s => (
+                <div key={s.label} className="stat-card">
+                  <div className="label">{s.label}</div>
+                  <div className="value">{s.value}</div>
+                </div>
+              ))}
             </div>
-            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
-              <div className="label">Fin</div>
-              <div style={{ fontWeight: 500, marginTop: 4, fontFamily: 'var(--mono)', fontSize: 13 }}>
-                {format(parseISO(planificacion.fecha_fin), 'dd MMM yyyy', { locale: es })}
-              </div>
-            </div>
-            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
-              <div className="label">Semanas totales</div>
-              <div className="value">{totalSemanas}</div>
-            </div>
-            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
-              <div className="label">Bloques</div>
-              <div className="value">{bloques.length}</div>
-            </div>
-            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
-              <div className="label">Competiciones</div>
-              <div className="value">{competiciones.length}</div>
-            </div>
-          </div>
+          )}
 
           {vista === 'timeline' && (
             <div className="card" style={{ overflowX: 'auto' }}>
