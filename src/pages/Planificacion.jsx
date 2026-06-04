@@ -320,6 +320,11 @@ export default function Planificacion() {
           {planificacion && <p className="page-subtitle">{planificacion.nombre}</p>}
         </div>
         <div className="flex gap-2" style={{ position: 'relative' }}>
+          {planificacion && (
+            <button className="btn btn-ghost btn-sm" onClick={copiarEnlace} title="Copiar enlace público">
+              🔗 Compartir
+            </button>
+          )}
           {planificacion && clienteSeleccionado && (
             <button className="btn btn-ghost" onClick={() => {
               setFormPlan({
