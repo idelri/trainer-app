@@ -67,7 +67,7 @@ export default function Planificacion() {
       .from('planificaciones').select('*')
       .eq('cliente_id', clienteSeleccionado)
       .order('created_at', { ascending: false })
-      .limit(1)
+    setPlanificaciones(planes || [])
     const plan = planes?.[0] || null
 
     if (plan) {
