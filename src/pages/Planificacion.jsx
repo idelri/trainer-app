@@ -442,7 +442,7 @@ export default function Planificacion() {
                       )}
                       {b.contenidos && (
                         <div>
-                          <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>Contenidos</div>
+                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
                           <div style={{ fontSize: 13, whiteSpace: 'pre-line' }}>{b.contenidos}</div>
                         </div>
                       )}
