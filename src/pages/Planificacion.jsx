@@ -468,7 +468,7 @@ export default function Planificacion() {
                 const semsBloque = semanas[b.id] || []
                 const abierto = bloqueAbierto === b.id
                 return (
-                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${fase.color}` }}>
+                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
                     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'var(--bg)' }}
                       onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
                       {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
