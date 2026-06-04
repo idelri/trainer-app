@@ -381,23 +381,7 @@ export default function Planificacion() {
             <div className="card" style={{ overflowX: 'auto' }}>
               <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
 
-                {/* Competiciones */}
-                {competiciones.length > 0 && (
-                  <div style={{ display: 'flex', marginBottom: 8, position: 'relative', height: 28 }}>
-                    {competiciones.map(comp => {
-                      const semanaComp = differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio))
-                      const pct = (semanaComp / totalSemanas) * 100
-                      return (
-                        <div key={comp.id} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-                          <Trophy size={13} color="var(--danger)" />
-                          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 1 }}>
-                            {comp.nombre}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                
 
                 {/* Bloques */}
                 <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
@@ -451,6 +435,26 @@ export default function Planificacion() {
                   })}
                 </div>
 
+                {/* Competiciones */}
+                {competiciones.length > 0 && (
+                  <div style={{ display: 'flex', marginBottom: 3, position: 'relative', height: 36 }}>
+                    {competiciones.map(comp => {
+                      const semanaComp = differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio))
+                      const pct = (semanaComp / totalSemanas) * 100
+                      return (
+                        <div key={comp.id} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+                          <Trophy size={13} color="var(--danger)" />
+                          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 1, textAlign: 'center' }}>
+                            {comp.nombre}
+                          </div>
+                          <div style={{ fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', opacity: 0.8 }}>
+                            {format(parseISO(comp.fecha), 'dd MMM', { locale: es })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
                 {/* Semanas */}
                 <div style={{ display: 'flex', borderTop: '1px solid var(--border)', paddingTop: 2 }}>
                   {Array.from({ length: totalSemanas }, (_, i) => (
