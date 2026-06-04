@@ -326,6 +326,21 @@ export default function Planificacion() {
           <option value="">Selecciona un cliente...</option>
           {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
+        {planificaciones.length > 1 && (
+          <select className="form-select" style={{ maxWidth: 260 }}
+            value={planificacion?.id || ''}
+            onChange={e => {
+              const p = planificaciones.find(x => x.id === e.target.value)
+              setPlanificacion(p || null)
+              setBloques([])
+              setSemanas({})
+              setSubbloques({})
+            }}>
+            {planificaciones.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+        )}
 
         {planificacion && (
           <div className="flex gap-2">
