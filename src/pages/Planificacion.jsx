@@ -556,24 +556,40 @@ export default function Planificacion() {
 
               {bloques.map((b, idx) => (
                 <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
-                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                          {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
-                        </span>
+                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                        {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      {b.objetivo && (
+                        <button className="btn btn-ghost btn-sm" title={objetivoVisible[b.id] ? 'Ocultar detalle' : 'Ver detalle'}
+                          onClick={() => setObjetivoVisible(v => ({ ...v, [b.id]: !v[b.id] }))}
+                          style={{ color: objetivoVisible[b.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                          <Layers size={13} />
+                        </button>
+                      )}
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><X size={13} /></button>
+                    </div>
+                  </div>
+                  {objetivoVisible[b.id] && b.objetivo && (
+                    <div style={{ padding: '0 16px 14px', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '10px 0 6px', display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
+                      <div>
+                        {b.objetivo.split('\n').filter(l => l.trim()).map((linea, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
+                            <span style={{ fontSize: 13 }}>{linea}</span>
+                          </div>
+                        ))}
                       </div>
-                     {b.objetivo && (
-                        <div style={{ marginTop: 8 }}>
-                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
-                          <div>
-                            {b.objetivo.split('\n').filter(l => l.trim()).map((linea, i) => (
-                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
-                                <span style={{ fontSize: 13 }}>{linea}</span>
-                              </div>
-                            ))}
+                    </div>
+                  )}
+                </div>
+              ))}
                           </div>
                         </div>
                       )}
