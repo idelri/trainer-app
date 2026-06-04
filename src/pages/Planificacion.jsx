@@ -19,12 +19,12 @@ const CARGAS = {
   muy_alta: { label: 'Muy alta', color: '#7c3aed' },
 }
 
-const EMPTY_PLAN = { cliente_id: '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '' }
 const COLORES = [
   '#2d6a4f', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6',
   '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6b7280'
 ]
 
+const EMPTY_PLAN = { cliente_id: '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '' }
 const EMPTY_BLOQUE = { nombre: '', fase: 'general', carga: 'media', semanas: 4, fecha_inicio: '', objetivo: '', contenidos: '', color: '#2d6a4f' }
 const EMPTY_COMP = { nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' }
 
@@ -58,7 +58,7 @@ export default function Planificacion() {
 
   async function cargarPlanificacion() {
     setLoading(true)
-   const { data: planes } = await supabase
+    const { data: planes } = await supabase
       .from('planificaciones').select('*')
       .eq('cliente_id', clienteSeleccionado)
       .order('created_at', { ascending: false })
@@ -126,6 +126,7 @@ export default function Planificacion() {
       setClienteSeleccionado(formPlan.cliente_id)
     }
   }
+
   async function guardarBloque() {
     if (!formBloque.nombre || !formBloque.fecha_inicio) return
     setSaving(true)
@@ -137,6 +138,7 @@ export default function Planificacion() {
       semanas: parseInt(formBloque.semanas),
       fecha_inicio: formBloque.fecha_inicio,
       objetivo: formBloque.objetivo || null,
+      contenidos: formBloque.contenidos || null,
       color: formBloque.color || '#2d6a4f',
       orden: modalBloque?.orden ?? bloques.length,
     }
@@ -266,12 +268,12 @@ export default function Planificacion() {
           )}
           <button className="btn btn-ghost" onClick={() => { setFormPlan(EMPTY_PLAN); setModalPlan(true) }}>
             <Plus size={13} /> Nueva planificación
-          <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {b.nombre}
-                          </div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
-                            {b.semanas} semanas
-                          </div>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex gap-3 items-center" style={{ marginBottom: 20 }}>
+        <select className="form-select" style={{ maxWidth: 260 }}
           value={clienteSeleccionado || ''}
           onChange={e => { setClienteSeleccionado(e.target.value || null); setPlanificacion(null); setBloques([]) }}>
           <option value="">Selecciona un cliente...</option>
@@ -285,11 +287,6 @@ export default function Planificacion() {
                 style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
                 onClick={() => setVista(v)}>
                 {v === 'timeline' ? 'Línea de tiempo' : v === 'macro' ? 'Macro' : 'Micro'}
-              </button>
-                onClick={() => setVista(v)}>
-                {v === 'timeline' ? <><Calendar size={12} /> Línea de tiempo</> :
-                 v === 'macro' ? <><Layers size={12} /> Macro</> :
-                 <><ChevronRight size={12} /> Micro</>}
               </button>
             ))}
           </div>
@@ -360,8 +357,6 @@ export default function Planificacion() {
 
                 <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
                   {bloques.map(b => {
-                    const fase = FASES[b.fase] || FASES.general
-                    const carga = CARGAS[b.carga] || CARGAS.media
                     const width = (b.semanas / totalSemanas) * 100
                     return (
                       <div key={b.id} style={{ width: `${width}%`, minWidth: 40 }}>
@@ -373,7 +368,7 @@ export default function Planificacion() {
                             {b.nombre}
                           </div>
                           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
-                            {b.semanas}s · {fase.label}
+                            {b.semanas} semanas
                           </div>
                         </div>
                       </div>
@@ -381,25 +376,24 @@ export default function Planificacion() {
                   })}
                 </div>
 
-              </div>
-
-<div style={{ display: 'flex', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
-                {Array.from({ length: totalSemanas }, (_, i) => {
-                  const fecha = addWeeks(parseISO(planificacion.fecha_inicio), i)
-                  const esPrimeroDelMes = i === 0 || format(fecha, 'MM') !== format(addWeeks(parseISO(planificacion.fecha_inicio), i - 1), 'MM')
-                  return (
-                    <div key={i} style={{ flex: 1, position: 'relative', minHeight: 32 }}>
-                      {esPrimeroDelMes && (
-                        <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--accent)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--accent)', paddingLeft: 3, fontWeight: 600 }}>
-                          {format(fecha, 'MMM yyyy', { locale: es })}
+                <div style={{ display: 'flex', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+                  {Array.from({ length: totalSemanas }, (_, i) => {
+                    const fecha = addWeeks(parseISO(planificacion.fecha_inicio), i)
+                    const esPrimeroDelMes = i === 0 || format(fecha, 'MM') !== format(addWeeks(parseISO(planificacion.fecha_inicio), i - 1), 'MM')
+                    return (
+                      <div key={i} style={{ flex: 1, position: 'relative', minHeight: 32 }}>
+                        {esPrimeroDelMes && (
+                          <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--accent)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--accent)', paddingLeft: 3, fontWeight: 600 }}>
+                            {format(fecha, 'MMM yyyy', { locale: es })}
+                          </div>
+                        )}
+                        <div style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--text3)', paddingLeft: 2 }}>
+                          S{i + 1}
                         </div>
-                      )}
-                      <div style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--text3)', paddingLeft: 2 }}>
-                        S{i + 1}
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -430,30 +424,26 @@ export default function Planificacion() {
                 </div>
               )}
 
-              {bloques.map((b, idx) => {
-                const fase = FASES[b.fase] || FASES.general
-                const carga = CARGAS[b.carga] || CARGAS.media
-                return (
-                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
-                    <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
-                          <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                            {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
-                          </span>
-                        </div>
-                        {b.objetivo && <div style={{ marginBottom: 4 }}><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Objetivo: </span><span style={{ fontSize: 13 }}>{b.objetivo}</span></div>}
-                        {b.contenidos && <div><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Contenidos: </span><span style={{ fontSize: 13 }}>{b.contenidos}</span></div>}
+              {bloques.map((b, idx) => (
+                <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
+                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                          {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
+                        </span>
                       </div>
-                      <div className="flex gap-2">
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><X size={13} /></button>
-                      </div>
+                      {b.objetivo && <div style={{ marginBottom: 4 }}><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Objetivo: </span><span style={{ fontSize: 13 }}>{b.objetivo}</span></div>}
+                      {b.contenidos && <div><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Contenidos: </span><span style={{ fontSize: 13 }}>{b.contenidos}</span></div>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><X size={13} /></button>
                     </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
 
               {bloques.length === 0 && <div className="empty"><Layers size={40} /><p>No hay bloques. Añade el primero.</p></div>}
             </div>
@@ -462,7 +452,6 @@ export default function Planificacion() {
           {vista === 'micro' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {bloques.map((b, idx) => {
-                const fase = FASES[b.fase] || FASES.general
                 const semsBloque = semanas[b.id] || []
                 const abierto = bloqueAbierto === b.id
                 return (
@@ -509,7 +498,7 @@ export default function Planificacion() {
         <div className="modal-backdrop" onClick={() => setModalPlan(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-             <span className="modal-title">{modalPlan === 'editar' ? 'Editar planificación' : 'Nueva planificación'}</span>
+              <span className="modal-title">{modalPlan === 'editar' ? 'Editar planificación' : 'Nueva planificación'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalPlan(false)}><X size={14} /></button>
             </div>
             <div className="form-group">
@@ -539,7 +528,7 @@ export default function Planificacion() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalPlan(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarPlan} disabled={saving}>{saving ? 'Guardando...' : 'Crear planificación'}</button>
+              <button className="btn btn-primary" onClick={guardarPlan} disabled={saving}>{saving ? 'Guardando...' : modalPlan === 'editar' ? 'Guardar cambios' : 'Crear planificación'}</button>
             </div>
           </div>
         </div>
