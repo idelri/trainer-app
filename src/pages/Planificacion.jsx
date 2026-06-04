@@ -290,28 +290,20 @@ export default function Planificacion() {
           <h2 className="page-title">Planificación</h2>
           {planificacion && <p className="page-subtitle">{planificacion.nombre}</p>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" style={{ position: 'relative' }}>
           {planificacion && clienteSeleccionado && (
-            <>
-              <button className="btn btn-ghost" onClick={() => {
-                setFormPlan({
-                  cliente_id: planificacion.cliente_id,
-                  nombre: planificacion.nombre,
-                  fecha_inicio: planificacion.fecha_inicio,
-                  fecha_fin: planificacion.fecha_fin,
-                  notas: planificacion.notas || ''
-                })
-                setModalPlan('editar')
-              }}>
-                Editar
-              </button>
-              <button className="btn btn-ghost" onClick={() => { setFormComp(EMPTY_COMP); setModalComp(true) }}>
-                <Trophy size={13} /> Competición
-              </button>
-              <button className="btn btn-primary" onClick={abrirNuevoBloque}>
-                <Plus size={13} /> Bloque
-              </button>
-            </>
+            <button className="btn btn-ghost" onClick={() => {
+              setFormPlan({
+                cliente_id: planificacion.cliente_id,
+                nombre: planificacion.nombre,
+                fecha_inicio: planificacion.fecha_inicio,
+                fecha_fin: planificacion.fecha_fin,
+                notas: planificacion.notas || ''
+              })
+              setModalPlan('editar')
+            }}>
+              Editar
+            </button>
           )}
           {planificacion && (
             <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={async () => {
@@ -327,6 +319,41 @@ export default function Planificacion() {
               <X size={13} /> Eliminar
             </button>
           )}
+          <div style={{ position: 'relative' }}>
+            <button className="btn btn-primary" onClick={() => setObjetivoVisible(v => ({ ...v, menuAnadir: !v.menuAnadir }))}>
+              <Plus size={13} /> Añadir
+            </button>
+            {objetivoVisible.menuAnadir && (
+              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-md)', zIndex: 200, minWidth: 180, overflow: 'hidden' }}
+                onMouseLeave={() => setObjetivoVisible(v => ({ ...v, menuAnadir: false }))}>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                  onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormPlan(EMPTY_PLAN); setModalPlan(true) }}>
+                  <Plus size={13} /> Nueva planificación
+                </button>
+                {planificacion && (
+                  <>
+                    <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                      onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); abrirNuevoBloque() }}>
+                      <Plus size={13} /> Bloque
+                    </button>
+                    <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                      onClick={() => {
+                        setObjetivoVisible(v => ({ ...v, menuAnadir: false }))
+                        if (bloques.length === 0) { alert('Primero crea un bloque'); return }
+                        setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0 })
+                        setModalSubbloque({ bloque_id: bloques[0].id })
+                      }}>
+                      <Plus size={13} /> Sub bloque
+                    </button>
+                    <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                      onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormComp(EMPTY_COMP); setModalComp(true) }}>
+                      <Trophy size={13} /> Competición
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
