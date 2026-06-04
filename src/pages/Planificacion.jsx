@@ -1173,7 +1173,7 @@ export default function Planificacion() {
         <div className="modal-backdrop" onClick={() => setModalComp(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">Nueva competición</span>
+              <span className="modal-title">{modalComp?.id ? 'Editar competición' : 'Nueva competición'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalComp(false)}><X size={14} /></button>
             </div>
             <div className="form-group">
@@ -1200,7 +1200,7 @@ export default function Planificacion() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalComp(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarComp} disabled={saving}>{saving ? 'Guardando...' : 'Añadir competición'}</button>
+              <button className="btn btn-primary" onClick={guardarComp} disabled={saving}>{saving ? 'Guardando...' : modalComp?.id ? 'Guardar cambios' : 'Añadir competición'}</button>
             </div>
           </div>
         </div>
