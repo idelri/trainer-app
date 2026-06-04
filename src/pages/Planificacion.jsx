@@ -214,7 +214,7 @@ export default function Planificacion() {
     setFormBloque({
       nombre: b.nombre, fase: b.fase, carga: b.carga,
       semanas: b.semanas, fecha_inicio: b.fecha_inicio,
-      objetivo: b.objetivo || '', contenidos: b.contenidos || ''
+      objetivo: b.objetivo || '', contenidos: b.contenidos || '', color: b.color || '#2d6a4f'
     })
     setModalBloque(b)
   }
