@@ -810,8 +810,8 @@ export default function Planificacion() {
             </div>
           
             <div className="form-group">
-              <label className="form-label">Notas</label>
-              <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: Énfasis en técnica de carrera..." />
+              <label className="form-label">Contenidos</label>
+              <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes suaves\nTécnica de carrera"} style={{ minHeight: 120 }} />
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
