@@ -32,6 +32,7 @@ export default function Planificacion() {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
   const [planificacion, setPlanificacion] = useState(null)
+  const [planificaciones, setPlanificaciones] = useState([])
   const [bloques, setBloques] = useState([])
   const [competiciones, setCompeticiones] = useState([])
   const [semanas, setSemanas] = useState({})
