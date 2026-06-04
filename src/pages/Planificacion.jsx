@@ -75,7 +75,19 @@ export default function Planificacion() {
         .eq('planificacion_id', plan.id)
         .order('orden')
       setBloques(bls || [])
-      cargarSubbloques(bls || [])
+     // cargar subbloques
+      if (bls && bls.length > 0) {
+        const { data: subs } = await supabase
+          .from('subbloques').select('*')
+          .in('bloque_id', (bls || []).map(b => b.id))
+          .order('semana_inicio')
+        const subsMap = {}
+        ;(subs || []).forEach(s => {
+          if (!subsMap[s.bloque_id]) subsMap[s.bloque_id] = []
+          subsMap[s.bloque_id].push(s)
+        })
+        setSubbloques(subsMap)
+      }
 
       if (bls && bls.length > 0) {
         const { data: sems } = await supabase
