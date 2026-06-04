@@ -531,16 +531,17 @@ export default function Planificacion() {
                           {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
                         </span>
                       </div>
-                      {b.objetivo && (
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
-                          <div style={{ fontSize: 13 }}>{b.objetivo}</div>
-                        </div>
-                      )}
-                      {b.contenidos && (
-                        <div>
-                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
-                          <div style={{ fontSize: 13, whiteSpace: 'pre-line' }}>{b.contenidos}</div>
+                     {b.objetivo && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
+                          <div>
+                            {b.objetivo.split('\n').filter(l => l.trim()).map((linea, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
+                                <span style={{ fontSize: 13 }}>{linea}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
