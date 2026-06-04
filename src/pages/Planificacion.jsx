@@ -434,8 +434,18 @@ export default function Planificacion() {
                           {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
                         </span>
                       </div>
-                      {b.objetivo && <div style={{ marginBottom: 4 }}><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Objetivo: </span><span style={{ fontSize: 13 }}>{b.objetivo}</span></div>}
-                      {b.contenidos && <div><span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Contenidos: </span><span style={{ fontSize: 13 }}>{b.contenidos}</span></div>}
+                      {b.objetivo && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>Objetivo</div>
+                          <div style={{ fontSize: 13 }}>{b.objetivo}</div>
+                        </div>
+                      )}
+                      {b.contenidos && (
+                        <div>
+                          <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>Contenidos</div>
+                          <div style={{ fontSize: 13, whiteSpace: 'pre-line' }}>{b.contenidos}</div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
