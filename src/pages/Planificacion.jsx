@@ -645,14 +645,22 @@ export default function Planificacion() {
                           </div>
                         ) : (
                           subsBloque.map(sub => (
-                            <div key={sub.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                              <div className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+                            <div key={sub.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
                                 <span style={{ fontWeight: 600, fontSize: 13 }}>{sub.nombre}</span>
                                 <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
                                   S{sub.semana_inicio} — S{sub.semana_fin}
                                 </span>
                                 <div className="flex gap-1 ml-auto">
+                                  {sub.notas && (
+                                    <button className="btn btn-ghost btn-sm"
+                                      title={objetivoVisible[sub.id] ? 'Ocultar contenidos' : 'Ver contenidos'}
+                                      onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))}
+                                      style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                                      <Layers size={13} />
+                                    </button>
+                                  )}
                                   <button className="btn btn-ghost btn-sm" onClick={() => {
                                     setFormSubbloque({
                                       nombre: sub.nombre,
@@ -668,14 +676,8 @@ export default function Planificacion() {
                                   </button>
                                 </div>
                               </div>
-                              {sub.objetivo && (
-                                <div style={{ marginBottom: 4 }}>
-                                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
-                                  <div style={{ fontSize: 13 }}>{sub.objetivo}</div>
-                                </div>
-                              )}
-                              {sub.notas && (
-                                <div>
+                              {objetivoVisible[sub.id] && sub.notas && (
+                                <div style={{ padding: '0 16px 12px 30px' }}>
                                   <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
                                   <div>
                                     {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
