@@ -830,25 +830,37 @@ export default function Planificacion() {
                             const fechaSem = format(addWeeks(parseISO(b.fecha_inicio), i), 'dd MMM', { locale: es })
                             const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
                             return (
-                              <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                                onClick={() => abrirSemana(b.id, num)}>
-                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                  <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                              <div key={num} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer' }}
+                                  onClick={() => abrirSemana(b.id, num)}>
+                                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {sem?.notas && (
+                                      <button className="btn btn-ghost btn-sm"
+                                        title={objetivoVisible[`sem-${b.id}-${num}`] ? 'Ocultar contenidos' : 'Ver contenidos'}
+                                        onClick={e => { e.stopPropagation(); setObjetivoVisible(v => ({ ...v, [`sem-${b.id}-${num}`]: !v[`sem-${b.id}-${num}`] })) }}
+                                        style={{ color: objetivoVisible[`sem-${b.id}-${num}`] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                                        <Layers size={12} />
+                                      </button>
+                                    )}
+                                    <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaSem}</div>
+                                  </div>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                  {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
-                                  {sem?.notas && (
-                                          <div style={{ marginTop: 4 }}>
-                                            {sem.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
-                                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 2 }}>
-                                                <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text3)', flexShrink: 0, marginTop: 5 }} />
-                                                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{linea}</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{fechaSem}</div>
+                                {objetivoVisible[`sem-${b.id}-${num}`] && sem?.notas && (
+                                  <div style={{ padding: '0 16px 10px 56px' }}>
+                                    {sem.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
+                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5 }} />
+                                        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )
                           })
