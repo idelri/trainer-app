@@ -380,17 +380,20 @@ export default function Planificacion() {
 
               </div>
 
-              <div style={{ display: 'flex', marginTop: 4 }}>
+<div style={{ display: 'flex', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 4 }}>
                 {Array.from({ length: totalSemanas }, (_, i) => {
                   const fecha = addWeeks(parseISO(planificacion.fecha_inicio), i)
                   const esPrimeroDelMes = i === 0 || format(fecha, 'MM') !== format(addWeeks(parseISO(planificacion.fecha_inicio), i - 1), 'MM')
                   return (
-                    <div key={i} style={{ flex: 1, position: 'relative' }}>
+                    <div key={i} style={{ flex: 1, position: 'relative', minHeight: 32 }}>
                       {esPrimeroDelMes && (
-                        <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text2)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--border)', paddingLeft: 3 }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--accent)', whiteSpace: 'nowrap', textTransform: 'capitalize', borderLeft: '1px solid var(--accent)', paddingLeft: 3, fontWeight: 600 }}>
                           {format(fecha, 'MMM yyyy', { locale: es })}
                         </div>
                       )}
+                      <div style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--text3)', paddingLeft: 2 }}>
+                        S{i + 1}
+                      </div>
                     </div>
                   )
                 })}
