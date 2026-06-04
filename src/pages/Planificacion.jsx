@@ -75,6 +75,7 @@ export default function Planificacion() {
         .eq('planificacion_id', plan.id)
         .order('orden')
       setBloques(bls || [])
+      cargarSubbloques(bls || [])
 
       if (bls && bls.length > 0) {
         const { data: sems } = await supabase
