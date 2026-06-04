@@ -571,6 +571,13 @@ export default function Planificacion() {
                         {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
                         <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
+                        {b.objetivo && (
+                          <button className="btn btn-ghost btn-sm" title={objetivoVisible[b.id] ? 'Ocultar objetivo' : 'Ver objetivo'}
+                            onClick={e => { e.stopPropagation(); setObjetivoVisible(v => ({ ...v, [b.id]: !v[b.id] })) }}
+                            style={{ color: objetivoVisible[b.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                            <Layers size={13} />
+                          </button>
+                        )}
                         <button className="btn btn-ghost btn-sm ml-auto" onClick={e => {
                           e.stopPropagation()
                           setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
