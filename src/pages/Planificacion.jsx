@@ -50,7 +50,7 @@ export default function Planificacion() {
   const [saving, setSaving] = useState(false)
   const [subbloques, setSubbloques] = useState({})
   const [modalSubbloque, setModalSubbloque] = useState(null)
-  const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
+  const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0 })
 
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarPlanificacion() }, [clienteSeleccionado])
