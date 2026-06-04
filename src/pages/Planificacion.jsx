@@ -415,7 +415,16 @@ export default function Planificacion() {
                       const subWidth = ((sub.semana_fin - sub.semana_inicio + 1) / totalSemanas) * 100
                       const subOffset = bloqueOffset + ((sub.semana_inicio - 1) / totalSemanas) * 100
                       return (
-                        <div key={sub.id} style={{
+                        <div key={sub.id} onClick={() => {
+                          setFormSubbloque({
+                            nombre: sub.nombre,
+                            semana_inicio: sub.semana_inicio,
+                            semana_fin: sub.semana_fin,
+                            objetivo: sub.objetivo || '',
+                            notas: sub.notas || '',
+                          })
+                          setModalSubbloque({ ...sub, bloque_id: b.id })
+                        }} style={{
                           position: 'absolute',
                           left: `${subOffset}%`,
                           width: `${subWidth}%`,
@@ -425,6 +434,7 @@ export default function Planificacion() {
                           padding: '3px 6px',
                           overflow: 'hidden',
                           border: `1px solid ${b.color || '#2d6a4f'}`,
+                          cursor: 'pointer',
                         }}>
                           <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {sub.nombre}
