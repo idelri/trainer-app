@@ -47,6 +47,9 @@ export default function Planificacion() {
   const [formComp, setFormComp] = useState(EMPTY_COMP)
   const [formSemana, setFormSemana] = useState({ objetivo: '', notas: '', carga: 'media' })
   const [saving, setSaving] = useState(false)
+  const [subbloques, setSubbloques] = useState({})
+  const [modalSubbloque, setModalSubbloque] = useState(null)
+  const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
 
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarPlanificacion() }, [clienteSeleccionado])
