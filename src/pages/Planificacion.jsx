@@ -219,9 +219,30 @@ export default function Planificacion() {
     await supabase.from('competiciones').delete().eq('id', id)
     cargarPlanificacion()
   }
-  async function eliminarComp(id) {
-    if (!window.confirm('¿Eliminar esta competición?')) return
-    await supabase.from('competiciones').delete().eq('id', id)
+  async function guardarSubbloque() {
+    if (!formSubbloque.nombre || !modalSubbloque?.bloque_id) return
+    setSaving(true)
+    const datos = {
+      bloque_id: modalSubbloque.bloque_id,
+      nombre: formSubbloque.nombre,
+      semana_inicio: parseInt(formSubbloque.semana_inicio),
+      semana_fin: parseInt(formSubbloque.semana_fin),
+      objetivo: formSubbloque.objetivo || null,
+      notas: formSubbloque.notas || null,
+    }
+    if (modalSubbloque.id) {
+      await supabase.from('subbloques').update(datos).eq('id', modalSubbloque.id)
+    } else {
+      await supabase.from('subbloques').insert(datos)
+    }
+    setSaving(false)
+    setModalSubbloque(null)
+    cargarPlanificacion()
+  }
+
+  async function eliminarSubbloque(id) {
+    if (!window.confirm('¿Eliminar este sub bloque?')) return
+    await supabase.from('subbloques').delete().eq('id', id)
     cargarPlanificacion()
   }
 
