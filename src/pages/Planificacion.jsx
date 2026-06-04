@@ -1021,33 +1021,46 @@ export default function Planificacion() {
                 { key: 'zona1_2', label: 'Z1-Z2', sublabel: 'Recuperación / Base', color: '#10b981' },
                 { key: 'zona3_4', label: 'Z3-Z4', sublabel: 'Ritmos específicos / Calidad', color: '#f59e0b' },
                 { key: 'zona5', label: 'Z5-Z5+', sublabel: 'Techo', color: '#ef4444' },
-              ].map(zona => (
-                <div key={zona.key} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>{zona.sublabel}</span>
+              ].map(zona => {
+                const bloqueada = formSubbloque[`lock_${zona.key}`]
+                return (
+                  <div key={zona.key} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          onClick={() => setFormSubbloque(f => ({ ...f, [`lock_${zona.key}`]: !f[`lock_${zona.key}`] }))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, opacity: bloqueada ? 1 : 0.3 }}
+                          title={bloqueada ? 'Desbloquear' : 'Bloquear esta zona'}>
+                          🔒
+                        </button>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)' }}>{zona.sublabel}</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSubbloque[zona.key]}%</span>
                     </div>
-                    <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSubbloque[zona.key]}%</span>
+                    <input type="range" min="0" max="100" value={formSubbloque[zona.key]}
+                      disabled={bloqueada}
+                      onChange={e => {
+                        const val = parseInt(e.target.value)
+                        const otrasZonas = ['zona1_2', 'zona3_4', 'zona5'].filter(k => k !== zona.key)
+                        const desbloqueadas = otrasZonas.filter(k => !formSubbloque[`lock_${k}`])
+                        if (desbloqueadas.length === 0) return
+                        const bloqueadasValor = otrasZonas.filter(k => formSubbloque[`lock_${k}`]).reduce((s, k) => s + (formSubbloque[k] || 0), 0)
+                        const resto = 100 - val - bloqueadasValor
+                        if (resto < 0) return
+                        const totalDesbloqueadas = desbloqueadas.reduce((s, k) => s + (formSubbloque[k] || 0), 0)
+                        const nuevasZonas = {}
+                        if (totalDesbloqueadas === 0) {
+                          desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round(resto / desbloqueadas.length) })
+                        } else {
+                          desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round((formSubbloque[k] / totalDesbloqueadas) * resto) })
+                        }
+                        setFormSubbloque(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
+                      }}
+                      style={{ width: '100%', accentColor: zona.color, opacity: bloqueada ? 0.4 : 1 }} />
                   </div>
-                  <input type="range" min="0" max="100" value={formSubbloque[zona.key]}
-                    onChange={e => {
-                      const val = parseInt(e.target.value)
-                      const resto = 100 - val
-                      const otrasZonas = ['zona1_2', 'zona3_4', 'zona5'].filter(k => k !== zona.key)
-                      const totalOtras = otrasZonas.reduce((s, k) => s + (formSubbloque[k] || 0), 0)
-                      const nuevasZonas = {}
-                      if (totalOtras === 0) {
-                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round(resto / 2) })
-                      } else {
-                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round((formSubbloque[k] / totalOtras) * resto) })
-                      }
-                      setFormSubbloque(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
-                    }}
-                    style={{ width: '100%', accentColor: zona.color }} />
-                </div>
-              ))}
-              {/* Barra visual */}
+                )
+              })}
               {(formSubbloque.zona1_2 + formSubbloque.zona3_4 + formSubbloque.zona5) > 0 && (
                 <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', marginTop: 4 }}>
                   {formSubbloque.zona1_2 > 0 && <div style={{ width: `${formSubbloque.zona1_2}%`, background: '#10b981' }} />}
