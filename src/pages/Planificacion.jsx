@@ -675,6 +675,44 @@ export default function Planificacion() {
         </div>
       )}
 
+      {modalSubbloque && (
+        <div className="modal-backdrop" onClick={() => setModalSubbloque(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modalSubbloque.id ? 'Editar sub bloque' : 'Nuevo sub bloque'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalSubbloque(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={formSubbloque.nombre} onChange={e => setFormSubbloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Adaptación" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Semana inicio *</label>
+                <input className="form-input" type="number" min="1" value={formSubbloque.semana_inicio} onChange={e => setFormSubbloque(f => ({ ...f, semana_inicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Semana fin *</label>
+                <input className="form-input" type="number" min="1" value={formSubbloque.semana_fin} onChange={e => setFormSubbloque(f => ({ ...f, semana_fin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Objetivo</label>
+              <input className="form-input" value={formSubbloque.objetivo} onChange={e => setFormSubbloque(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Adaptación al volumen" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notas</label>
+              <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: Énfasis en técnica de carrera..." />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarSubbloque} disabled={saving}>
+                {saving ? 'Guardando...' : modalSubbloque.id ? 'Guardar cambios' : 'Crear sub bloque'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalComp && (
         <div className="modal-backdrop" onClick={() => setModalComp(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
