@@ -284,6 +284,9 @@ export default function Planificacion() {
               <button key={v} className="btn btn-ghost btn-sm"
                 style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
                 onClick={() => setVista(v)}>
+                {v === 'timeline' ? 'Línea de tiempo' : v === 'macro' ? 'Macro' : 'Micro'}
+              </button>
+                onClick={() => setVista(v)}>
                 {v === 'timeline' ? <><Calendar size={12} /> Línea de tiempo</> :
                  v === 'macro' ? <><Layers size={12} /> Macro</> :
                  <><ChevronRight size={12} /> Micro</>}
