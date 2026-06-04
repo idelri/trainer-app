@@ -468,6 +468,80 @@ export default function Planificacion() {
             </div>
           )}
 
+          {vista === 'subbloque' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {bloques.map((b, idx) => {
+                const subsBloque = subbloques[b.id] || []
+                const abierto = bloqueAbierto === b.id
+                return (
+                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'var(--bg)' }}
+                      onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
+                      {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>{b.semanas} semanas</span>
+                      <button className="btn btn-ghost btn-sm ml-auto" onClick={e => {
+                        e.stopPropagation()
+                        setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '' })
+                        setModalSubbloque({ bloque_id: b.id })
+                      }}>
+                        <Plus size={12} /> Sub bloque
+                      </button>
+                    </div>
+                    {abierto && (
+                      <div style={{ borderTop: '1px solid var(--border)' }}>
+                        {subsBloque.length === 0 ? (
+                          <div style={{ padding: '16px', color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
+                            Sin sub bloques — añade el primero.
+                          </div>
+                        ) : (
+                          subsBloque.map(sub => (
+                            <div key={sub.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                              <div className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
+                                <span style={{ fontWeight: 600, fontSize: 13 }}>{sub.nombre}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                                  S{sub.semana_inicio} — S{sub.semana_fin}
+                                </span>
+                                <div className="flex gap-1 ml-auto">
+                                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                                    setFormSubbloque({
+                                      nombre: sub.nombre,
+                                      semana_inicio: sub.semana_inicio,
+                                      semana_fin: sub.semana_fin,
+                                      objetivo: sub.objetivo || '',
+                                      notas: sub.notas || '',
+                                    })
+                                    setModalSubbloque({ ...sub, bloque_id: b.id })
+                                  }}>Editar</button>
+                                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarSubbloque(sub.id)}>
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              {sub.objetivo && (
+                                <div style={{ marginBottom: 4 }}>
+                                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo</div>
+                                  <div style={{ fontSize: 13 }}>{sub.objetivo}</div>
+                                </div>
+                              )}
+                              {sub.notas && (
+                                <div>
+                                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Notas</div>
+                                  <div style={{ fontSize: 13, whiteSpace: 'pre-line' }}>{sub.notas}</div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Bloque.</p></div>}
+            </div>
+          )}
           {vista === 'micro' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {bloques.map((b, idx) => {
