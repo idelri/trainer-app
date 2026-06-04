@@ -157,6 +157,12 @@ export default function Planificacion() {
       setClienteSeleccionado(formPlan.cliente_id)
     }
   }
+  function copiarEnlace() {
+    if (!planificacion?.token_publico) return
+    const url = `${window.location.origin}/plan/${planificacion.token_publico}`
+    navigator.clipboard.writeText(url)
+    alert(`Enlace copiado:\n${url}`)
+  }
 
   async function guardarBloque() {
     if (!formBloque.nombre || !formBloque.fecha_inicio) return
