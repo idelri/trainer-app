@@ -793,14 +793,32 @@ export default function Planificacion() {
                                 </div>
 
                                 {/* Contenidos sub bloque desplegable */}
-                                {objetivoVisible[sub.id] && sub.notas && (
-                                  <div style={{ padding: '8px 16px 8px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                                    {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
-                                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
-                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5, opacity: 0.7 }} />
-                                        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                {objetivoVisible[sub.id] && (sub.notas || sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                                  <div style={{ padding: '8px 16px 12px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                                    {sub.notas && (
+                                      <div style={{ marginBottom: 8 }}>
+                                        {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+                                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5, opacity: 0.7 }} />
+                                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
+                                    )}
+                                    {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                                      <div>
+                                        <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                                          {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981' }} />}
+                                          {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b' }} />}
+                                          {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444' }} />}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                          {sub.zona1_2 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {sub.zona1_2}%</span>}
+                                          {sub.zona3_4 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {sub.zona3_4}%</span>}
+                                          {sub.zona5 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {sub.zona5}%</span>}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
