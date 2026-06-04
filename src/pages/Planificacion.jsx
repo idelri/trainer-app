@@ -1013,7 +1013,7 @@ export default function Planificacion() {
             </div>
             <div className="form-group">
               <label className="form-label">Notas / Contenidos</label>
-              <textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: 3 sesiones fuerza + 2 rodajes Z2..." />
+              <textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes Z2\nTécnica de carrera"} style={{ minHeight: 120 }} />
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSemana(null)}>Cancelar</button>
