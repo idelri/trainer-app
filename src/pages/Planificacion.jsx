@@ -825,7 +825,16 @@ export default function Planificacion() {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                   {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
-                                  {sem?.notas && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sem.notas}</div>}
+                                  {sem?.notas && (
+                                          <div style={{ marginTop: 4 }}>
+                                            {sem.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 2 }}>
+                                                <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text3)', flexShrink: 0, marginTop: 5 }} />
+                                                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{linea}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
                                 </div>
                                 <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{fechaSem}</div>
                               </div>
