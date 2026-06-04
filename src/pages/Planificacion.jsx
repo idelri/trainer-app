@@ -60,8 +60,7 @@ export default function Planificacion() {
   const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0 })
 
   useEffect(() => { cargarClientes() }, [])
-  useEffect(() => { if (clienteSeleccionado) cargarPlanificacion() }, [clienteSeleccionado])
-
+  useEffect(() => { if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) } }, [clienteSeleccionado])
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
     setClientes(data || [])
