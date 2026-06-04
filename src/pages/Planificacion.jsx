@@ -53,11 +53,12 @@ export default function Planificacion() {
 
   async function cargarPlanificacion() {
     setLoading(true)
-    const { data: plan } = await supabase
+   const { data: planes } = await supabase
       .from('planificaciones').select('*')
       .eq('cliente_id', clienteSeleccionado)
       .order('created_at', { ascending: false })
-      .limit(1).single()
+      .limit(1)
+    const plan = planes?.[0] || null
 
     if (plan) {
       setPlanificacion(plan)
