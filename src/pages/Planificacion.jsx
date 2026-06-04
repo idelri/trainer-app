@@ -695,6 +695,78 @@ export default function Planificacion() {
             </div>
           )}
 
+          {/* Resumen de intensidad del bloque/subbloque actual */}
+          {vista === 'timeline' && (() => {
+            const hoy = new Date()
+            const inicio = parseISO(planificacion.fecha_inicio)
+            const fin = parseISO(planificacion.fecha_fin)
+            const enCurso = hoy >= inicio && hoy <= fin
+            if (!enCurso) return null
+
+            const diasTranscurridos = Math.max(0, (hoy - inicio) / (1000 * 60 * 60 * 24))
+            const semanaActual = Math.max(1, Math.min(Math.ceil(diasTranscurridos / 7), totalSemanas))
+
+            let bloqueActual = null
+            let semanaGlobal = 0
+            for (const b of bloques) {
+              if (semanaActual > semanaGlobal && semanaActual <= semanaGlobal + b.semanas) {
+                bloqueActual = b
+                break
+              }
+              semanaGlobal += b.semanas
+            }
+            if (!bloqueActual) return null
+
+            const semanaEnBloque = semanaActual - semanaGlobal
+            const subs = subbloques[bloqueActual.id] || []
+            const subbloqueActual = subs.find(s => semanaEnBloque >= s.semana_inicio && semanaEnBloque <= s.semana_fin)
+
+            const fuente = subbloqueActual && (subbloqueActual.zona1_2 > 0 || subbloqueActual.zona3_4 > 0 || subbloqueActual.zona5 > 0)
+              ? subbloqueActual : null
+
+            if (!fuente) return null
+
+            const zonas = [
+              { label: 'Base aeróbica y recuperación', sub: 'Z1-Z2', valor: fuente.zona1_2, color: '#10b981' },
+              { label: 'Umbral y ritmos específicos', sub: 'Z3-Z4', valor: fuente.zona3_4, color: '#f59e0b' },
+              { label: 'Alta intensidad', sub: 'Z5-Z5+', valor: fuente.zona5, color: '#ef4444' },
+            ]
+
+            return (
+              <div className="card" style={{ marginBottom: 16, padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Intensidad actual</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                    {subbloqueActual ? subbloqueActual.nombre : bloqueActual.nombre}
+                  </span>
+                </div>
+
+                {/* Barra global */}
+                <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 14 }}>
+                  {fuente.zona1_2 > 0 && <div style={{ width: `${fuente.zona1_2}%`, background: '#10b981' }} />}
+                  {fuente.zona3_4 > 0 && <div style={{ width: `${fuente.zona3_4}%`, background: '#f59e0b' }} />}
+                  {fuente.zona5 > 0 && <div style={{ width: `${fuente.zona5}%`, background: '#ef4444' }} />}
+                </div>
+
+                {/* Detalle por zona */}
+                {zonas.filter(z => z.valor > 0).map(z => (
+                  <div key={z.sub} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: 2, background: z.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: 'var(--text)' }}>{z.label}</span>
+                        <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{z.sub}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--mono)', color: z.color }}>{z.valor}%</span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${z.valor}%`, background: z.color, borderRadius: 3 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
           {/* Semana tipo y Consideraciones — solo en timeline */}
           {vista === 'timeline' && clienteData && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
