@@ -444,24 +444,61 @@ export default function Planificacion() {
                 const pct = Math.round((diasTranscurridos / totalDias) * 100)
                 const semanaActual = Math.max(1, Math.min(Math.ceil(diasTranscurridos / 7), totalSemanas))
                 const enCurso = hoy >= inicio && hoy <= fin
+
+                // Bloque actual
+                let bloqueActual = null
+                let semanaGlobal = 0
+                for (const b of bloques) {
+                  if (semanaActual > semanaGlobal && semanaActual <= semanaGlobal + b.semanas) {
+                    bloqueActual = b
+                    break
+                  }
+                  semanaGlobal += b.semanas
+                }
+
+                // Subbloque actual
+                let subbloqueActual = null
+                if (bloqueActual) {
+                  const semanaEnBloque = semanaActual - semanaGlobal
+                  const subs = subbloques[bloqueActual.id] || []
+                  subbloqueActual = subs.find(s => semanaEnBloque >= s.semana_inicio && semanaEnBloque <= s.semana_fin)
+                }
+
                 return (
                   <div className="card" style={{ marginBottom: 16, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         {enCurso ? 'En curso' : hoy < inicio ? 'No iniciada' : 'Completada'}
                       </span>
-                      <span style={{ fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--text2)' }}>
-                        {enCurso ? `Semana ${semanaActual} / ${totalSemanas}` : `${totalSemanas} semanas`}
+                      <span style={{ fontSize: 13, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 700 }}>
+                        {enCurso ? `S${semanaActual} / ${totalSemanas}` : `${totalSemanas} semanas`}
                       </span>
                     </div>
-                    <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
+                    <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: enCurso ? 'var(--accent)' : hoy < inicio ? 'var(--border2)' : 'var(--accent)', borderRadius: 5, transition: 'width 0.5s ease' }} />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: enCurso && bloqueActual ? 12 : 0 }}>
                       <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(inicio, 'dd MMM yyyy', { locale: es })}</span>
                       <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600 }}>{pct}%</span>
                       <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(fin, 'dd MMM yyyy', { locale: es })}</span>
                     </div>
+
+                    {enCurso && bloqueActual && (
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: bloqueActual.color || 'var(--accent)', flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Bloque actual</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{bloqueActual.nombre}</span>
+                        </div>
+                        {subbloqueActual && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: bloqueActual.color || 'var(--accent)', flexShrink: 0, opacity: 0.6 }} />
+                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Sub bloque</span>
+                            <span style={{ fontSize: 13, color: 'var(--text2)' }}>{subbloqueActual.nombre}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })()}
