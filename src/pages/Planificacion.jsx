@@ -328,7 +328,7 @@ export default function Planificacion() {
               <button key={v} className="btn btn-ghost btn-sm"
                 style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
                 onClick={() => setVista(v)}>
-                {v === 'timeline' ? 'Línea de tiempo' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : 'Micro'}
+                {v === 'timeline' ? 'Línea de tiempo' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : 'Semana'}
               </button>
             ))}
           </div>
