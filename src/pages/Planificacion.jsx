@@ -510,7 +510,7 @@ export default function Planificacion() {
         <div className="modal-backdrop" onClick={() => setModalPlan(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">Nueva planificación</span>
+             <span className="modal-title">{modalPlan === 'editar' ? 'Editar planificación' : 'Nueva planificación'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalPlan(false)}><X size={14} /></button>
             </div>
             <div className="form-group">
