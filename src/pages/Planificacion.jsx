@@ -1286,6 +1286,63 @@ export default function Planificacion() {
           </div>
         </div>
       )}
+      {/* Modal semana tipo */}
+      {modalSemanaTipo && (
+        <div className="modal-backdrop" onClick={() => setModalSemanaTipo(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Semana tipo</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalSemanaTipo(false)}><X size={14} /></button>
+            </div>
+            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
+              <div key={dia} className="form-group">
+                <label className="form-label">{dia}</label>
+                <input className="form-input" value={formSemanaTipo[dia] || ''} onChange={e => setFormSemanaTipo(f => ({ ...f, [dia]: e.target.value }))} placeholder="Ej: Rodaje Z2, Fuerza, Descanso..." />
+              </div>
+            ))}
+            <div className="form-group">
+              <label className="form-label">Disponibilidad habitual</label>
+              <textarea className="form-textarea" value={formDisponibilidad} onChange={e => setFormDisponibilidad(e.target.value)} placeholder={"Ej: Mañanas L-V de 7-8h\nFines de semana más flexible\nViajes frecuentes en septiembre"} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalSemanaTipo(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={async () => {
+                setSaving(true)
+                await supabase.from('clientes').update({ semana_tipo: formSemanaTipo, disponibilidad: formDisponibilidad }).eq('id', clienteSeleccionado)
+                setSaving(false)
+                setModalSemanaTipo(false)
+                cargarClienteData(clienteSeleccionado)
+              }} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal consideraciones */}
+      {modalConsideraciones && (
+        <div className="modal-backdrop" onClick={() => setModalConsideraciones(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Consideraciones</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalConsideraciones(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Una consideración por línea</label>
+              <textarea className="form-textarea" style={{ minHeight: 160 }} value={formConsideraciones} onChange={e => setFormConsideraciones(e.target.value)} placeholder={"Ej: Molestia en rodilla derecha\nViaje previsto en octubre\nCompatibiliza con padel los jueves"} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalConsideraciones(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={async () => {
+                setSaving(true)
+                await supabase.from('clientes').update({ consideraciones: formConsideraciones }).eq('id', clienteSeleccionado)
+                setSaving(false)
+                setModalConsideraciones(false)
+                cargarClienteData(clienteSeleccionado)
+              }} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalComp && (
         <div className="modal-backdrop" onClick={() => setModalComp(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
