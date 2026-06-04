@@ -1,0 +1,704 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { format, addWeeks, differenceInWeeks, parseISO, startOfWeek } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers } from 'lucide-react'
+
+const FASES = {
+  general: { label: 'General', color: '#6b7280' },
+  pretemporada: { label: 'Pretemporada', color: '#3b82f6' },
+  competicion: { label: 'Competición', color: '#ef4444' },
+  recuperacion: { label: 'Recuperación', color: '#10b981' },
+  transicion: { label: 'Transición', color: '#f59e0b' },
+}
+
+const CARGAS = {
+  baja: { label: 'Baja', color: '#10b981' },
+  media: { label: 'Media', color: '#f59e0b' },
+  alta: { label: 'Alta', color: '#ef4444' },
+  muy_alta: { label: 'Muy alta', color: '#7c3aed' },
+}
+
+const EMPTY_PLAN = { cliente_id: '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '' }
+const EMPTY_BLOQUE = { nombre: '', fase: 'general', carga: 'media', semanas: 4, fecha_inicio: '', objetivo: '', contenidos: '' }
+const EMPTY_COMP = { nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' }
+
+export default function Planificacion() {
+  const [clientes, setClientes] = useState([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+  const [planificacion, setPlanificacion] = useState(null)
+  const [bloques, setBloques] = useState([])
+  const [competiciones, setCompeticiones] = useState([])
+  const [semanas, setSemanas] = useState({})
+  const [vista, setVista] = useState('timeline')
+  const [bloqueAbierto, setBloqueAbierto] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [modalPlan, setModalPlan] = useState(false)
+  const [modalBloque, setModalBloque] = useState(null)
+  const [modalComp, setModalComp] = useState(false)
+  const [modalSemana, setModalSemana] = useState(null)
+  const [formPlan, setFormPlan] = useState(EMPTY_PLAN)
+  const [formBloque, setFormBloque] = useState(EMPTY_BLOQUE)
+  const [formComp, setFormComp] = useState(EMPTY_COMP)
+  const [formSemana, setFormSemana] = useState({ objetivo: '', notas: '', carga: 'media' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { cargarClientes() }, [])
+  useEffect(() => { if (clienteSeleccionado) cargarPlanificacion() }, [clienteSeleccionado])
+
+  async function cargarClientes() {
+    const { data } = await supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
+    setClientes(data || [])
+  }
+
+  async function cargarPlanificacion() {
+    setLoading(true)
+    const { data: plan } = await supabase
+      .from('planificaciones').select('*')
+      .eq('cliente_id', clienteSeleccionado)
+      .order('created_at', { ascending: false })
+      .limit(1).single()
+
+    if (plan) {
+      setPlanificacion(plan)
+      const { data: bls } = await supabase
+        .from('bloques').select('*')
+        .eq('planificacion_id', plan.id)
+        .order('orden')
+      setBloques(bls || [])
+
+      // Cargar semanas de todos los bloques
+      if (bls && bls.length > 0) {
+        const { data: sems } = await supabase
+          .from('semanas').select('*')
+          .in('bloque_id', bls.map(b => b.id))
+          .order('numero')
+        const semsMap = {}
+        ;(sems || []).forEach(s => {
+          if (!semsMap[s.bloque_id]) semsMap[s.bloque_id] = []
+          semsMap[s.bloque_id].push(s)
+        })
+        setSemanas(semsMap)
+      }
+    } else {
+      setPlanificacion(null)
+      setBloques([])
+      setSemanas({})
+    }
+
+    const { data: comps } = await supabase
+      .from('competiciones').select('*')
+      .eq('cliente_id', clienteSeleccionado)
+      .order('fecha')
+    setCompeticiones(comps || [])
+    setLoading(false)
+  }
+
+  async function guardarPlan() {
+    if (!formPlan.nombre || !formPlan.fecha_inicio || !formPlan.fecha_fin || !formPlan.cliente_id) return
+    setSaving(true)
+    await supabase.from('planificaciones').insert({
+      cliente_id: formPlan.cliente_id,
+      nombre: formPlan.nombre,
+      fecha_inicio: formPlan.fecha_inicio,
+      fecha_fin: formPlan.fecha_fin,
+      notas: formPlan.notas || null,
+    })
+    setSaving(false)
+    setModalPlan(false)
+    setClienteSeleccionado(formPlan.cliente_id)
+  }
+
+  async function guardarBloque() {
+    if (!formBloque.nombre || !formBloque.fecha_inicio) return
+    setSaving(true)
+    const datos = {
+      planificacion_id: planificacion.id,
+      nombre: formBloque.nombre,
+      fase: formBloque.fase,
+      carga: formBloque.carga,
+      semanas: parseInt(formBloque.semanas),
+      fecha_inicio: formBloque.fecha_inicio,
+      objetivo: formBloque.objetivo || null,
+      contenidos: formBloque.contenidos || null,
+      orden: modalBloque?.orden ?? bloques.length,
+    }
+    if (modalBloque?.id) {
+      await supabase.from('bloques').update(datos).eq('id', modalBloque.id)
+    } else {
+      await supabase.from('bloques').insert(datos)
+    }
+    setSaving(false)
+    setModalBloque(null)
+    cargarPlanificacion()
+  }
+
+  async function guardarComp() {
+    if (!formComp.nombre || !formComp.fecha) return
+    setSaving(true)
+    await supabase.from('competiciones').insert({
+      cliente_id: clienteSeleccionado,
+      nombre: formComp.nombre,
+      fecha: formComp.fecha,
+      tipo: formComp.tipo || null,
+      objetivo: formComp.objetivo || null,
+      notas: formComp.notas || null,
+    })
+    setSaving(false)
+    setModalComp(false)
+    cargarPlanificacion()
+  }
+
+  async function guardarSemana() {
+    if (!modalSemana) return
+    setSaving(true)
+    const { bloque_id, numero, semanaExistente } = modalSemana
+    if (semanaExistente) {
+      await supabase.from('semanas').update({
+        objetivo: formSemana.objetivo || null,
+        notas: formSemana.notas || null,
+        carga: formSemana.carga,
+      }).eq('id', semanaExistente.id)
+    } else {
+      await supabase.from('semanas').insert({
+        bloque_id,
+        numero,
+        objetivo: formSemana.objetivo || null,
+        notas: formSemana.notas || null,
+        carga: formSemana.carga,
+      })
+    }
+    setSaving(false)
+    setModalSemana(null)
+    cargarPlanificacion()
+  }
+
+  async function eliminarBloque(id) {
+    if (!window.confirm('¿Eliminar este bloque?')) return
+    await supabase.from('bloques').delete().eq('id', id)
+    cargarPlanificacion()
+  }
+
+  async function eliminarComp(id) {
+    if (!window.confirm('¿Eliminar esta competición?')) return
+    await supabase.from('competiciones').delete().eq('id', id)
+    cargarPlanificacion()
+  }
+
+  function abrirNuevoBloque() {
+    const fechaInicio = bloques.length > 0
+      ? format(addWeeks(parseISO(bloques[bloques.length - 1].fecha_inicio), bloques[bloques.length - 1].semanas), 'yyyy-MM-dd')
+      : planificacion?.fecha_inicio || ''
+    setFormBloque({ ...EMPTY_BLOQUE, fecha_inicio: fechaInicio })
+    setModalBloque({})
+  }
+
+  function abrirEditarBloque(b) {
+    setFormBloque({
+      nombre: b.nombre, fase: b.fase, carga: b.carga,
+      semanas: b.semanas, fecha_inicio: b.fecha_inicio,
+      objetivo: b.objetivo || '', contenidos: b.contenidos || ''
+    })
+    setModalBloque(b)
+  }
+
+  function abrirSemana(bloque_id, numero) {
+    const semsBloque = semanas[bloque_id] || []
+    const semanaExistente = semsBloque.find(s => s.numero === numero)
+    setFormSemana({
+      objetivo: semanaExistente?.objetivo || '',
+      notas: semanaExistente?.notas || '',
+      carga: semanaExistente?.carga || 'media',
+    })
+    setModalSemana({ bloque_id, numero, semanaExistente })
+  }
+
+  // Calcular total semanas de la planificación
+  const totalSemanas = planificacion
+    ? differenceInWeeks(parseISO(planificacion.fecha_fin), parseISO(planificacion.fecha_inicio)) + 1
+    : 0
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Planificación</h2>
+          {planificacion && <p className="page-subtitle">{planificacion.nombre}</p>}
+        </div>
+        <div className="flex gap-2">
+          {planificacion && clienteSeleccionado && (
+            <>
+              <button className="btn btn-ghost" onClick={() => { setFormComp(EMPTY_COMP); setModalComp(true) }}>
+                <Trophy size={13} /> Competición
+              </button>
+              <button className="btn btn-primary" onClick={abrirNuevoBloque}>
+                <Plus size={13} /> Bloque
+              </button>
+            </>
+          )}
+          <button className="btn btn-ghost" onClick={() => { setFormPlan(EMPTY_PLAN); setModalPlan(true) }}>
+            <Plus size={13} /> Nueva planificación
+          </button>
+        </div>
+      </div>
+
+      {/* Selector de cliente */}
+      <div className="flex gap-3 items-center" style={{ marginBottom: 20 }}>
+        <select className="form-select" style={{ maxWidth: 260 }}
+          value={clienteSeleccionado || ''}
+          onChange={e => { setClienteSeleccionado(e.target.value || null); setPlanificacion(null); setBloques([]) }}>
+          <option value="">Selecciona un cliente...</option>
+          {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+
+        {planificacion && (
+          <div className="flex gap-2">
+            {['timeline', 'macro', 'micro'].map(v => (
+              <button key={v} className="btn btn-ghost btn-sm"
+                style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}}
+                onClick={() => setVista(v)}>
+                {v === 'timeline' ? <><Calendar size={12} /> Línea de tiempo</> :
+                 v === 'macro' ? <><Layers size={12} /> Macro</> :
+                 <><ChevronRight size={12} /> Micro</>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {loading && <div className="empty"><p>Cargando...</p></div>}
+
+      {!loading && clienteSeleccionado && !planificacion && (
+        <div className="empty">
+          <Calendar size={40} />
+          <p>No hay planificación para este cliente.</p>
+          <button className="btn btn-primary" style={{ marginTop: 16 }}
+            onClick={() => { setFormPlan({ ...EMPTY_PLAN, cliente_id: clienteSeleccionado }); setModalPlan(true) }}>
+            <Plus size={13} /> Crear planificación
+          </button>
+        </div>
+      )}
+
+      {!loading && planificacion && (
+        <>
+          {/* Info planificación */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
+              <div className="label">Inicio</div>
+              <div style={{ fontWeight: 500, marginTop: 4, fontFamily: 'var(--mono)', fontSize: 13 }}>
+                {format(parseISO(planificacion.fecha_inicio), 'dd MMM yyyy', { locale: es })}
+              </div>
+            </div>
+            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
+              <div className="label">Fin</div>
+              <div style={{ fontWeight: 500, marginTop: 4, fontFamily: 'var(--mono)', fontSize: 13 }}>
+                {format(parseISO(planificacion.fecha_fin), 'dd MMM yyyy', { locale: es })}
+              </div>
+            </div>
+            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
+              <div className="label">Semanas totales</div>
+              <div className="value">{totalSemanas}</div>
+            </div>
+            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
+              <div className="label">Bloques</div>
+              <div className="value">{bloques.length}</div>
+            </div>
+            <div className="stat-card" style={{ flex: 1, minWidth: 140 }}>
+              <div className="label">Competiciones</div>
+              <div className="value">{competiciones.length}</div>
+            </div>
+          </div>
+
+          {/* ===== VISTA TIMELINE ===== */}
+          {vista === 'timeline' && (
+            <div className="card" style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
+                {/* Competiciones */}
+                {competiciones.length > 0 && (
+                  <div style={{ display: 'flex', marginBottom: 8, position: 'relative', height: 32 }}>
+                    {competiciones.map(comp => {
+                      const semanaComp = differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio))
+                      const pct = (semanaComp / totalSemanas) * 100
+                      return (
+                        <div key={comp.id} style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+                          <Trophy size={14} color="var(--danger)" />
+                          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--danger)', whiteSpace: 'nowrap', marginTop: 2 }}>
+                            {comp.nombre}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Línea de tiempo con bloques */}
+                <div style={{ display: 'flex', gap: 2, marginBottom: 8 }}>
+                  {bloques.map(b => {
+                    const fase = FASES[b.fase] || FASES.general
+                    const carga = CARGAS[b.carga] || CARGAS.media
+                    const width = (b.semanas / totalSemanas) * 100
+                    return (
+                      <div key={b.id} style={{ width: `${width}%`, minWidth: 40 }}>
+                        <div style={{
+                          background: fase.color, borderRadius: 4, padding: '6px 8px',
+                          cursor: 'pointer', height: 52, overflow: 'hidden',
+                          borderLeft: `3px solid ${carga.color}`,
+                        }} onClick={() => abrirEditarBloque(b)}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {b.nombre}
+                          </div>
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                            {b.semanas}s · {fase.label}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Numeración de semanas */}
+                <div style={{ display: 'flex' }}>
+                  {Array.from({ length: totalSemanas }, (_, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--mono)', borderLeft: i % 4 === 0 ? '1px solid var(--border)' : 'none', paddingLeft: 2 }}>
+                      {i % 4 === 0 ? `S${i + 1}` : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Leyenda */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+                {Object.entries(FASES).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-1">
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: v.color }} />
+                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{v.label}</span>
+                  </div>
+                ))}
+                <span style={{ color: 'var(--border)', margin: '0 4px' }}>|</span>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>Borde izquierdo = carga:</span>
+                {Object.entries(CARGAS).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-1">
+                    <div style={{ width: 3, height: 10, background: v.color }} />
+                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{v.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===== VISTA MACRO ===== */}
+          {vista === 'macro' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Competiciones */}
+              {competiciones.length > 0 && (
+                <div className="card" style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+                    🏆 Competiciones
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {competiciones.map(comp => (
+                      <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--danger)' }}>
+                        <Trophy size={12} color="var(--danger)" />
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)' }}>{comp.nombre}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                            {format(parseISO(comp.fecha), 'dd MMM yyyy', { locale: es })}
+                          </div>
+                        </div>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 4 }} onClick={() => eliminarComp(comp.id)}>
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bloques.map((b, idx) => {
+                const fase = FASES[b.fase] || FASES.general
+                const carga = CARGAS[b.carga] || CARGAS.media
+                return (
+                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${fase.color}` }}>
+                    <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: fase.color, color: 'white', fontFamily: 'var(--mono)' }}>
+                            {fase.label}
+                          </span>
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: carga.color, color: 'white', fontFamily: 'var(--mono)' }}>
+                            Carga {carga.label}
+                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                            {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
+                          </span>
+                        </div>
+                        {b.objetivo && (
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Objetivo: </span>
+                            <span style={{ fontSize: 13 }}>{b.objetivo}</span>
+                          </div>
+                        )}
+                        {b.contenidos && (
+                          <div>
+                            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Contenidos: </span>
+                            <span style={{ fontSize: 13 }}>{b.contenidos}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}>
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {bloques.length === 0 && (
+                <div className="empty">
+                  <Layers size={40} />
+                  <p>No hay bloques. Añade el primero.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ===== VISTA MICRO ===== */}
+          {vista === 'micro' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {bloques.map((b, idx) => {
+                const fase = FASES[b.fase] || FASES.general
+                const semsBloque = semanas[b.id] || []
+                const abierto = bloqueAbierto === b.id
+
+                return (
+                  <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${fase.color}` }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'var(--bg)' }}
+                      onClick={() => setBloqueAbierto(abierto ? null : b.id)}>
+                      {abierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      <span style={{ fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: fase.color, color: 'white', fontFamily: 'var(--mono)' }}>
+                        {fase.label}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 4 }}>
+                        {b.semanas} semanas
+                      </span>
+                    </div>
+
+                    {abierto && (
+                      <div style={{ borderTop: '1px solid var(--border)' }}>
+                        {Array.from({ length: b.semanas }, (_, i) => {
+                          const num = i + 1
+                          const sem = semsBloque.find(s => s.numero === num)
+                          const fechaSem = format(addWeeks(parseISO(b.fecha_inicio), i), 'dd MMM', { locale: es })
+                          const cargaSem = sem?.carga ? CARGAS[sem.carga] : null
+
+                          return (
+                            <div key={num} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                              onClick={() => abrirSemana(b.id, num)}>
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                {sem?.objetivo
+                                  ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div>
+                                  : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>
+                                }
+                                {sem?.notas && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sem.notas}</div>}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>
+                                {fechaSem}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              {bloques.length === 0 && (
+                <div className="empty">
+                  <p>Añade bloques primero desde la vista Macro.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal nueva planificación */}
+      {modalPlan && (
+        <div className="modal-backdrop" onClick={() => setModalPlan(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva planificación</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPlan(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente *</label>
+              <select className="form-select" value={formPlan.cliente_id} onChange={e => setFormPlan(f => ({ ...f, cliente_id: e.target.value }))}>
+                <option value="">Selecciona...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={formPlan.nombre} onChange={e => setFormPlan(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Temporada 2025-2026" />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha inicio *</label>
+                <input className="form-input" type="date" value={formPlan.fecha_inicio} onChange={e => setFormPlan(f => ({ ...f, fecha_inicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha fin *</label>
+                <input className="form-input" type="date" value={formPlan.fecha_fin} onChange={e => setFormPlan(f => ({ ...f, fecha_fin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notas</label>
+              <textarea className="form-textarea" value={formPlan.notas} onChange={e => setFormPlan(f => ({ ...f, notas: e.target.value }))} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPlan(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarPlan} disabled={saving}>
+                {saving ? 'Guardando...' : 'Crear planificación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal bloque */}
+      {modalBloque !== null && (
+        <div className="modal-backdrop" onClick={() => setModalBloque(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modalBloque?.id ? 'Editar bloque' : 'Nuevo bloque'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalBloque(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={formBloque.nombre} onChange={e => setFormBloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Base aeróbica" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fase</label>
+                <select className="form-select" value={formBloque.fase} onChange={e => setFormBloque(f => ({ ...f, fase: e.target.value }))}>
+                  {Object.entries(FASES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Carga</label>
+                <select className="form-select" value={formBloque.carga} onChange={e => setFormBloque(f => ({ ...f, carga: e.target.value }))}>
+                  {Object.entries(CARGAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Semanas *</label>
+                <input className="form-input" type="number" min="1" max="52" value={formBloque.semanas} onChange={e => setFormBloque(f => ({ ...f, semanas: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha inicio *</label>
+                <input className="form-input" type="date" value={formBloque.fecha_inicio} onChange={e => setFormBloque(f => ({ ...f, fecha_inicio: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Objetivo del bloque</label>
+              <input className="form-input" value={formBloque.objetivo} onChange={e => setFormBloque(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Desarrollar base aeróbica" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contenidos</label>
+              <textarea className="form-textarea" value={formBloque.contenidos} onChange={e => setFormBloque(f => ({ ...f, contenidos: e.target.value }))} placeholder="Ej: Fuerza general, rodajes suaves, técnica de carrera..." />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalBloque(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarBloque} disabled={saving}>
+                {saving ? 'Guardando...' : modalBloque?.id ? 'Guardar cambios' : 'Crear bloque'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal competición */}
+      {modalComp && (
+        <div className="modal-backdrop" onClick={() => setModalComp(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva competición</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalComp(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={formComp.nombre} onChange={e => setFormComp(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Media Maratón Barcelona" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha *</label>
+                <input className="form-input" type="date" value={formComp.fecha} onChange={e => setFormComp(f => ({ ...f, fecha: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <input className="form-input" value={formComp.tipo} onChange={e => setFormComp(f => ({ ...f, tipo: e.target.value }))} placeholder="Ej: Carrera, Hyrox, Triatlón..." />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Objetivo</label>
+              <input className="form-input" value={formComp.objetivo} onChange={e => setFormComp(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Bajar de 1h45min" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notas</label>
+              <textarea className="form-textarea" value={formComp.notas} onChange={e => setFormComp(f => ({ ...f, notas: e.target.value }))} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalComp(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarComp} disabled={saving}>
+                {saving ? 'Guardando...' : 'Añadir competición'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal semana */}
+      {modalSemana && (
+        <div className="modal-backdrop" onClick={() => setModalSemana(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Semana {modalSemana.numero}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalSemana(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Carga</label>
+              <select className="form-select" value={formSemana.carga} onChange={e => setFormSemana(f => ({ ...f, carga: e.target.value }))}>
+                {Object.entries(CARGAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Objetivo de la semana</label>
+              <input className="form-input" value={formSemana.objetivo} onChange={e => setFormSemana(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Aumentar volumen de carrera" autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notas / Contenidos</label>
+              <textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: 3 sesiones fuerza + 2 rodajes Z2..." />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalSemana(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarSemana} disabled={saving}>
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
