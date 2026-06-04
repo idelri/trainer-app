@@ -441,8 +441,6 @@ export default function Planificacion() {
                       <div style={{ flex: 1 }}>
                         <div className="flex items-center gap-2" style={{ flexWrap: 'wrap', marginBottom: 6 }}>
                           <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: fase.color, color: 'white', fontFamily: 'var(--mono)' }}>{fase.label}</span>
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: carga.color, color: 'white', fontFamily: 'var(--mono)' }}>Carga {carga.label}</span>
                           <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
                             {b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}
                           </span>
