@@ -137,7 +137,7 @@ export default function Planificacion() {
       semanas: parseInt(formBloque.semanas),
       fecha_inicio: formBloque.fecha_inicio,
       objetivo: formBloque.objetivo || null,
-      contenidos: formBloque.contenidos || null,
+      color: formBloque.color || '#2d6a4f',
       orden: modalBloque?.orden ?? bloques.length,
     }
     if (modalBloque?.id) {
