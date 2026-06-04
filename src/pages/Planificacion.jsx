@@ -671,6 +671,9 @@ export default function Planificacion() {
                                       semana_fin: sub.semana_fin,
                                       objetivo: sub.objetivo || '',
                                       notas: sub.notas || '',
+                                      zona1_2: sub.zona1_2 || 0,
+                                      zona3_4: sub.zona3_4 || 0,
+                                      zona5: sub.zona5 || 0,
                                     })
                                     setModalSubbloque({ ...sub, bloque_id: b.id })
                                   }}>Editar</button>
