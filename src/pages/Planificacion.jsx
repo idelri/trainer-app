@@ -900,14 +900,112 @@ export default function Planificacion() {
                                 </div>
                                 <ZonasSubbloque sub={sub} semsDelSub={semsDelSubData} />
                               </div>
-                              {objetivoVisible[sub.id] && sub.notas && (
-                                <div style={{ padding: '8px 16px 12px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                                  {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
-                                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5, opacity: 0.7 }} />
-                                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
-                                    </div>
-                                  ))}
+                              {objetivoVisible[sub.id] && (
+                                <div style={{ padding: '10px 16px 14px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {/* Contenidos */}
+                                    {sub.notas && (
+                                      <div>
+                                        <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
+                                        {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 3 }}>
+                                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5, opacity: 0.7 }} />
+                                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {/* Zonas */}
+                                    {(() => {
+                                      const tieneObj = sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0
+                                      const totalMin = semsDelSubData.reduce((s, x) => s + (x.zona1_2_real || 0) + (x.zona3_4_real || 0) + (x.zona5_real || 0), 0)
+                                      const z1r = semsDelSubData.reduce((s, x) => s + (x.zona1_2_real || 0), 0)
+                                      const z3r = semsDelSubData.reduce((s, x) => s + (x.zona3_4_real || 0), 0)
+                                      const z5r = semsDelSubData.reduce((s, x) => s + (x.zona5_real || 0), 0)
+                                      const tieneReal = totalMin > 0
+                                      if (!tieneObj && !tieneReal) return null
+                                      return (
+                                        <div>
+                                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Zonas</div>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {tieneObj && (
+                                              <div>
+                                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Objetivo</div>
+                                                <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 4 }}>
+                                                  {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981', opacity: 0.5 }} />}
+                                                  {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b', opacity: 0.5 }} />}
+                                                  {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444', opacity: 0.5 }} />}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                  {sub.zona1_2 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {sub.zona1_2}%</span>}
+                                                  {sub.zona3_4 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {sub.zona3_4}%</span>}
+                                                  {sub.zona5 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {sub.zona5}%</span>}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {tieneReal && (
+                                              <div>
+                                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Real acumulado — {totalMin} min</div>
+                                                <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 4 }}>
+                                                  {z1r > 0 && <div style={{ width: `${(z1r / totalMin) * 100}%`, background: '#10b981' }} />}
+                                                  {z3r > 0 && <div style={{ width: `${(z3r / totalMin) * 100}%`, background: '#f59e0b' }} />}
+                                                  {z5r > 0 && <div style={{ width: `${(z5r / totalMin) * 100}%`, background: '#ef4444' }} />}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                  {z1r > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {Math.round((z1r / totalMin) * 100)}% ({z1r}min)</span>}
+                                                  {z3r > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {Math.round((z3r / totalMin) * 100)}% ({z3r}min)</span>}
+                                                  {z5r > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {Math.round((z5r / totalMin) * 100)}% ({z5r}min)</span>}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    })()}
+                                    {/* Volumen */}
+                                    {(() => {
+                                      const kmRealTotal = semsDelSubData.reduce((s, x) => s + (x.km_real || 0), 0)
+                                      const semsConKm = semsDelSubData.filter(s => s.km_real)
+                                      const kmRealMedio = semsConKm.length > 0 ? Math.round(kmRealTotal / semsConKm.length) : 0
+                                      const tieneKm = sub.km_min || sub.km_max || kmRealMedio > 0
+                                      if (!tieneKm) return null
+                                      const kmMax = Math.max(sub.km_max || 0, kmRealMedio, 1)
+                                      const pctKm = sub.km_max && kmRealMedio > 0 ? Math.round((kmRealMedio / sub.km_max) * 100) : null
+                                      return (
+                                        <div>
+                                          <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Volumen</div>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {(sub.km_min || sub.km_max) && (
+                                              <div>
+                                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Objetivo — {sub.km_min && sub.km_max ? `${sub.km_min}–${sub.km_max} km/sem` : sub.km_min ? `${sub.km_min}+ km/sem` : `máx ${sub.km_max} km/sem`}</div>
+                                                <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
+                                                  {sub.km_min && <div style={{ position: 'absolute', left: 0, height: '100%', width: `${Math.min((sub.km_min / kmMax) * 100, 100)}%`, background: '#3b82f6', opacity: 0.25, borderRadius: 5 }} />}
+                                                  {sub.km_max && <div style={{ position: 'absolute', left: 0, height: '100%', width: `${Math.min((sub.km_max / kmMax) * 100, 100)}%`, background: '#3b82f6', opacity: 0.15, borderRadius: 5 }} />}
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, marginTop: 2 }}>
+                                                  {sub.km_min && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>{sub.km_min} km</span>}
+                                                  {sub.km_min && sub.km_max && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>–</span>}
+                                                  {sub.km_max && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>{sub.km_max} km</span>}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {kmRealMedio > 0 && (
+                                              <div>
+                                                <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Real medio — {kmRealMedio} km/sem</div>
+                                                <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
+                                                  <div style={{ height: '100%', width: `${Math.min((kmRealMedio / kmMax) * 100, 100)}%`, background: '#3b82f6', borderRadius: 5 }} />
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                                                  <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6' }}>{kmRealMedio} km</span>
+                                                  {pctKm && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: kmRealMedio >= (sub.km_min || 0) ? '#10b981' : '#f59e0b' }}>{pctKm}% del objetivo</span>}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
                                 </div>
                               )}
                               {semsDelSubNums.map(num => <FilaSemana key={num} b={b} num={num} semsBloque={semsBloque} subsBloque={subsBloque} />)}
