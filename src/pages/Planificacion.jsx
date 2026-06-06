@@ -1461,6 +1461,16 @@ export default function Planificacion() {
                 <input className="form-input" type="number" min="1" value={formSubbloque.semana_fin} onChange={e => setFormSubbloque(f => ({ ...f, semana_fin: e.target.value }))} />
               </div>
             </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Km/semana mín</label>
+                <input className="form-input" type="number" min="0" value={formSubbloque.km_min || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_min: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 20" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Km/semana máx</label>
+                <input className="form-input" type="number" min="0" value={formSubbloque.km_max || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_max: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 25" />
+              </div>
+            </div>
           
             <div className="form-group">
               <label className="form-label">Contenidos</label>
