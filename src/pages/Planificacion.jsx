@@ -269,6 +269,8 @@ export default function Planificacion() {
       zona1_2: parseInt(formSubbloque.zona1_2) || 0,
       zona3_4: parseInt(formSubbloque.zona3_4) || 0,
       zona5: parseInt(formSubbloque.zona5) || 0,
+      km_min: formSubbloque.km_min || null,
+      km_max: formSubbloque.km_max || null,
     }
     if (modalSubbloque.id) {
       await supabase.from('subbloques').update(datos).eq('id', modalSubbloque.id)
