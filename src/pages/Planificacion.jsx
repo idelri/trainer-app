@@ -1469,6 +1469,46 @@ export default function Planificacion() {
               <label className="form-label">Notas / Contenidos</label>
               <textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes Z2\nTécnica de carrera"} style={{ minHeight: 120 }} />
             </div>
+            <div className="form-group" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <label className="form-label">Zonas reales (lo que se hizo)</label>
+              {[
+                { key: 'zona1_2_real', label: 'Z1-Z2', sublabel: 'Base / Recuperación', color: '#10b981' },
+                { key: 'zona3_4_real', label: 'Z3-Z4', sublabel: 'Umbral / Calidad', color: '#f59e0b' },
+                { key: 'zona5_real', label: 'Z5-Z5+', sublabel: 'Alta intensidad', color: '#ef4444' },
+              ].map(zona => (
+                <div key={zona.key} style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>{zona.sublabel}</span>
+                    </div>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSemana[zona.key] || 0}%</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={formSemana[zona.key] || 0}
+                    onChange={e => {
+                      const val = parseInt(e.target.value)
+                      const otrasZonas = ['zona1_2_real', 'zona3_4_real', 'zona5_real'].filter(k => k !== zona.key)
+                      const totalOtras = otrasZonas.reduce((s, k) => s + (formSemana[k] || 0), 0)
+                      const resto = 100 - val
+                      const nuevasZonas = {}
+                      if (totalOtras === 0) {
+                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round(resto / 2) })
+                      } else {
+                        otrasZonas.forEach(k => { nuevasZonas[k] = Math.round((formSemana[k] / totalOtras) * resto) })
+                      }
+                      setFormSemana(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
+                    }}
+                    style={{ width: '100%', accentColor: zona.color }} />
+                </div>
+              ))}
+              {((formSemana.zona1_2_real || 0) + (formSemana.zona3_4_real || 0) + (formSemana.zona5_real || 0)) > 0 && (
+                <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginTop: 4 }}>
+                  {(formSemana.zona1_2_real || 0) > 0 && <div style={{ width: `${formSemana.zona1_2_real}%`, background: '#10b981' }} />}
+                  {(formSemana.zona3_4_real || 0) > 0 && <div style={{ width: `${formSemana.zona3_4_real}%`, background: '#f59e0b' }} />}
+                  {(formSemana.zona5_real || 0) > 0 && <div style={{ width: `${formSemana.zona5_real}%`, background: '#ef4444' }} />}
+                </div>
+              )}
+            </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSemana(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSemana} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
