@@ -552,6 +552,25 @@ export default function Planificacion() {
               <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
 
                 
+{/* Marcador estás aquí */}
+                {(() => {
+                  const hoy2 = new Date()
+                  const ini2 = parseISO(planificacion.fecha_inicio)
+                  const fin2 = parseISO(planificacion.fecha_fin)
+                  const enCurso2 = hoy2 >= ini2 && hoy2 <= fin2
+                  if (!enCurso2) return null
+                  const dias2 = (hoy2 - ini2) / (1000 * 60 * 60 * 24)
+                  const pct2 = (dias2 / (totalSemanas * 7)) * 100
+                  return (
+                    <div style={{ position: 'relative', height: 20, marginBottom: 2 }}>
+                      <div style={{ position: 'absolute', left: `${pct2}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
+                        <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap', background: 'var(--accent-light)', padding: '1px 6px', borderRadius: 4, border: '1px solid var(--accent)' }}>
+                          ▼ Estás aquí
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Bloques */}
                 <div style={{ display: 'flex', gap: 2, marginBottom: 3 }}>
