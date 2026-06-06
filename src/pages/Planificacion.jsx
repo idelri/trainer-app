@@ -1191,6 +1191,17 @@ export default function Planificacion() {
                                         </div>
                                         <div style={{ flex: 1 }}>
                                           {sem?.objetivo ? <div style={{ fontSize: 13 }}>{sem.objetivo}</div> : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin objetivo — clic para añadir</div>}
+                                          {(sem?.km_objetivo || sem?.km_real) && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                              {sem?.km_objetivo && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>obj: {sem.km_objetivo}km</span>}
+                                              {sem?.km_real && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', fontWeight: 600 }}>real: {sem.km_real}km</span>}
+                                              {sem?.km_objetivo && sem?.km_real && (
+                                                <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: sem.km_real >= sem.km_objetivo ? '#10b981' : '#ef4444' }}>
+                                                  ({sem.km_real >= sem.km_objetivo ? '+' : ''}{sem.km_real - sem.km_objetivo}km)
+                                                </span>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                           {sem?.notas && (
