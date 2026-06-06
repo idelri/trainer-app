@@ -962,6 +962,29 @@ export default function Planificacion() {
                                             </div>
                                           </div>
                                         )}
+                                        {(() => {
+                                          const kmObj = sub.km_min && sub.km_max ? `${sub.km_min}-${sub.km_max} km/sem` : sub.km_min ? `${sub.km_min}+ km/sem` : null
+                                          const semsConKm = semsDelSub.filter(s => s.km_real)
+                                          const kmRealTotal = semsDelSub.reduce((s, x) => s + (x.km_real || 0), 0)
+                                          const kmRealMedio = semsConKm.length > 0 ? Math.round(kmRealTotal / semsConKm.length) : 0
+                                          if (!kmObj && kmRealMedio === 0) return null
+                                          const kmMax = Math.max(sub.km_max || 0, kmRealMedio, 1)
+                                          return (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                              <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', flexShrink: 0 }}>Vol</span>
+                                              {kmObj && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text2)', opacity: 0.7 }}>obj: {kmObj}</span>}
+                                              {kmRealMedio > 0 && (
+                                                <>
+                                                  <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                                                    {sub.km_max && <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min((sub.km_min / sub.km_max) * 100, 100)}%`, background: '#3b82f6', opacity: 0.3, borderRadius: 2 }} />}
+                                                    <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min((kmRealMedio / kmMax) * 100, 100)}%`, background: '#3b82f6', borderRadius: 2 }} />
+                                                  </div>
+                                                  <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', flexShrink: 0 }}>real: {kmRealMedio} km/sem</span>
+                                                </>
+                                              )}
+                                            </div>
+                                          )
+                                        })()}
                                         {tieneReal && (
                                           <div>
                                             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Real — {totalMin} min</div>
