@@ -50,7 +50,7 @@ export default function App() {
 
   if (!session) return <Login />
 
-  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, tareas: Tareas, planificacion: Planificacion }
+  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, planificacion: Planificacion }
   const Page = PAGES[page]
 
   return (
