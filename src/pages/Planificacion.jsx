@@ -304,6 +304,9 @@ export default function Planificacion() {
       objetivo: semanaExistente?.objetivo || '',
       notas: semanaExistente?.notas || '',
       carga: semanaExistente?.carga || 'media',
+      zona1_2_real: semanaExistente?.zona1_2_real || 0,
+      zona3_4_real: semanaExistente?.zona3_4_real || 0,
+      zona5_real: semanaExistente?.zona5_real || 0,
     })
     setModalSemana({ bloque_id, numero, semanaExistente })
   }
