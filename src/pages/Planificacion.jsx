@@ -309,7 +309,7 @@ export default function Planificacion() {
 
     // Buscar el sub bloque al que pertenece esta semana
     const subDeLaSemana = (subbloques[bloque_id] || []).find(s => numero >= s.semana_inicio && numero <= s.semana_fin)
-    const objetivoPorDefecto = semanaExistente?.objetivo || (subDeLaSemana?.notas ? subDeLaSemana.notas : '')
+    const objetivoPorDefecto = semanaExistente?.objetivo || (subDeLaSemana?.nombre ? subDeLaSemana.nombre : '')
 
     setFormSemana({
       objetivo: objetivoPorDefecto,
