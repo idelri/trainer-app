@@ -1042,20 +1042,66 @@ export default function Planificacion() {
                             return (
                               <div key={sub.id}>
                                 {/* Cabecera sub bloque */}
-                                <div style={{ padding: '8px 16px', background: 'var(--bg2)', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
-                                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
-                                  <span style={{ fontWeight: 600, fontSize: 12 }}>{sub.nombre}</span>
-                                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>S{sub.semana_inicio}–S{sub.semana_fin}</span>
-                                  {sub.notas && (
-                                    <button className="btn btn-ghost btn-sm"
-                                      title={objetivoVisible[sub.id] ? 'Ocultar contenidos' : 'Ver contenidos'}
-                                      onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))}
-                                      style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
-                                      <Layers size={12} />
-                                    </button>
-                                  )}
+                                <div style={{ padding: '10px 16px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 600, fontSize: 12 }}>{sub.nombre}</span>
+                                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>S{sub.semana_inicio}–S{sub.semana_fin}</span>
+                                    {sub.notas && (
+                                      <button className="btn btn-ghost btn-sm"
+                                        title={objetivoVisible[sub.id] ? 'Ocultar contenidos' : 'Ver contenidos'}
+                                        onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))}
+                                        style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}>
+                                        <Layers size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {(() => {
+                                    const semsBloque = semanas[b.id] || []
+                                    const semsDelSub = semsBloque.filter(s => s.numero >= sub.semana_inicio && s.numero <= sub.semana_fin)
+                                    const totalMin = semsDelSub.reduce((s, x) => s + (x.zona1_2_real || 0) + (x.zona3_4_real || 0) + (x.zona5_real || 0), 0)
+                                    const z1real = semsDelSub.reduce((s, x) => s + (x.zona1_2_real || 0), 0)
+                                    const z3real = semsDelSub.reduce((s, x) => s + (x.zona3_4_real || 0), 0)
+                                    const z5real = semsDelSub.reduce((s, x) => s + (x.zona5_real || 0), 0)
+                                    const tieneObjetivo = sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0
+                                    const tieneReal = totalMin > 0
+                                    if (!tieneObjetivo && !tieneReal) return null
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {tieneObjetivo && (
+                                          <div>
+                                            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 3 }}>Objetivo</div>
+                                            <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 2 }}>
+                                              {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981', opacity: 0.6 }} />}
+                                              {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b', opacity: 0.6 }} />}
+                                              {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444', opacity: 0.6 }} />}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                              {sub.zona1_2 > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#10b981', opacity: 0.8 }}>Z1-Z2 {sub.zona1_2}%</span>}
+                                              {sub.zona3_4 > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#f59e0b', opacity: 0.8 }}>Z3-Z4 {sub.zona3_4}%</span>}
+                                              {sub.zona5 > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#ef4444', opacity: 0.8 }}>Z5-Z5+ {sub.zona5}%</span>}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {tieneReal && (
+                                          <div>
+                                            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 3 }}>Real acumulado — {totalMin} min</div>
+                                            <div style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 2 }}>
+                                              {z1real > 0 && <div style={{ width: `${(z1real / totalMin) * 100}%`, background: '#10b981' }} />}
+                                              {z3real > 0 && <div style={{ width: `${(z3real / totalMin) * 100}%`, background: '#f59e0b' }} />}
+                                              {z5real > 0 && <div style={{ width: `${(z5real / totalMin) * 100}%`, background: '#ef4444' }} />}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                              {z1real > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {Math.round((z1real / totalMin) * 100)}%</span>}
+                                              {z3real > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {Math.round((z3real / totalMin) * 100)}%</span>}
+                                              {z5real > 0 && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {Math.round((z5real / totalMin) * 100)}%</span>}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
-
                                 {/* Contenidos sub bloque desplegable */}
                                 {objetivoVisible[sub.id] && (sub.notas || sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
                                   <div style={{ padding: '8px 16px 12px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
