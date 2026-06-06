@@ -898,7 +898,6 @@ export default function Planificacion() {
                                   <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>S{sub.semana_inicio}–S{sub.semana_fin}</span>
                                   <button className="btn btn-ghost btn-sm" onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))} style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}><Layers size={12} /></button>
                                 </div>
-                                <ZonasSubbloque sub={sub} semsDelSub={semsDelSubData} />
                               </div>
                               {objetivoVisible[sub.id] && (
                                 <div style={{ padding: '10px 16px 14px 30px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
