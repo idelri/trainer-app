@@ -1195,7 +1195,7 @@ export default function Planificacion() {
                                           <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                         : <div style={{ fontSize: 13, color: 'var(--text3)' }} onClick={() => abrirSemana(b.id, num)}>{(subbloques[b.id] || []).find(s => num >= s.semana_inicio && num <= s.semana_fin)?.nombre || 'Clic para añadir objetivo'}</div>}
+                                         : <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>{(subbloques[b.id] || []).find(s => num >= s.semana_inicio && num <= s.semana_fin)?.nombre || 'Clic para añadir objetivo'}</div>
                                           {(sem?.km_objetivo || sem?.km_real) && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                                               {sem?.km_objetivo && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>obj: {sem.km_objetivo}km</span>}
