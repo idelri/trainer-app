@@ -14,7 +14,6 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
   { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
   { id: 'pagos',     label: 'Pagos',     icon: EuroIcon },
-  { id: 'tareas',    label: 'Tareas',    icon: CheckIcon },
   { id: 'planificacion', label: 'Plan.', icon: CalendarIcon },
 ]
 
