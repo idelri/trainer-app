@@ -929,21 +929,53 @@ export default function Planificacion() {
                                       </div>
                                     </>
                                   )}
-                                  {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
-                                    <div>
-                                      <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Zonas</div>
-                                      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-                                        {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981' }} />}
-                                        {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b' }} />}
-                                        {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444' }} />}
+                                  {(() => {
+                                    // Calcular zonas reales sumando semanas del sub bloque
+                                    const semsBloque = semanas[b.id] || []
+                                    const semsDelSub = semsBloque.filter(s => s.numero >= sub.semana_inicio && s.numero <= sub.semana_fin)
+                                    const totalMin = semsDelSub.reduce((s, x) => s + (x.zona1_2_real || 0) + (x.zona3_4_real || 0) + (x.zona5_real || 0), 0)
+                                    const z1real = semsDelSub.reduce((s, x) => s + (x.zona1_2_real || 0), 0)
+                                    const z3real = semsDelSub.reduce((s, x) => s + (x.zona3_4_real || 0), 0)
+                                    const z5real = semsDelSub.reduce((s, x) => s + (x.zona5_real || 0), 0)
+                                    const tieneObjetivo = sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0
+                                    const tieneReal = totalMin > 0
+
+                                    if (!tieneObjetivo && !tieneReal) return null
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {tieneObjetivo && (
+                                          <div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivo zonas</div>
+                                            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                                              {sub.zona1_2 > 0 && <div style={{ width: `${sub.zona1_2}%`, background: '#10b981', opacity: 0.6 }} />}
+                                              {sub.zona3_4 > 0 && <div style={{ width: `${sub.zona3_4}%`, background: '#f59e0b', opacity: 0.6 }} />}
+                                              {sub.zona5 > 0 && <div style={{ width: `${sub.zona5}%`, background: '#ef4444', opacity: 0.6 }} />}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 10 }}>
+                                              {sub.zona1_2 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981', opacity: 0.8 }}>Z1-Z2 {sub.zona1_2}%</span>}
+                                              {sub.zona3_4 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b', opacity: 0.8 }}>Z3-Z4 {sub.zona3_4}%</span>}
+                                              {sub.zona5 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444', opacity: 0.8 }}>Z5-Z5+ {sub.zona5}%</span>}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {tieneReal && (
+                                          <div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Real — {totalMin} min</div>
+                                            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+                                              {z1real > 0 && <div style={{ width: `${(z1real / totalMin) * 100}%`, background: '#10b981' }} />}
+                                              {z3real > 0 && <div style={{ width: `${(z3real / totalMin) * 100}%`, background: '#f59e0b' }} />}
+                                              {z5real > 0 && <div style={{ width: `${(z5real / totalMin) * 100}%`, background: '#ef4444' }} />}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 10 }}>
+                                              {z1real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {Math.round((z1real / totalMin) * 100)}% ({z1real}min)</span>}
+                                              {z3real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {Math.round((z3real / totalMin) * 100)}% ({z3real}min)</span>}
+                                              {z5real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {Math.round((z5real / totalMin) * 100)}% ({z5real}min)</span>}
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                        {sub.zona1_2 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {sub.zona1_2}%</span>}
-                                        {sub.zona3_4 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {sub.zona3_4}%</span>}
-                                        {sub.zona5 > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {sub.zona5}%</span>}
-                                      </div>
-                                    </div>
-                                  )}
+                                    )
+                                  })()}
                                 </div>
                               )}
                             </div>
