@@ -908,6 +908,8 @@ export default function Planificacion() {
                                       zona1_2: sub.zona1_2 || 0,
                                       zona3_4: sub.zona3_4 || 0,
                                       zona5: sub.zona5 || 0,
+                                      km_min: sub.km_min || null,
+                                      km_max: sub.km_max || null,
                                     })
                                     setModalSubbloque({ ...sub, bloque_id: b.id })
                                   }}>Editar</button>
