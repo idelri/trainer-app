@@ -1205,14 +1205,58 @@ export default function Planificacion() {
                                     <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaSem}</div>
                                   </div>
                                 </div>
-                                {objetivoVisible[`sem-${b.id}-${num}`] && sem?.notas && (
-                                  <div style={{ padding: '0 16px 10px 56px' }}>
-                                    {sem.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
-                                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
-                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5 }} />
-                                        <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                {objetivoVisible[`sem-${b.id}-${num}`] && (sem?.notas || sem?.zona1_2_real > 0 || sem?.zona3_4_real > 0 || sem?.zona5_real > 0) && (
+                                  <div style={{ padding: '0 16px 12px 56px' }}>
+                                    {sem?.notas && (
+                                      <div style={{ marginBottom: 10 }}>
+                                        {sem.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
+                                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 3 }}>
+                                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5 }} />
+                                            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
+                                    )}
+                                    {(sem?.zona1_2_real > 0 || sem?.zona3_4_real > 0 || sem?.zona5_real > 0) && (
+                                      <div>
+                                        <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Real vs Objetivo</div>
+                                        {(() => {
+                                          const subActual = (subbloques[b.id] || []).find(s => num >= s.semana_inicio && num <= s.semana_fin)
+                                          return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                              {subActual && (subActual.zona1_2 > 0 || subActual.zona3_4 > 0 || subActual.zona5 > 0) && (
+                                                <div>
+                                                  <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 3 }}>Objetivo</div>
+                                                  <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+                                                    {subActual.zona1_2 > 0 && <div style={{ width: `${subActual.zona1_2}%`, background: '#10b981', opacity: 0.5 }} />}
+                                                    {subActual.zona3_4 > 0 && <div style={{ width: `${subActual.zona3_4}%`, background: '#f59e0b', opacity: 0.5 }} />}
+                                                    {subActual.zona5 > 0 && <div style={{ width: `${subActual.zona5}%`, background: '#ef4444', opacity: 0.5 }} />}
+                                                  </div>
+                                                  <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                                                    {subActual.zona1_2 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981', opacity: 0.7 }}>Z1-Z2 {subActual.zona1_2}%</span>}
+                                                    {subActual.zona3_4 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b', opacity: 0.7 }}>Z3-Z4 {subActual.zona3_4}%</span>}
+                                                    {subActual.zona5 > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444', opacity: 0.7 }}>Z5-Z5+ {subActual.zona5}%</span>}
+                                                  </div>
+                                                </div>
+                                              )}
+                                              <div>
+                                                <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 3 }}>Real</div>
+                                                <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+                                                  {sem.zona1_2_real > 0 && <div style={{ width: `${sem.zona1_2_real}%`, background: '#10b981' }} />}
+                                                  {sem.zona3_4_real > 0 && <div style={{ width: `${sem.zona3_4_real}%`, background: '#f59e0b' }} />}
+                                                  {sem.zona5_real > 0 && <div style={{ width: `${sem.zona5_real}%`, background: '#ef4444' }} />}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                                                  {sem.zona1_2_real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#10b981' }}>Z1-Z2 {sem.zona1_2_real}%</span>}
+                                                  {sem.zona3_4_real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#f59e0b' }}>Z3-Z4 {sem.zona3_4_real}%</span>}
+                                                  {sem.zona5_real > 0 && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#ef4444' }}>Z5-Z5+ {sem.zona5_real}%</span>}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )
+                                        })()}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
