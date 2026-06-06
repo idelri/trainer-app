@@ -306,14 +306,19 @@ export default function Planificacion() {
   function abrirSemana(bloque_id, numero) {
     const semsBloque = semanas[bloque_id] || []
     const semanaExistente = semsBloque.find(s => s.numero === numero)
+
+    // Buscar el sub bloque al que pertenece esta semana
+    const subDeLaSemana = (subbloques[bloque_id] || []).find(s => numero >= s.semana_inicio && numero <= s.semana_fin)
+    const objetivoPorDefecto = semanaExistente?.objetivo || (subDeLaSemana?.notas ? subDeLaSemana.notas : '')
+
     setFormSemana({
-      objetivo: semanaExistente?.objetivo || '',
+      objetivo: objetivoPorDefecto,
       notas: semanaExistente?.notas || '',
       carga: semanaExistente?.carga || 'media',
       zona1_2_real: semanaExistente?.zona1_2_real || 0,
       zona3_4_real: semanaExistente?.zona3_4_real || 0,
       zona5_real: semanaExistente?.zona5_real || 0,
-      km_objetivo: semanaExistente?.km_objetivo || null,
+      km_objetivo: semanaExistente?.km_objetivo || subDeLaSemana?.km_min || null,
       km_real: semanaExistente?.km_real || null,
     })
     setModalSemana({ bloque_id, numero, semanaExistente })
