@@ -224,6 +224,9 @@ export default function Planificacion() {
         objetivo: formSemana.objetivo || null,
         notas: formSemana.notas || null,
         carga: formSemana.carga,
+        zona1_2_real: formSemana.zona1_2_real || 0,
+        zona3_4_real: formSemana.zona3_4_real || 0,
+        zona5_real: formSemana.zona5_real || 0,
       }).eq('id', semanaExistente.id)
     } else {
       await supabase.from('semanas').insert({
@@ -232,6 +235,9 @@ export default function Planificacion() {
         objetivo: formSemana.objetivo || null,
         notas: formSemana.notas || null,
         carga: formSemana.carga,
+        zona1_2_real: formSemana.zona1_2_real || 0,
+        zona3_4_real: formSemana.zona3_4_real || 0,
+        zona5_real: formSemana.zona5_real || 0,
       })
     }
     setSaving(false)
