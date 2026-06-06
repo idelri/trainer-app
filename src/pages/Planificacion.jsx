@@ -57,7 +57,7 @@ export default function Planificacion() {
   const [formDisponibilidad, setFormDisponibilidad] = useState('')
   const [subbloques, setSubbloques] = useState({})
   const [modalSubbloque, setModalSubbloque] = useState(null)
-  const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0 })
+  const [formSubbloque, setFormSubbloque] = useState({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0, km_min: null, km_max: null })
 
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) } }, [clienteSeleccionado])
