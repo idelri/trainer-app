@@ -290,7 +290,7 @@ export default function Planificacion() {
                 {sem?.km_real && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', fontWeight: 600 }}>real: {sem.km_real}km</span>}
                 {sem?.km_objetivo && sem?.km_real && (
                   <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: sem.km_real >= sem.km_objetivo ? '#10b981' : '#ef4444' }}>
-                    ({sem.km_real >= sem.km_objetivo ? '+' : ''}{sem.km_real - sem.km_objetivo}km)
+                    {Math.round((sem.km_real / sem.km_objetivo) * 100)}%
                   </span>
                 )}
               </div>
