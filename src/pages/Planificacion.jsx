@@ -1368,8 +1368,8 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
               <button className="btn btn-ghost btn-sm" onClick={() => setModalCopiarBloque(null)}><X size={14} /></button>
             </div>
             <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 'var(--radius)' }}>
-              Copiando: <strong>{modalCopiarBloque.bloque.nombre}</strong><br />
-              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Se copiarán el bloque, sus sub bloques y semanas (sin datos reales).</span>
+             Copiando: <strong>{modalCopiarBloque.subbloque ? modalCopiarBloque.subbloque.nombre : modalCopiarBloque.bloque.nombre}</strong><br />
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{modalCopiarBloque.subbloque ? 'Se copiará el sub bloque a un bloque de la planificación destino.' : 'Se copiarán el bloque, sus sub bloques y semanas (sin datos reales).'}</span>
             </div>
             <div className="form-group">
               <label className="form-label">Cliente destino *</label>
