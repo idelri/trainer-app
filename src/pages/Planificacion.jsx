@@ -263,9 +263,11 @@ export default function Planificacion() {
     const fechaSemana = addWeeks(parseISO(b.fecha_inicio), num - 1)
     const compsSem = competiciones.filter(c => { const fc = parseISO(c.fecha); return fc >= fechaSemana && fc < addWeeks(fechaSemana, 1) })
     const tieneContenido = sem?.notas || sem?.zona1_2_real > 0 || sem?.zona3_4_real > 0 || sem?.zona5_real > 0
+    const hoy = new Date()
+    const esSemanaActual = hoy >= fechaSemana && hoy < addWeeks(fechaSemana, 1)
 
     return (
-      <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', background: esSemanaActual ? 'var(--accent-light)' : 'transparent' }}>
         {compsSem.map(comp => (
           <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: 'var(--danger-light)', borderBottom: '1px solid var(--danger)', cursor: 'pointer' }}
             onClick={() => { setFormComp({ nombre: comp.nombre, fecha: comp.fecha, tipo: comp.tipo || '', objetivo: comp.objetivo || '', notas: comp.notas || '' }); setModalComp({ ...comp }) }}>
