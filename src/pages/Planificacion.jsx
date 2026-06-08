@@ -970,7 +970,8 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                       const tieneKm = sub.km_min || sub.km_max || kmRealMedio > 0
                                       if (!tieneKm) return null
                                       const kmMax = Math.max(sub.km_max || 0, kmRealMedio, 1)
-                                      const pctKm = sub.km_max && kmRealMedio > 0 ? Math.round((kmRealMedio / sub.km_max) * 100) : null
+                                      const kmObjetivoMedio = sub.km_min && sub.km_max ? (sub.km_min + sub.km_max) / 2 : sub.km_max || sub.km_min || null
+const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmObjetivoMedio) * 100) : null
                                       return (
                                         <div>
                                           <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Volumen</div>
