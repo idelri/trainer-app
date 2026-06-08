@@ -1195,13 +1195,30 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
         </div>
       )}
 
-      {modalSemanaTipo && (
+     {modalSemanaTipo && (
         <div className="modal-backdrop" onClick={() => setModalSemanaTipo(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header"><span className="modal-title">Semana tipo</span><button className="btn btn-ghost btn-sm" onClick={() => setModalSemanaTipo(false)}><X size={14} /></button></div>
-            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
-              <div key={dia} className="form-group"><label className="form-label">{dia}</label><input className="form-input" value={formSemanaTipo[dia] || ''} onChange={e => setFormSemanaTipo(f => ({ ...f, [dia]: e.target.value }))} placeholder="Ej: Rodaje Z2, Fuerza, Descanso..." /></div>
-            ))}
+            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => {
+              const entrada = formSemanaTipo[dia] || {}
+              const texto = typeof entrada === 'string' ? entrada : (entrada.texto || '')
+              const color = typeof entrada === 'string' ? '#2d6a4f' : (entrada.color || '#2d6a4f')
+              const PALETA = ['#2d6a4f', '#3b82f6', '#f97316', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6b7280', '#10b981']
+              return (
+                <div key={dia} className="form-group">
+                  <label className="form-label">{dia}</label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input className="form-input" style={{ flex: 1 }} value={texto} onChange={e => setFormSemanaTipo(f => ({ ...f, [dia]: { texto: e.target.value, color } }))} placeholder="Ej: Rodaje Z2, Fuerza, Descanso..." />
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {PALETA.map(c => (
+                        <div key={c} onClick={() => setFormSemanaTipo(f => ({ ...f, [dia]: { texto, color: c } }))}
+                          style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '2px solid var(--text)' : '2px solid transparent', flexShrink: 0 }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
             <div className="form-group"><label className="form-label">Disponibilidad habitual</label><textarea className="form-textarea" value={formDisponibilidad} onChange={e => setFormDisponibilidad(e.target.value)} placeholder={"Ej: Mañanas L-V de 7-8h\nFines de semana más flexible"} /></div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSemanaTipo(false)}>Cancelar</button>
@@ -1210,7 +1227,6 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
           </div>
         </div>
       )}
-
       {modalConsideraciones && (
         <div className="modal-backdrop" onClick={() => setModalConsideraciones(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -1223,7 +1239,6 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
           </div>
         </div>
       )}
-
       {modalComp && (
         <div className="modal-backdrop" onClick={() => setModalComp(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
