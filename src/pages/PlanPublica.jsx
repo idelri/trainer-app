@@ -247,7 +247,8 @@ export default function PlanPublica({ token }) {
                   <div style={{ background: 'white', border: '1px solid #d8d5cc', borderRadius: 10, padding: '16px 20px' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Semana tipo</div>
                     {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia, i) => {
-                      const val = cliente.semana_tipo[dia] || ''
+                      const entrada = cliente.semana_tipo[dia]
+const val = !entrada ? '' : typeof entrada === 'string' ? entrada : Array.isArray(entrada) ? entrada.map(x => x.texto).filter(Boolean).join(', ') : (entrada.texto || '')
                       return (
                         <div key={dia} style={{ display: 'flex', gap: 10, padding: '5px 0', borderBottom: i < 6 ? '1px solid #eceae4' : 'none' }}>
                           <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#9a9890', width: 72, flexShrink: 0 }}>{dia}</span>
