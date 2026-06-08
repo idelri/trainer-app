@@ -491,9 +491,9 @@ export default function Planificacion() {
                       const fechaFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), 'MMM yyyy', { locale: es })
                       const fechaIni = format(parseISO(b.fecha_inicio), 'MMM yyyy', { locale: es })
                       return (
-                        <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 3, height: 32, background: b.color || '#2d6a4f', borderRadius: 2, flexShrink: 0 }} />
-          <div>
+                       <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 3, height: 32, background: b.color || '#2d6a4f', borderRadius: 2, flexShrink: 0 }} />
+                        <div>
                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} sem · {fechaIni}–{fechaFin}</div>
                         </div>
                         </div>
