@@ -503,7 +503,30 @@ export default function Planificacion() {
           {vista === 'timeline' && (
             <>
               <div className="card" style={{ overflowX: 'auto', marginBottom: 16 }}>
-                <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
+               <div style={{ minWidth: Math.max(totalSemanas * 40, 400), position: 'relative' }}>
+                  {(() => {
+                    const hoy = new Date()
+                    const inicio = parseISO(planificacion.fecha_inicio)
+                    const fin = parseISO(planificacion.fecha_fin)
+                    const totalDias = (fin - inicio) / (1000 * 60 * 60 * 24)
+                    const diasTranscurridos = Math.max(0, Math.min((hoy - inicio) / (1000 * 60 * 60 * 24), totalDias))
+                    const pct = Math.round((diasTranscurridos / totalDias) * 100)
+                    const semanaActual = Math.max(1, Math.min(Math.ceil(diasTranscurridos / 7), totalSemanas))
+                    const enCurso = hoy >= inicio && hoy <= fin
+                    if (!enCurso) return null
+                    return (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(inicio, 'dd MMM yyyy', { locale: es })}</span>
+                          <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 700 }}>S{semanaActual} / {totalSemanas} — {pct}%</span>
+                          <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(fin, 'dd MMM yyyy', { locale: es })}</span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {(() => {
                     const hoy2 = new Date(); const ini2 = parseISO(planificacion.fecha_inicio); const fin2 = parseISO(planificacion.fecha_fin)
                     if (hoy2 < ini2 || hoy2 > fin2) return null
