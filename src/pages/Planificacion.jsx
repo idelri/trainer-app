@@ -278,8 +278,13 @@ export default function Planificacion() {
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer' }} onClick={() => abrirSemana(b.id, num)}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: esSemanaActual ? 'var(--accent)' : cargaSem ? cargaSem.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: esSemanaActual ? '0 0 0 2px var(--accent)' : 'none' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: esSemanaActual || cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
+            </div>
+            {esSemanaActual && (
+              <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', fontSize: 10, whiteSpace: 'nowrap', color: 'var(--accent)', fontWeight: 700 }}>📍</div>
+            )}
           </div>
           <div style={{ flex: 1 }}>
             {sem?.objetivo
