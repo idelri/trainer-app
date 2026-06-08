@@ -525,14 +525,7 @@ export default function Planificacion() {
             </>
           )}
 
-          {vista !== 'timeline' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-              {[{ label: 'Bloques', value: bloques.length }, { label: 'Sub bloques', value: Object.values(subbloques).flat().length }, { label: 'Semanas', value: totalSemanas }, { label: 'Compet.', value: competiciones.length }].map(s => (
-                <div key={s.label} className="stat-card" style={{ padding: '10px 14px' }}><div className="label">{s.label}</div><div className="value">{s.value}</div></div>
-              ))}
-            </div>
-          )}
-
+         
           {/* ===== RESUMEN (TIMELINE) ===== */}
           {vista === 'timeline' && (
             <>
