@@ -1200,23 +1200,44 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
         <div className="modal-backdrop" onClick={() => setModalSemanaTipo(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header"><span className="modal-title">Semana tipo</span><button className="btn btn-ghost btn-sm" onClick={() => setModalSemanaTipo(false)}><X size={14} /></button></div>
-            {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => {
-              const entrada = formSemanaTipo[dia] || {}
-              const texto = typeof entrada === 'string' ? entrada : (entrada.texto || '')
-              const color = typeof entrada === 'string' ? '#2d6a4f' : (entrada.color || '#2d6a4f')
+           {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => {
               const PALETA = ['#2d6a4f', '#3b82f6', '#f97316', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6b7280', '#10b981']
+              const items = (() => {
+                const v = formSemanaTipo[dia]
+                if (!v) return [{ texto: '', color: '#2d6a4f' }]
+                if (Array.isArray(v)) return v
+                if (typeof v === 'string') return [{ texto: v, color: '#2d6a4f' }]
+                return [{ texto: v.texto || '', color: v.color || '#2d6a4f' }]
+              })()
               return (
                 <div key={dia} className="form-group">
                   <label className="form-label">{dia}</label>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input className="form-input" style={{ flex: 1 }} value={texto} onChange={e => setFormSemanaTipo(f => ({ ...f, [dia]: { texto: e.target.value, color } }))} placeholder="Ej: Rodaje Z2, Fuerza, Descanso..." />
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      {PALETA.map(c => (
-                        <div key={c} onClick={() => setFormSemanaTipo(f => ({ ...f, [dia]: { texto, color: c } }))}
-                          style={{ width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '2px solid var(--text)' : '2px solid transparent', flexShrink: 0 }} />
-                      ))}
+                  {items.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                      <input className="form-input" style={{ flex: 1 }} value={item.texto} onChange={e => {
+                        const next = items.map((x, i) => i === idx ? { ...x, texto: e.target.value } : x)
+                        setFormSemanaTipo(f => ({ ...f, [dia]: next }))
+                      }} placeholder="Ej: Rodaje Z2..." />
+                      <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                        {PALETA.map(c => (
+                          <div key={c} onClick={() => {
+                            const next = items.map((x, i) => i === idx ? { ...x, color: c } : x)
+                            setFormSemanaTipo(f => ({ ...f, [dia]: next }))
+                          }} style={{ width: 16, height: 16, borderRadius: '50%', background: c, cursor: 'pointer', border: item.color === c ? '2px solid var(--text)' : '2px solid transparent', flexShrink: 0 }} />
+                        ))}
+                      </div>
+                      {items.length > 1 && (
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => {
+                          const next = items.filter((_, i) => i !== idx)
+                          setFormSemanaTipo(f => ({ ...f, [dia]: next }))
+                        }}><X size={12} /></button>
+                      )}
                     </div>
-                  </div>
+                  ))}
+                  <button className="btn btn-ghost btn-sm" style={{ marginTop: 2 }} onClick={() => {
+                    const next = [...items, { texto: '', color: '#2d6a4f' }]
+                    setFormSemanaTipo(f => ({ ...f, [dia]: next }))
+                  }}><Plus size={12} /> Añadir</button>
                 </div>
               )
             })}
