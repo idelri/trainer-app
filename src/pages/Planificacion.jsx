@@ -1359,7 +1359,82 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
           </div>
         </div>
       )}
-   {modalCopiar && (
+   {modalCopiarBloque && (
+        <div className="modal-backdrop" onClick={() => setModalCopiarBloque(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Copiar bloque</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCopiarBloque(null)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 'var(--radius)' }}>
+              Copiando: <strong>{modalCopiarBloque.bloque.nombre}</strong><br />
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Se copiarán el bloque, sus sub bloques y semanas (sin datos reales).</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={formCopiarBloque.cliente_id} onChange={async e => {
+                const cid = e.target.value
+                setFormCopiarBloque(f => ({ ...f, cliente_id: cid, planificacion_id: '' }))
+                if (cid) {
+                  const { data } = await supabase.from('planificaciones').select('id, nombre').eq('cliente_id', cid).order('created_at', { ascending: false })
+                  setPlanesDestino(data || [])
+                } else { setPlanesDestino([]) }
+              }}>
+                <option value="">Selecciona cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            {planesDestino.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Planificación destino *</label>
+                <select className="form-select" value={formCopiarBloque.planificacion_id} onChange={e => setFormCopiarBloque(f => ({ ...f, planificacion_id: e.target.value }))}>
+                  <option value="">Selecciona planificación...</option>
+                  {planesDestino.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalCopiarBloque(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !formCopiarBloque.cliente_id || !formCopiarBloque.planificacion_id} onClick={async () => {
+                setSaving(true)
+                try {
+                  const b = modalCopiarBloque.bloque
+                  const { data: nuevoBloque } = await supabase.from('bloques').insert({
+                    planificacion_id: formCopiarBloque.planificacion_id,
+                    nombre: b.nombre, fase: b.fase, carga: b.carga, semanas: b.semanas,
+                    fecha_inicio: b.fecha_inicio, objetivo: b.objetivo || null,
+                    contenidos: b.contenidos || null, color: b.color || '#2d6a4f', orden: b.orden,
+                  }).select().single()
+                  const subs = subbloques[b.id] || []
+                  for (const s of subs) {
+                    await supabase.from('subbloques').insert({
+                      bloque_id: nuevoBloque.id, nombre: s.nombre,
+                      semana_inicio: s.semana_inicio, semana_fin: s.semana_fin,
+                      objetivo: s.objetivo || null, notas: s.notas || null,
+                      zona1_2: s.zona1_2 || 0, zona3_4: s.zona3_4 || 0, zona5: s.zona5 || 0,
+                      km_min: s.km_min || null, km_max: s.km_max || null,
+                    })
+                  }
+                  const semsBloque = semanas[b.id] || []
+                  for (const s of semsBloque) {
+                    await supabase.from('semanas').insert({
+                      bloque_id: nuevoBloque.id, numero: s.numero,
+                      objetivo: s.objetivo || null, notas: s.notas || null,
+                      carga: s.carga, km_objetivo: s.km_objetivo || null,
+                      zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0,
+                      km_real: null,
+                    })
+                  }
+                  setSaving(false); setModalCopiarBloque(null)
+                  alert('Bloque copiado correctamente.')
+                  cargarPlanificacion()
+                } catch (e) { setSaving(false); alert('Error al copiar el bloque.') }
+              }}>{saving ? 'Copiando...' : 'Copiar bloque'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalCopiar && (
         <div className="modal-backdrop" onClick={() => setModalCopiar(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
