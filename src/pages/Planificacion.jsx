@@ -641,7 +641,7 @@ export default function Planificacion() {
               </div>
 
               {clienteData && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div className="card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                       <span style={{ fontSize: 13, fontWeight: 600 }}>Semana tipo</span>
