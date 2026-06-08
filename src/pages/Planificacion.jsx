@@ -479,14 +479,45 @@ export default function Planificacion() {
 
       {!loading && planificacion && (
         <>
-          {/* Stats */}
+         {/* Stats */}
           {vista === 'timeline' && (
             <>
-            
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-                {[{ label: 'Bloques', value: bloques.length }, { label: 'Sub bloques', value: Object.values(subbloques).flat().length }, { label: 'Semanas', value: totalSemanas }, { label: 'Compet.', value: competiciones.length }].map(s => (
-                  <div key={s.label} className="stat-card"><div className="label">{s.label}</div><div className="value">{s.value}</div></div>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {/* Bloques */}
+                <div className="card" style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{totalSemanas} semanas · {bloques.length} bloques</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {bloques.map(b => {
+                      const fechaFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), 'MMM yyyy', { locale: es })
+                      const fechaIni = format(parseISO(b.fecha_inicio), 'MMM yyyy', { locale: es })
+                      return (
+                        <div key={b.id} style={{ background: (b.color || '#2d6a4f') + '18', border: `1px solid ${b.color || '#2d6a4f'}44`, borderRadius: 8, padding: '6px 12px' }}>
+                          <div style={{ fontSize: 12, fontWeight: 500, color: b.color || '#2d6a4f' }}>{b.nombre}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} sem · {fechaIni}–{fechaFin}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                {/* Competiciones */}
+                <div className="card" style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{competiciones.length} competiciones</div>
+                  {competiciones.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin competiciones</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {competiciones.map(comp => (
+                        <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 3, height: 32, background: 'var(--danger)', borderRadius: 2, flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>{comp.nombre}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(comp.fecha), 'dd MMM yyyy', { locale: es })}{comp.tipo ? ` · ${comp.tipo}` : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
