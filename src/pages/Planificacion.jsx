@@ -332,27 +332,6 @@ export default function Planificacion() {
                 <Layers size={12} />
               </button>
             )}
-            {(() => {
-  const total = (sem?.zona1_2_real || 0) + (sem?.zona3_4_real || 0) + (sem?.zona5_real || 0)
-  if (total === 0) return null
-  const subActual = subsBloque.find(s => num >= s.semana_inicio && num <= s.semana_fin)
-  if (!subActual) return null
-  const zonas = [
-    { key: 'zona1_2_real', obj: subActual.zona1_2, label: 'Z1' },
-    { key: 'zona3_4_real', obj: subActual.zona3_4, label: 'Z3' },
-    { key: 'zona5_real', obj: subActual.zona5, label: 'Z5' },
-  ]
-  return (
-   <div style={{ display: 'flex', gap: 6, marginRight: 8, paddingLeft: 8, borderLeft: '2px solid var(--border)' }}>
-      {zonas.map(z => {
-        const real = total > 0 ? Math.round(((sem[z.key] || 0) / total) * 100) : 0
-        const diff = real - (z.obj || 0)
-        const c = Math.abs(diff) <= 8 ? '#10b981' : Math.abs(diff) <= 20 ? '#f59e0b' : '#ef4444'
-        return <span key={z.key} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: c }}>{z.label} {diff > 0 ? '+' : ''}{diff}%</span>
-      })}
-    </div>
-  )
-})()}
             <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaSem}</div>
           </div>
         </div>
