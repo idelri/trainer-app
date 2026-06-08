@@ -647,15 +647,36 @@ export default function Planificacion() {
                       <span style={{ fontSize: 13, fontWeight: 600 }}>Semana tipo</span>
                       <button className="btn btn-ghost btn-sm" onClick={() => setModalSemanaTipo(true)}>Editar</button>
                     </div>
-                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia, i) => {
-                      const val = (clienteData.semana_tipo || {})[dia] || ''
+                   {(() => {
+                      const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+                      const ABREV = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+                      const getColor = v => {
+                        if (!v) return null
+                        const s = v.toLowerCase()
+                        const f = /fuerza|gym|pesas|core|funcional|muscula/.test(s)
+                        const r = /rodaje|z1|z2|z3|z4|z5|carrera|fondo|largo|series|tempo|ritmo|intervalo/.test(s)
+                        if (f && r) return '#3b82f6'
+                        if (f) return '#f97316'
+                        if (r) return '#2d6a4f'
+                        return '#3b82f6'
+                      }
                       return (
-                        <div key={dia} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < 6 ? '1px solid var(--border)' : 'none' }}>
-                          <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', width: 72, flexShrink: 0 }}>{dia}</span>
-                          <span style={{ fontSize: 13, color: val ? 'var(--text)' : 'var(--text3)', fontStyle: val ? 'normal' : 'italic' }}>{val || 'Descanso'}</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                          {DIAS.map((dia, i) => {
+                            const val = (clienteData.semana_tipo || {})[dia] || ''
+                            const c = getColor(val)
+                            return (
+                              <div key={dia} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{ABREV[i]}</div>
+                                <div style={{ width: '100%', background: c ? c + '18' : 'var(--bg2)', border: `1px solid ${c ? c + '44' : 'var(--border)'}`, borderRadius: 6, padding: '6px 4px', textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{ fontSize: 10, fontWeight: c ? 500 : 400, color: c || 'var(--text3)', fontStyle: c ? 'normal' : 'italic', lineHeight: 1.3 }}>{val || '—'}</span>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       )
-                    })}
+                    })()}
                     {clienteData.disponibilidad && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Disponibilidad</div>
