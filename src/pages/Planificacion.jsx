@@ -730,13 +730,9 @@ export default function Planificacion() {
                   <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 15, fontWeight: 600 }}>Bloque {idx + 1} — {b.nombre}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} semanas · desde {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {b.objetivo && <button className="btn btn-ghost btn-sm" onClick={() => setObjetivoVisible(v => ({ ...v, [b.id]: !v[b.id] }))} style={{ color: objetivoVisible[b.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}><Layers size={13} /></button>}
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                   <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setModalCopiarBloque({ bloque: b }); setFormCopiarBloque({ cliente_id: '', planificacion_id: '' }) }}>Copiar</button>
                       <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><X size={13} /></button>
-                    </div>
                   </div>
                   {objetivoVisible[b.id] && b.objetivo && (
                     <div style={{ padding: '0 16px 14px', borderTop: '1px solid var(--border)' }}>
