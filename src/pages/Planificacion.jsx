@@ -308,9 +308,9 @@ export default function Planificacion() {
               const subActual = subsBloque.find(s => num >= s.semana_inicio && num <= s.semana_fin)
               if (!subActual) return null
               const zonas = [
-                { key: 'zona1_2_real', obj: subActual.zona1_2, label: 'Z1' },
-                { key: 'zona3_4_real', obj: subActual.zona3_4, label: 'Z3' },
-                { key: 'zona5_real', obj: subActual.zona5, label: 'Z5' },
+               { key: 'zona1_2_real', obj: subActual.zona1_2, label: 'Z1-Z2' },
+                { key: 'zona3_4_real', obj: subActual.zona3_4, label: 'Z3-Z4' },
+                { key: 'zona5_real', obj: subActual.zona5, label: 'Z5-Z5+' },
               ]
               return (
               <div style={{ display: 'flex', gap: 0, marginTop: 3 }}>
