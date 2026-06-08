@@ -486,7 +486,7 @@ export default function Planificacion() {
                 {/* Bloques */}
                 <div className="card" style={{ padding: '14px 16px' }}>
                   <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{totalSemanas} semanas · {bloques.length} bloques</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {bloques.map(b => {
                       const fechaFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), 'MMM yyyy', { locale: es })
                       const fechaIni = format(parseISO(b.fecha_inicio), 'MMM yyyy', { locale: es })
