@@ -434,9 +434,14 @@ export default function Planificacion() {
                     onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); if (bloques.length === 0) { alert('Primero crea un bloque'); return }; setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0, km_min: null, km_max: null }); setModalSubbloque({ bloque_id: bloques[0].id }) }}>
                     <Plus size={13} /> Sub bloque
                   </button>
-                  <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                 <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
                     onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormComp(EMPTY_COMP); setModalComp(true) }}>
                     <Trophy size={13} /> Competición
+                  </button>
+                  <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                    onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormCopiar({ cliente_id: '', fecha_inicio: planificacion.fecha_inicio, nombre: planificacion.nombre + ' (copia)' }); setModalCopiar(true) }}>
+                    📋 Copiar planificación
+                  </button>
                   </button>
                 </>)}
               </div>
