@@ -300,8 +300,29 @@ export default function Planificacion() {
                    {(() => { const p = Math.round((sem.km_real / sem.km_objetivo) * 100); const c = p < 40 ? '#ef4444' : p < 80 ? '#f97316' : p < 120 ? '#10b981' : p < 160 ? '#f59e0b' : '#8b5cf6'; return <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: c }}>{p}%</span> })()}
                   </span>
                 )}
-              </div>
+           </div>
             )}
+            {(() => {
+              const total = (sem?.zona1_2_real || 0) + (sem?.zona3_4_real || 0) + (sem?.zona5_real || 0)
+              if (total === 0) return null
+              const subActual = subsBloque.find(s => num >= s.semana_inicio && num <= s.semana_fin)
+              if (!subActual) return null
+              const zonas = [
+                { key: 'zona1_2_real', obj: subActual.zona1_2, label: 'Z1' },
+                { key: 'zona3_4_real', obj: subActual.zona3_4, label: 'Z3' },
+                { key: 'zona5_real', obj: subActual.zona5, label: 'Z5' },
+              ]
+              return (
+                <div style={{ display: 'flex', gap: 6, marginTop: 3, paddingLeft: 8, borderLeft: '2px solid var(--border)' }}>
+                  {zonas.map(z => {
+                    const real = total > 0 ? Math.round(((sem[z.key] || 0) / total) * 100) : 0
+                    const diff = real - (z.obj || 0)
+                    const c = Math.abs(diff) <= 8 ? '#10b981' : Math.abs(diff) <= 20 ? '#f59e0b' : '#ef4444'
+                    return <span key={z.key} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: c }}>{z.label} {diff > 0 ? '+' : ''}{diff}%</span>
+                  })}
+                </div>
+              )
+            })()}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {tieneContenido && (
