@@ -283,7 +283,7 @@ export default function Planificacion() {
               <span style={{ fontSize: 11, fontWeight: 600, color: esSemanaActual || cargaSem ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{num}</span>
             </div>
             {esSemanaActual && (
-              <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', fontSize: 10, whiteSpace: 'nowrap', color: 'var(--accent)', fontWeight: 700 }}>📍</div>
+             <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 16, whiteSpace: 'nowrap' }}>📍</div>
             )}
           </div>
           <div style={{ flex: 1 }}>
