@@ -729,7 +729,8 @@ export default function Planificacion() {
                           const kmRealMedio = semsConKm.length > 0 ? Math.round(kmRealTotal / semsConKm.length) : 0
                           const tieneKm = sub.km_min || sub.km_max || kmRealMedio > 0
                           const kmMax = Math.max(sub.km_max || 0, kmRealMedio, 1)
-                          const pctKm = sub.km_max && kmRealMedio > 0 ? Math.round((kmRealMedio / sub.km_max) * 100) : null
+                          const kmObjetivoMedio = sub.km_min && sub.km_max ? (sub.km_min + sub.km_max) / 2 : sub.km_max || sub.km_min || null
+const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmObjetivoMedio) * 100) : null
                           return (
                             <div key={sub.id} style={{ borderBottom: '1px solid var(--border)' }}>
                               <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
