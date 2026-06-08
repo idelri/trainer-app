@@ -482,55 +482,7 @@ export default function Planificacion() {
           {/* Stats */}
           {vista === 'timeline' && (
             <>
-              {(() => {
-                const hoy = new Date()
-                const inicio = parseISO(planificacion.fecha_inicio)
-                const fin = parseISO(planificacion.fecha_fin)
-                const totalDias = (fin - inicio) / (1000 * 60 * 60 * 24)
-                const diasTranscurridos = Math.max(0, Math.min((hoy - inicio) / (1000 * 60 * 60 * 24), totalDias))
-                const pct = Math.round((diasTranscurridos / totalDias) * 100)
-                const semanaActual = Math.max(1, Math.min(Math.ceil(diasTranscurridos / 7), totalSemanas))
-                const enCurso = hoy >= inicio && hoy <= fin
-                let bloqueActual = null, semanaGlobal = 0
-                for (const b of bloques) { if (semanaActual > semanaGlobal && semanaActual <= semanaGlobal + b.semanas) { bloqueActual = b; break }; semanaGlobal += b.semanas }
-                const subbloqueActual = bloqueActual ? (subbloques[bloqueActual.id] || []).find(s => (semanaActual - semanaGlobal) >= s.semana_inicio && (semanaActual - semanaGlobal) <= s.semana_fin) : null
-                return (
-                  <div className="card" style={{ marginBottom: 16, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {enCurso ? 'En curso' : hoy < inicio ? 'No iniciada' : 'Completada'}
-                      </span>
-                      <span style={{ fontSize: 13, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 700 }}>
-                        {enCurso ? `S${semanaActual} / ${totalSemanas}` : `${totalSemanas} semanas`}
-                      </span>
-                    </div>
-                    <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', marginBottom: 6 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 5, transition: 'width 0.5s ease' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: enCurso && bloqueActual ? 12 : 0 }}>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(inicio, 'dd MMM yyyy', { locale: es })}</span>
-                      <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600 }}>{pct}%</span>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize' }}>{format(fin, 'dd MMM yyyy', { locale: es })}</span>
-                    </div>
-                    {enCurso && bloqueActual && (
-                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: 2, background: bloqueActual.color || 'var(--accent)', flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Bloque actual</span>
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>{bloqueActual.nombre}</span>
-                        </div>
-                        {subbloqueActual && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16 }}>
-                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: bloqueActual.color || 'var(--accent)', flexShrink: 0, opacity: 0.6 }} />
-                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Sub bloque</span>
-                            <span style={{ fontSize: 13, color: 'var(--text2)' }}>{subbloqueActual.nombre}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
+            
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
                 {[{ label: 'Bloques', value: bloques.length }, { label: 'Sub bloques', value: Object.values(subbloques).flat().length }, { label: 'Semanas', value: totalSemanas }, { label: 'Compet.', value: competiciones.length }].map(s => (
                   <div key={s.label} className="stat-card"><div className="label">{s.label}</div><div className="value">{s.value}</div></div>
