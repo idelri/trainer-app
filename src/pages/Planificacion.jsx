@@ -322,7 +322,7 @@ export default function Planificacion() {
     { key: 'zona5_real', obj: subActual.zona5, label: 'Z5' },
   ]
   return (
-    <div style={{ display: 'flex', gap: 6, marginRight: 8 }}>
+   <div style={{ display: 'flex', gap: 6, marginRight: 8, paddingLeft: 8, borderLeft: '2px solid var(--border)' }}>
       {zonas.map(z => {
         const real = total > 0 ? Math.round(((sem[z.key] || 0) / total) * 100) : 0
         const diff = real - (z.obj || 0)
