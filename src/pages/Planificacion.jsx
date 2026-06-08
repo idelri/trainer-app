@@ -1398,38 +1398,51 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
               <button className="btn btn-ghost" onClick={() => setModalCopiarBloque(null)}>Cancelar</button>
               <button className="btn btn-primary" disabled={saving || !formCopiarBloque.cliente_id || !formCopiarBloque.planificacion_id} onClick={async () => {
                 setSaving(true)
-                try {
-                  const b = modalCopiarBloque.bloque
-                  const { data: nuevoBloque } = await supabase.from('bloques').insert({
-                    planificacion_id: formCopiarBloque.planificacion_id,
-                    nombre: b.nombre, fase: b.fase, carga: b.carga, semanas: b.semanas,
-                    fecha_inicio: b.fecha_inicio, objetivo: b.objetivo || null,
-                    contenidos: b.contenidos || null, color: b.color || '#2d6a4f', orden: b.orden,
-                  }).select().single()
-                  const subs = subbloques[b.id] || []
-                  for (const s of subs) {
+               try {
+                  if (modalCopiarBloque.subbloque) {
+                    const s = modalCopiarBloque.subbloque
                     await supabase.from('subbloques').insert({
-                      bloque_id: nuevoBloque.id, nombre: s.nombre,
+                      bloque_id: formCopiarBloque.bloque_id, nombre: s.nombre,
                       semana_inicio: s.semana_inicio, semana_fin: s.semana_fin,
                       objetivo: s.objetivo || null, notas: s.notas || null,
                       zona1_2: s.zona1_2 || 0, zona3_4: s.zona3_4 || 0, zona5: s.zona5 || 0,
                       km_min: s.km_min || null, km_max: s.km_max || null,
                     })
+                    setSaving(false); setModalCopiarBloque(null)
+                    alert('Sub bloque copiado correctamente.')
+                    cargarPlanificacion()
+                  } else {
+                    const b = modalCopiarBloque.bloque
+                    const { data: nuevoBloque } = await supabase.from('bloques').insert({
+                      planificacion_id: formCopiarBloque.planificacion_id,
+                      nombre: b.nombre, fase: b.fase, carga: b.carga, semanas: b.semanas,
+                      fecha_inicio: b.fecha_inicio, objetivo: b.objetivo || null,
+                      contenidos: b.contenidos || null, color: b.color || '#2d6a4f', orden: b.orden,
+                    }).select().single()
+                    const subs = subbloques[b.id] || []
+                    for (const s of subs) {
+                      await supabase.from('subbloques').insert({
+                        bloque_id: nuevoBloque.id, nombre: s.nombre,
+                        semana_inicio: s.semana_inicio, semana_fin: s.semana_fin,
+                        objetivo: s.objetivo || null, notas: s.notas || null,
+                        zona1_2: s.zona1_2 || 0, zona3_4: s.zona3_4 || 0, zona5: s.zona5 || 0,
+                        km_min: s.km_min || null, km_max: s.km_max || null,
+                      })
+                    }
+                    const semsBloque = semanas[b.id] || []
+                    for (const s of semsBloque) {
+                      await supabase.from('semanas').insert({
+                        bloque_id: nuevoBloque.id, numero: s.numero,
+                        objetivo: s.objetivo || null, notas: s.notas || null,
+                        carga: s.carga, km_objetivo: s.km_objetivo || null,
+                        zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0, km_real: null,
+                      })
+                    }
+                    setSaving(false); setModalCopiarBloque(null)
+                    alert('Bloque copiado correctamente.')
+                    cargarPlanificacion()
                   }
-                  const semsBloque = semanas[b.id] || []
-                  for (const s of semsBloque) {
-                    await supabase.from('semanas').insert({
-                      bloque_id: nuevoBloque.id, numero: s.numero,
-                      objetivo: s.objetivo || null, notas: s.notas || null,
-                      carga: s.carga, km_objetivo: s.km_objetivo || null,
-                      zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0,
-                      km_real: null,
-                    })
-                  }
-                  setSaving(false); setModalCopiarBloque(null)
-                  alert('Bloque copiado correctamente.')
-                  cargarPlanificacion()
-                } catch (e) { setSaving(false); alert('Error al copiar el bloque.') }
+                } catch (e) { setSaving(false); alert('Error al copiar.') }
               }}>{saving ? 'Copiando...' : 'Copiar bloque'}</button>
             </div>
           </div>
