@@ -318,7 +318,7 @@ export default function Planificacion() {
                     const real = total > 0 ? Math.round(((sem[z.key] || 0) / total) * 100) : 0
                     const diff = real - (z.obj || 0)
                     const c = Math.abs(diff) <= 8 ? '#10b981' : Math.abs(diff) <= 20 ? '#f59e0b' : '#ef4444'
-                    return <span key={z.key} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: c }}>{z.label} {diff > 0 ? '+' : ''}{diff}%</span>
+                   return <span key={z.key} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: c, paddingLeft: 8, paddingRight: 8, borderLeft: '2px solid var(--border)' }}>{z.label} {diff > 0 ? '+' : ''}{diff}%</span>
                   })}
                 </div>
               )
