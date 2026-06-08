@@ -663,8 +663,9 @@ export default function Planificacion() {
                       return (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                           {DIAS.map((dia, i) => {
-                            const val = (clienteData.semana_tipo || {})[dia] || ''
-                            const c = getColor(val)
+                           const entrada = (clienteData.semana_tipo || {})[dia] || {}
+                            const val = typeof entrada === 'string' ? entrada : (entrada.texto || '')
+                            const c = typeof entrada === 'string' ? getColor(val) : (entrada.color || null)
                             return (
                               <div key={dia} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                                 <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{ABREV[i]}</div>
