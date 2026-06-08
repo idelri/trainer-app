@@ -494,7 +494,8 @@ export default function Planificacion() {
                        <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 3, height: 32, background: b.color || '#2d6a4f', borderRadius: 2, flexShrink: 0 }} />
                         <div>
-                         <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} sem · {fechaIni}–{fechaFin}</div>
+                         <div style={{ fontSize: 13, fontWeight: 500, color: b.color || '#2d6a4f' }}>{b.nombre}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} sem · {fechaIni}–{fechaFin}</div>
                         </div>
                         </div>
                       )
