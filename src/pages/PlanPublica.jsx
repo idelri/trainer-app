@@ -246,16 +246,33 @@ export default function PlanPublica({ token }) {
                 {cliente?.semana_tipo && Object.keys(cliente.semana_tipo).length > 0 && (
                   <div style={{ background: 'white', border: '1px solid #d8d5cc', borderRadius: 10, padding: '16px 20px' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Semana tipo</div>
-                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((dia, i) => {
-                      const entrada = cliente.semana_tipo[dia]
-const val = !entrada ? '' : typeof entrada === 'string' ? entrada : Array.isArray(entrada) ? entrada.map(x => x.texto).filter(Boolean).join(', ') : (entrada.texto || '')
+                   {(() => {
+                      const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+                      const ABREV = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
                       return (
-                        <div key={dia} style={{ display: 'flex', gap: 10, padding: '5px 0', borderBottom: i < 6 ? '1px solid #eceae4' : 'none' }}>
-                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#9a9890', width: 72, flexShrink: 0 }}>{dia}</span>
-                          <span style={{ fontSize: 13, color: val ? '#1a1916' : '#9a9890', fontStyle: val ? 'normal' : 'italic' }}>{val || 'Descanso'}</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                          {DIAS.map((dia, i) => {
+                            const entrada = cliente.semana_tipo[dia]
+                            const items = !entrada ? [] : Array.isArray(entrada) ? entrada : typeof entrada === 'string' ? (entrada ? [{ texto: entrada, color: '#2d6a4f' }] : []) : (entrada.texto ? [{ texto: entrada.texto, color: entrada.color || '#2d6a4f' }] : [])
+                            return (
+                              <div key={dia} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#9a9890' }}>{ABREV[i]}</div>
+                                <div style={{ width: '100%', background: '#f5f4f0', border: '1px solid #d8d5cc', borderRadius: 6, padding: '4px', minHeight: 44, display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+                                  {items.length === 0
+                                    ? <span style={{ fontSize: 10, color: '#9a9890', fontStyle: 'italic', textAlign: 'center' }}>—</span>
+                                    : items.map((item, ii) => (
+                                      <div key={ii} style={{ background: item.color + '22', border: `1px solid ${item.color}55`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>
+                                        <span style={{ fontSize: 9, fontWeight: 500, color: item.color, lineHeight: 1.3 }}>{item.texto}</span>
+                                      </div>
+                                    ))
+                                  }
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       )
-                    })}
+                    })()}
                     {cliente?.disponibilidad && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eceae4' }}>
                         <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#9a9890', textTransform: 'uppercase', marginBottom: 4 }}>Disponibilidad</div>
