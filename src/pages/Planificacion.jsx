@@ -496,8 +496,7 @@ export default function Planificacion() {
           <div>
                           <div style={{ fontSize: 12, fontWeight: 500, color: b.color || '#2d6a4f' }}>{b.nombre}</div>
                           <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{b.semanas} sem · {fechaIni}–{fechaFin}</div>
-                        </div>
-                      </div>
+                       </div>
                       )
                     })}
                   </div>
