@@ -812,6 +812,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                 <div className="flex gap-1 ml-auto">
                                   <button className="btn btn-ghost btn-sm" onClick={() => setObjetivoVisible(v => ({ ...v, [sub.id]: !v[sub.id] }))} style={{ color: objetivoVisible[sub.id] ? b.color || 'var(--accent)' : 'var(--text3)', padding: '2px 6px' }}><Layers size={13} /></button>
                                   <button className="btn btn-ghost btn-sm" onClick={() => { setFormSubbloque({ nombre: sub.nombre, semana_inicio: sub.semana_inicio, semana_fin: sub.semana_fin, objetivo: sub.objetivo || '', notas: sub.notas || '', zona1_2: sub.zona1_2 || 0, zona3_4: sub.zona3_4 || 0, zona5: sub.zona5 || 0, km_min: sub.km_min || null, km_max: sub.km_max || null }); setModalSubbloque({ ...sub, bloque_id: b.id }) }}>Editar</button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => { setModalCopiarBloque({ subbloque: sub, bloque: b }); setFormCopiarBloque({ cliente_id: '', planificacion_id: '', bloque_id: '' }) }}>Copiar</button>
                                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarSubbloque(sub.id)}><X size={12} /></button>
                                 </div>
                               </div>
