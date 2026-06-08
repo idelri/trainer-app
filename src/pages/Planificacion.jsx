@@ -1356,6 +1356,77 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
           </div>
         </div>
       )}
+   {modalCopiar && (
+        <div className="modal-backdrop" onClick={() => setModalCopiar(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Copiar planificación</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCopiar(false)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 'var(--radius)' }}>
+              Copiando: <strong>{planificacion.nombre}</strong><br />
+              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Se copiarán todos los bloques y sub bloques. Los datos reales (km, zonas) no se copian.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={formCopiar.cliente_id} onChange={e => setFormCopiar(f => ({ ...f, cliente_id: e.target.value }))}>
+                <option value="">Selecciona cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre de la nueva planificación *</label>
+              <input className="form-input" value={formCopiar.nombre} onChange={e => setFormCopiar(f => ({ ...f, nombre: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nueva fecha de inicio *</label>
+              <input className="form-input" type="date" value={formCopiar.fecha_inicio} onChange={e => setFormCopiar(f => ({ ...f, fecha_inicio: e.target.value }))} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalCopiar(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !formCopiar.cliente_id || !formCopiar.fecha_inicio || !formCopiar.nombre} onClick={async () => {
+                setSaving(true)
+                try {
+                  const offsetDias = (new Date(formCopiar.fecha_inicio) - new Date(planificacion.fecha_inicio)) / (1000 * 60 * 60 * 24)
+                  const nuevaFechaFin = new Date(planificacion.fecha_fin)
+                  nuevaFechaFin.setDate(nuevaFechaFin.getDate() + offsetDias)
+                  const { data: nuevaPlan } = await supabase.from('planificaciones').insert({
+                    cliente_id: formCopiar.cliente_id,
+                    nombre: formCopiar.nombre,
+                    fecha_inicio: formCopiar.fecha_inicio,
+                    fecha_fin: nuevaFechaFin.toISOString().split('T')[0],
+                    notas: planificacion.notas || null,
+                  }).select().single()
+                  for (const b of bloques) {
+                    const nuevaFechaBloque = new Date(b.fecha_inicio)
+                    nuevaFechaBloque.setDate(nuevaFechaBloque.getDate() + offsetDias)
+                    const { data: nuevoBloque } = await supabase.from('bloques').insert({
+                      planificacion_id: nuevaPlan.id,
+                      nombre: b.nombre, fase: b.fase, carga: b.carga, semanas: b.semanas,
+                      fecha_inicio: nuevaFechaBloque.toISOString().split('T')[0],
+                      objetivo: b.objetivo || null, contenidos: b.contenidos || null,
+                      color: b.color || '#2d6a4f', orden: b.orden,
+                    }).select().single()
+                    const subs = subbloques[b.id] || []
+                    for (const s of subs) {
+                      await supabase.from('subbloques').insert({
+                        bloque_id: nuevoBloque.id, nombre: s.nombre,
+                        semana_inicio: s.semana_inicio, semana_fin: s.semana_fin,
+                        objetivo: s.objetivo || null, notas: s.notas || null,
+                        zona1_2: s.zona1_2 || 0, zona3_4: s.zona3_4 || 0, zona5: s.zona5 || 0,
+                        km_min: s.km_min || null, km_max: s.km_max || null,
+                      })
+                    }
+                  }
+                  setSaving(false); setModalCopiar(false)
+                  alert('Planificación copiada correctamente.')
+                  setClienteSeleccionado(formCopiar.cliente_id)
+                } catch (e) { setSaving(false); alert('Error al copiar la planificación.') }
+              }}>{saving ? 'Copiando...' : 'Copiar planificación'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
