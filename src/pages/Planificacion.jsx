@@ -440,8 +440,7 @@ export default function Planificacion() {
                   </button>
                   <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
                     onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormCopiar({ cliente_id: '', fecha_inicio: planificacion.fecha_inicio, nombre: planificacion.nombre + ' (copia)' }); setModalCopiar(true) }}>
-                    📋 Copiar planificación
-                  </button>
+                   📋 Copiar planificación
                   </button>
                 </>)}
               </div>
