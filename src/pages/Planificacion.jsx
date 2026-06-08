@@ -673,8 +673,15 @@ export default function Planificacion() {
                             return (
                               <div key={dia} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                                 <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{ABREV[i]}</div>
-                                <div style={{ width: '100%', background: c ? c + '18' : 'var(--bg2)', border: `1px solid ${c ? c + '44' : 'var(--border)'}`, borderRadius: 6, padding: '6px 4px', textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <span style={{ fontSize: 10, fontWeight: c ? 500 : 400, color: c || 'var(--text3)', fontStyle: c ? 'normal' : 'italic', lineHeight: 1.3 }}>{val || '—'}</span>
+                                <div style={{ width: '100%', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px', minHeight: 44, display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center' }}>
+                                  {items.length === 0
+                                    ? <span style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', textAlign: 'center' }}>—</span>
+                                    : items.map((item, ii) => (
+                                      <div key={ii} style={{ background: item.color + '22', border: `1px solid ${item.color}55`, borderRadius: 4, padding: '2px 4px', textAlign: 'center' }}>
+                                        <span style={{ fontSize: 9, fontWeight: 500, color: item.color, lineHeight: 1.3 }}>{item.texto}</span>
+                                      </div>
+                                    ))
+                                  }
                                 </div>
                               </div>
                             )
