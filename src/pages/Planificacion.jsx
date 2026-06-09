@@ -553,6 +553,25 @@ export default function Planificacion() {
                       ))}
                     </div>
                   )}
+              </div>
+                {/* Controles */}
+                <div className="card" style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{controles.length} controles</div>
+                  {controles.length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Sin controles</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {controles.map(ctrl => (
+                        <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 3, height: 32, background: '#3b82f6', borderRadius: 2, flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ctrl.nombre}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(ctrl.fecha), 'dd MMM yyyy', { locale: es })}{ctrl.tipo ? ` · ${ctrl.tipo}` : ''}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
