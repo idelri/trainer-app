@@ -43,6 +43,22 @@ export default function Pagos() {
     setClientes(data || [])
   }
 
+  async function cargarHistorico() {
+    const mesActual = format(new Date(), 'yyyy-MM')
+    const meses = Array.from({ length: rango }, (_, i) =>
+      format(subMonths(mesFin, rango - 1 - i), 'yyyy-MM')
+    )
+    const { data } = await supabase.from('pagos').select('mes_facturado, estado, importe').in('mes_facturado', meses)
+    const porMes = meses.map(m => {
+      const p = (data || []).filter(p => p.mes_facturado === m && p.estado === 'pagado')
+      return {
+        mes: m,
+        label: format(new Date(m + '-01'), rango > 6 ? 'MMM yy' : 'MMM', { locale: es }),
+        total: p.reduce((s, x) => s + x.importe, 0)
+      }
+    })
+    setHistorico(porMes)
+  }
   async function cargarPagos() {
     setLoading(true)
     const { data } = await supabase
