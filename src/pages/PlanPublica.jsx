@@ -670,8 +670,8 @@ export default function PlanPublica({ token }) {
               </div>
               {semActualData?.objetivo && <div style={{ fontSize: 13.5, color: T.ink2, marginTop: 5, lineHeight: 1.45 }}>{semActualData.objetivo}</div>}
               {bActual && (
-                <button onClick={() => jump({ block: bActual.id })} style={{ marginTop: 11, display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, border: 'none', color: '#fff', fontFamily: T.font, fontSize: 12.5, fontWeight: 500, padding: '7px 13px', borderRadius: 8, cursor: 'pointer' }}>
-                  Ver mi bloque actual
+              <button onClick={() => jump({ block: bActual.id })} style={{ marginTop: 11, display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, border: 'none', color: '#fff', fontFamily: T.font, fontSize: 12.5, fontWeight: 500, padding: '7px 13px', borderRadius: 8, cursor: 'pointer' }}>
+                  📍 Semana actual
                   <svg width="13" height="13" viewBox="0 0 14 14"><path d="M3 7h7M7 3.5L10.5 7 7 10.5" stroke="#fff" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>
               )}
