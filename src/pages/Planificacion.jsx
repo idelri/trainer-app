@@ -302,6 +302,15 @@ export default function Planificacion() {
             <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(comp.fecha), 'dd MMM', { locale: es })}</span>
             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={e => { e.stopPropagation(); eliminarComp(comp.id) }}><X size={11} /></button>
           </div>
+       ))}
+        {ctrlsSem.map(ctrl => (
+          <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: '#eff6ff', borderBottom: '1px solid #3b82f6', cursor: 'pointer' }}
+            onClick={() => { setFormControl({ nombre: ctrl.nombre, fecha: ctrl.fecha, tipo: ctrl.tipo || '', notas: ctrl.notas || '' }); setModalControl({ ...ctrl }) }}>
+            <span style={{ fontSize: 12 }}>🔬</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: '#3b82f6' }}>{ctrl.nombre}</span>
+            <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(ctrl.fecha), 'dd MMM', { locale: es })}</span>
+            <button className="btn btn-ghost btn-sm" style={{ color: '#3b82f6', marginLeft: 'auto' }} onClick={e => { e.stopPropagation(); eliminarControl(ctrl.id) }}><X size={11} /></button>
+          </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer' }} onClick={() => abrirSemana(b.id, num)}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
