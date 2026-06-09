@@ -664,9 +664,9 @@ export default function PlanPublica({ token }) {
           </div>
           {enCurso ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.4px' }}>Semana {semanaActual}</span>
-                {bActual && <span style={{ fontSize: 13, color: T.ink2 }}>· {bActual.nombre}{subActual ? ` → ${subActual.nombre}` : ''}</span>}
+             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.3px' }}>Semana {semanaActual}</span>
+                {bActual && <span style={{ fontSize: 11, color: T.ink3, fontFamily: T.mono }}>· {bActual.nombre}{subActual ? ` → ${subActual.nombre}` : ''}</span>}
               </div>
               {semActualData?.objetivo && <div style={{ fontSize: 13.5, color: T.ink2, marginTop: 5, lineHeight: 1.45 }}>{semActualData.objetivo}</div>}
               {bActual && (
