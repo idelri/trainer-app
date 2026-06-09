@@ -70,16 +70,6 @@ export default function Dashboard({ setPage, setClientePlanificacion }) {
         ))}
         {clientes.length === 0 && <p style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin clientes activos.</p>}
       </div>
-
-      <div className="card" style={{ cursor: 'pointer' }} onClick={() => setPage && setPage('pagos')}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: pendientes.length > 0 ? 16 : 0 }}>
-          <AlertCircle size={15} color={pendientes.length > 0 ? 'var(--warning)' : 'var(--text3)'} />
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Pagos pendientes este mes</span>
-          <span style={{ marginLeft: 'auto', fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600, color: pendientes.length > 0 ? 'var(--warning)' : 'var(--text3)' }}>
-            {pendientes.length > 0 ? `${pendientes.reduce((s, p) => s + p.importe, 0).toFixed(0)}€ · ${pendientes.length} pagos` : '¡Todo cobrado! 🎉'}
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>→ Ver pagos</span>
-        </div>
         {pendientes.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {pendientes.map(p => (
