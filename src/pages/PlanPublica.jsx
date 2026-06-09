@@ -697,6 +697,28 @@ export default function PlanPublica({ token }) {
             )}
           </div>
 
+          {/* timeline compacto */}
+          {bloques.length > 0 && (
+            <div style={{ marginTop: 13, paddingTop: 12, borderTop: `1px solid ${T.bg2}` }}>
+              <div onClick={() => setTlOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tlOpen ? 10 : 0, cursor: 'pointer' }}>
+                <MonoLabel>Línea de tiempo · {totalSemanas} sem</MonoLabel>
+                <Chevron open={tlOpen} size={11} />
+              </div>
+              {tlOpen && (
+                <>
+                  <Timeline data={data} meta={meta} totalSemanas={totalSemanas} inicio={inicio} semanaActual={semanaActual} enCurso={enCurso} onJump={jump} />
+                  <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>
+                      <span style={{ width: 7, height: 7, background: T.danger, transform: 'rotate(45deg)', borderRadius: 1 }} /> Competición
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: T.surface, border: `2px solid ${T.ctrl}` }} /> Control / valoración
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {/* próxima competición */}
           {prox && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 13, paddingTop: 12, borderTop: `1px solid ${T.bg2}` }}>
