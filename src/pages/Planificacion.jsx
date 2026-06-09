@@ -113,6 +113,8 @@ export default function Planificacion() {
 
     const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setCompeticiones(comps || [])
+    const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
+    setControles(ctrls || [])
     setLoading(false)
   }
 
