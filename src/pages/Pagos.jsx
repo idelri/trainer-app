@@ -202,6 +202,50 @@ export default function Pagos() {
         </div>
       </div>
 
+      {/* Gráfica */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="flex items-center gap-3" style={{ marginBottom: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Ingresos cobrados</span>
+          <div className="flex gap-1 ml-auto">
+            {[{ label: '3m', value: 3 }, { label: '6m', value: 6 }, { label: '12m', value: 12 }].map(r => (
+              <button key={r.value} className="btn btn-ghost btn-sm"
+                style={rango === r.value ? { background: 'var(--bg2)', fontWeight: 500 } : { fontSize: 11 }}
+                onClick={() => setRango(r.value)}>{r.label}</button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            <button className="btn btn-ghost btn-sm" onClick={() => setMesFin(m => subMonths(m, rango))}><ChevronLeft size={13} /></button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setMesFin(m => addMonths(m, rango))}><ChevronRight size={13} /></button>
+          </div>
+        </div>
+        {(() => {
+          const maxValor = Math.max(...historico.map(m => m.total), 1)
+          const valoresConDatos = historico.filter(m => m.total > 0).map(m => m.total)
+          const minValor = valoresConDatos.length > 0 ? Math.min(...valoresConDatos) * 0.7 : 0
+          const mesActual = format(new Date(), 'yyyy-MM')
+          return (
+            <div style={{ display: 'flex', gap: 8, height: 140 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 20, paddingTop: 4, flexShrink: 0 }}>
+                {[maxValor, Math.round((maxValor + minValor) / 2), Math.round(minValor)].map(v => (
+                  <span key={v} style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{v}€</span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: rango > 6 ? 4 : 8, flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: 8 }}>
+                {historico.map(m => {
+                  const altura = m.total > 0 ? Math.max(((m.total - minValor) / (maxValor - minValor + 1)) * 80 + 15, 15) : 0
+                  return (
+                    <div key={m.mes} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                      {m.total > 0 && <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: m.mes === mesActual ? 'var(--accent)' : 'var(--text2)', fontWeight: m.mes === mesActual ? 600 : 400 }}>{m.total}€</div>}
+                      <div style={{ width: rango > 6 ? '55%' : '45%', height: `${altura}%`, background: m.mes === mesActual ? 'var(--accent)' : 'var(--accent-light)', borderRadius: '4px 4px 0 0', border: m.mes === mesActual ? 'none' : '1px solid var(--border)', minHeight: m.total > 0 ? 4 : 0 }} />
+                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{m.label}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
       <div className="flex gap-3" style={{ marginBottom: 20 }}>
         <div style={{ padding: '10px 16px', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', flex: 1 }}>
           <div style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>Cobrado</div>
