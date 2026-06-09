@@ -257,8 +257,12 @@ export default function Clientes() {
                 <input className="form-input" type="number" value={servicio.tarifa_sesion} onChange={e => setServicio(s => ({ ...s, tarifa_sesion: e.target.value }))} placeholder="Solo si es híbrido" />
               </div>
               <div className="form-group">
-                <label className="form-label">Deporte</label>
-                <input className="form-input" value={servicio.deporte} onChange={e => setServicio(s => ({ ...s, deporte: e.target.value }))} placeholder="Running, fuerza..." />
+                <label className="form-label">Actividad principal</label>
+                <input className="form-input" value={servicio.deporte} onChange={e => setServicio(s => ({ ...s, deporte: e.target.value }))} placeholder="Ej: Running, Triatlón, Ciclismo..." />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Actividades complementarias</label>
+                <input className="form-input" value={servicio.deporte_complementario || ''} onChange={e => setServicio(s => ({ ...s, deporte_complementario: e.target.value }))} placeholder="Ej: Fuerza, Yoga, Pádel..." />
               </div>
             </div>
             <div className="form-group">
