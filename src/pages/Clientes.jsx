@@ -48,7 +48,8 @@ export default function Clientes() {
       modalidad: s.modalidad || 'online',
       tarifa_mensual: s.tarifa_mensual || '',
       tarifa_sesion: s.tarifa_sesion || '',
-      deporte: s.deporte || '',
+      deporte: servicio.deporte || null,
+        deporte_complementario: servicio.deporte_complementario || null,
       dispositivo: s.dispositivo || ''
     } : EMPTY_SERVICIO)
     setModal({ cliente: c, servicioId: s?.id })
