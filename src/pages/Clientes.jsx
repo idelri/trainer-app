@@ -85,14 +85,12 @@ export default function Clientes() {
       }
 
       // Buscar si ya existe un servicio para este cliente
-      const { data: servicioExistente } = await supabase
+     const { data: serviciosExistentes } = await supabase
         .from('servicios')
         .select('id')
         .eq('cliente_id', clienteId)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
+      const servicioExistente = serviciosExistentes?.[0]
       if (servicioExistente) {
         await supabase.from('servicios').update(datosServicio).eq('id', servicioExistente.id)
       } else {
