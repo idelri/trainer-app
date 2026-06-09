@@ -28,7 +28,7 @@ const EMPTY_PLAN = { cliente_id: '', nombre: '', fecha_inicio: '', fecha_fin: ''
 const EMPTY_BLOQUE = { nombre: '', fase: 'general', carga: 'media', semanas: 4, fecha_inicio: '', objetivo: '', contenidos: '', color: '#2d6a4f' }
 const EMPTY_COMP = { nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' }
 
-export default function Planificacion() {
+export default function Planificacion({ clientePlanificacion }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
   const [planificacion, setPlanificacion] = useState(null)
