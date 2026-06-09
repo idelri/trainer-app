@@ -515,7 +515,7 @@ export default function Planificacion() {
          {/* Stats */}
           {vista === 'timeline' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
                 {/* Bloques */}
                 <div className="card" style={{ padding: '14px 16px' }}>
                   <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{totalSemanas} semanas · {bloques.length} bloques</div>
