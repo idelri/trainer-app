@@ -173,9 +173,25 @@ export default function Planificacion() {
     await supabase.from('bloques').delete().eq('id', id); cargarPlanificacion()
   }
 
-  async function eliminarComp(id) {
+ async function eliminarComp(id) {
     if (!window.confirm('¿Eliminar esta competición?')) return
     await supabase.from('competiciones').delete().eq('id', id); cargarPlanificacion()
+  }
+
+  async function guardarControl() {
+    if (!formControl.nombre || !formControl.fecha) return
+    setSaving(true)
+    if (modalControl?.id) {
+      await supabase.from('controles').update({ nombre: formControl.nombre, fecha: formControl.fecha, tipo: formControl.tipo || null, notas: formControl.notas || null }).eq('id', modalControl.id)
+    } else {
+      await supabase.from('controles').insert({ cliente_id: clienteSeleccionado, nombre: formControl.nombre, fecha: formControl.fecha, tipo: formControl.tipo || null, notas: formControl.notas || null })
+    }
+    setSaving(false); setModalControl(false); cargarPlanificacion()
+  }
+
+  async function eliminarControl(id) {
+    if (!window.confirm('¿Eliminar este control?')) return
+    await supabase.from('controles').delete().eq('id', id); cargarPlanificacion()
   }
 
   async function guardarSubbloque() {
