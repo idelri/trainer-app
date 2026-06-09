@@ -12,7 +12,7 @@ export default function Dashboard({ setPage, setClientePlanificacion }) {
   useEffect(() => { cargar() }, [])
 
   async function cargar() {
-    const { data } = await supabase.from('clientes').select('id, nombre, deporte').eq('estado', 'activo').order('nombre')
+   const { data } = await supabase.from('clientes').select('id, nombre, servicios(deporte)').eq('estado', 'activo').order('nombre')
     setClientes(data || [])
     setLoading(false)
   }
