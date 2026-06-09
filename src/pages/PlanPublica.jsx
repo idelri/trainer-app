@@ -713,28 +713,7 @@ export default function PlanPublica({ token }) {
           )}
         </div>
 
-        {/* LÍNEA DE TIEMPO */}
-        {bloques.length > 0 && (
-          <div style={card}>
-            <div onClick={() => setTlOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 15px', cursor: 'pointer' }}>
-              <MonoLabel style={{ flex: 1 }}>Línea de tiempo · {totalSemanas} semanas</MonoLabel>
-              <Chevron open={tlOpen} size={13} />
-            </div>
-            {tlOpen && (
-              <div style={{ padding: '0 15px 14px' }}>
-                <Timeline data={data} meta={meta} totalSemanas={totalSemanas} inicio={inicio} semanaActual={semanaActual} enCurso={enCurso} onJump={jump} />
-                <div style={{ display: 'flex', gap: 14, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.bg2}`, flexWrap: 'wrap' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: T.mono, fontSize: 9.5, color: T.ink3 }}>
-                    <span style={{ width: 8, height: 8, background: T.danger, transform: 'rotate(45deg)', borderRadius: 1 }} /> Competición
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: T.mono, fontSize: 9.5, color: T.ink3 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.surface, border: `2px solid ${T.ctrl}` }} /> Control / valoración
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+     
 
         {/* BLOQUES */}
         {bloques.length > 0 && (
