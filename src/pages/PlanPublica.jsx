@@ -122,7 +122,7 @@ function SemanaTipo({ cliente }) {
   const AB = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
   const st = cliente?.semana_tipo || {}
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, overflowX: 'auto' }}>
       {DIAS.map((dia, i) => {
         const items = parseDia(st[dia])
         return (
