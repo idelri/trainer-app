@@ -560,7 +560,7 @@ export default function PlanPublica({ token }) {
   )
 
   /* ---- cálculos ---- */
-  const inicio = parseISO(plan.fecha_inicio)
+  const inicio = new Date(plan.fecha_inicio + 'T12:00:00')
   const fin = parseISO(plan.fecha_fin)
   const totalSemanas = differenceInWeeks(fin, inicio) + 1
   const hoy = new Date()
