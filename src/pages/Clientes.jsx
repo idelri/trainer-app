@@ -9,7 +9,7 @@ const EMPTY_CLIENTE = {
 }
 const EMPTY_SERVICIO = {
   modalidad: 'online', tarifa_mensual: '', tarifa_sesion: '',
-  deporte: '', dispositivo: ''
+  deporte: '', deporte_complementario: '', dispositivo: ''
 }
 
 export default function Clientes() {
