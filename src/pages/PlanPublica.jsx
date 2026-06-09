@@ -719,18 +719,59 @@ export default function PlanPublica({ token }) {
               )}
             </div>
           )}
-          {/* próxima competición */}
-          {prox && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 13, paddingTop: 12, borderTop: `1px solid ${T.bg2}` }}>
-              <div style={{ width: 9, height: 9, background: T.danger, transform: 'rotate(45deg)', borderRadius: 2, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500 }}>{prox.nombre}</div>
-                <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3 }}>{prox.tipo ? `${prox.tipo} · ` : ''}{fDiaMes(prox.d)}</div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontFamily: T.mono, fontSize: 16, fontWeight: 600, color: T.danger }}>{diasProx}</div>
-                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>días · {Math.floor(diasProx / 7)} sem</div>
-              </div>
+          {/* competiciones y controles en vistazo */}
+          {(competiciones.length > 0 || controles.length > 0) && (
+            <div style={{ marginTop: 13, paddingTop: 12, borderTop: `1px solid ${T.bg2}`, display: 'grid', gridTemplateColumns: competiciones.length > 0 && controles.length > 0 ? '1fr 1fr' : '1fr', gap: 12 }}>
+              {competiciones.length > 0 && (
+                <div>
+                  <MonoLabel style={{ marginBottom: 7 }}>{competiciones.length} competiciones</MonoLabel>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {competiciones.map(c => {
+                      const d = parseISO(c.fecha)
+                      const dias = Math.ceil((d - hoy) / 86400000)
+                      const pasado = dias < 0
+                      const sems = Math.floor(Math.abs(dias) / 7)
+                      const diasR = Math.abs(dias) % 7
+                      const cuenta = pasado ? 'pasado' : sems > 0 ? `${sems}s ${diasR}d` : `${dias}d`
+                      return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 3, height: 26, background: T.danger, borderRadius: 2, flexShrink: 0, opacity: pasado ? 0.4 : 1 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nombre}</div>
+                            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fDiaMes(d)}</div>
+                          </div>
+                          <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 600, color: pasado ? T.ink3 : T.danger, flexShrink: 0 }}>{cuenta}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {controles.length > 0 && (
+                <div>
+                  <MonoLabel style={{ marginBottom: 7 }}>{controles.length} controles</MonoLabel>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {controles.map(c => {
+                      const d = parseISO(c.fecha)
+                      const dias = Math.ceil((d - hoy) / 86400000)
+                      const pasado = dias < 0
+                      const sems = Math.floor(Math.abs(dias) / 7)
+                      const diasR = Math.abs(dias) % 7
+                      const cuenta = pasado ? 'pasado' : sems > 0 ? `${sems}s ${diasR}d` : `${dias}d`
+                      return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 3, height: 26, background: T.ctrl, borderRadius: 2, flexShrink: 0, opacity: pasado ? 0.4 : 1 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nombre}</div>
+                            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fDiaMes(d)}{c.tipo ? ` · ${c.tipo}` : ''}</div>
+                          </div>
+                          <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 600, color: pasado ? T.ink3 : T.ctrl, flexShrink: 0 }}>{cuenta}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
