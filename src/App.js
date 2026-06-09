@@ -20,6 +20,7 @@ const NAV = [
 export default function App() {
   const [session, setSession] = useState(null)
   const [page, setPage] = useState('dashboard')
+  const [clientePlanificacion, setClientePlanificacion] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [publicToken, setPublicToken] = useState(null)
 
