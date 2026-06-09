@@ -580,15 +580,24 @@ export default function Planificacion() {
                     <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Sin controles</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {controles.map(ctrl => (
-                        <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 3, height: 32, background: '#3b82f6', borderRadius: 2, flexShrink: 0 }} />
-                          <div>
-                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ctrl.nombre}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(ctrl.fecha), 'dd MMM yyyy', { locale: es })}{ctrl.tipo ? ` · ${ctrl.tipo}` : ''}</div>
+                     {controles.map(ctrl => {
+                        const diasRestantes = Math.ceil((parseISO(ctrl.fecha) - new Date()) / (1000 * 60 * 60 * 24))
+                        const semsRestantes = Math.floor(diasRestantes / 7)
+                        const diasExtra = diasRestantes % 7
+                        const pasado = diasRestantes < 0
+                        return (
+                          <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 3, height: 32, background: '#3b82f6', borderRadius: 2, flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500 }}>{ctrl.nombre}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(ctrl.fecha), 'dd MMM yyyy', { locale: es })}{ctrl.tipo ? ` · ${ctrl.tipo}` : ''}</div>
+                            </div>
+                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: pasado ? 'var(--text3)' : '#3b82f6', textAlign: 'right', flexShrink: 0 }}>
+                              {pasado ? 'pasado' : semsRestantes > 0 ? `${semsRestantes}s ${diasExtra}d` : `${diasRestantes}d`}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
