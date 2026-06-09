@@ -820,50 +820,6 @@ export default function PlanPublica({ token }) {
           </>
         )}
 
-        {/* COMPETICIONES */}
-        {competiciones.length > 0 && (
-          <>
-            <SectionLabel>Competiciones</SectionLabel>
-            <div style={{ ...card, padding: '6px 0' }}>
-              {competiciones.map((c, i) => {
-                const d = parseISO(c.fecha), fut = d >= hoy
-                return (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 16px', borderTop: i ? `1px solid ${T.bg2}` : 'none' }}>
-                    <div style={{ width: 11, height: 11, background: T.danger, transform: 'rotate(45deg)', borderRadius: 2, flexShrink: 0, opacity: fut ? 1 : 0.4 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.nombre}</div>
-                      <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.ink3 }}>{c.tipo ? `${c.tipo} · ` : ''}{fDiaMes(d)}</div>
-                    </div>
-                    <div style={{ fontFamily: T.mono, fontSize: 10.5, fontWeight: 500, color: fut ? T.danger : T.ink3, textAlign: 'right', flexShrink: 0 }}>{faltan(d)}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
-
-        {/* CONTROLES / VALORACIONES */}
-        {controles.length > 0 && (
-          <>
-            <SectionLabel>Controles y valoraciones</SectionLabel>
-            <div style={{ ...card, padding: '6px 0' }}>
-              {controles.map((c, i) => {
-                const d = parseISO(c.fecha), fut = d >= hoy
-                return (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 16px', borderTop: i ? `1px solid ${T.bg2}` : 'none' }}>
-                    <div style={{ width: 11, height: 11, borderRadius: '50%', background: T.surface, border: `2.5px solid ${T.ctrl}`, flexShrink: 0, opacity: fut ? 1 : 0.4 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.nombre}</div>
-                      <div style={{ fontFamily: T.mono, fontSize: 10.5, color: T.ink3 }}>{c.tipo ? `${c.tipo} · ` : ''}{fDiaMes(d)}</div>
-                      {c.notas && <div style={{ fontSize: 12, color: T.ink2, marginTop: 3, lineHeight: 1.4 }}>{c.notas}</div>}
-                    </div>
-                    <div style={{ fontFamily: T.mono, fontSize: 10.5, fontWeight: 500, color: fut ? T.ctrl : T.ink3, textAlign: 'right', flexShrink: 0 }}>{faltan(d)}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
 
         <div style={{ textAlign: 'center', fontFamily: T.mono, fontSize: 9.5, color: T.ink3, marginTop: 6 }}>
           Las sesiones del día a día se desarrollan en TrainingPeaks
