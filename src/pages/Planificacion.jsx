@@ -1516,6 +1516,33 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
           </div>
         </div>
       )}
+      {modalControl && (
+        <div className="modal-backdrop" onClick={() => setModalControl(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><span className="modal-title">{modalControl?.id ? 'Editar control' : 'Nuevo control / valoración'}</span><button className="btn btn-ghost btn-sm" onClick={() => setModalControl(false)}><X size={14} /></button></div>
+            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formControl.nombre} onChange={e => setFormControl(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Test de fuerza, Valoración HRV..." autoFocus /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Fecha *</label><input className="form-input" type="date" value={formControl.fecha} onChange={e => setFormControl(f => ({ ...f, fecha: e.target.value }))} /></div>
+              <div className="form-group"><label className="form-label">Tipo</label>
+                <select className="form-select" value={formControl.tipo} onChange={e => setFormControl(f => ({ ...f, tipo: e.target.value }))}>
+                  <option value="">Sin categoría</option>
+                  <option value="Fuerza">Fuerza</option>
+                  <option value="Resistencia">Resistencia</option>
+                  <option value="Movilidad">Movilidad</option>
+                  <option value="Composición corporal">Composición corporal</option>
+                  <option value="HRV / Recuperación">HRV / Recuperación</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formControl.notas} onChange={e => setFormControl(f => ({ ...f, notas: e.target.value }))} placeholder="Protocolo, resultados, observaciones..." /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalControl(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarControl} disabled={saving}>{saving ? 'Guardando...' : modalControl?.id ? 'Guardar cambios' : 'Añadir control'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {modalCopiar && (
         <div className="modal-backdrop" onClick={() => setModalCopiar(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
