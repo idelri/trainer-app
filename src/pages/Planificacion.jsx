@@ -459,8 +459,12 @@ export default function Planificacion() {
                     <Plus size={13} /> Sub bloque
                   </button>
                  <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
-                    onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormComp(EMPTY_COMP); setModalComp(true) }}>
+                   onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormComp(EMPTY_COMP); setModalComp(true) }}>
                     <Trophy size={13} /> Competición
+                  </button>
+                  <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
+                    onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormControl({ nombre: '', fecha: '', tipo: '', notas: '' }); setModalControl(true) }}>
+                    🔬 Control / Valoración
                   </button>
                   <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
                     onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); setFormCopiar({ cliente_id: '', fecha_inicio: planificacion.fecha_inicio, nombre: planificacion.nombre + ' (copia)' }); setModalCopiar(true) }}>
