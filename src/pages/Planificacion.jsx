@@ -552,15 +552,24 @@ export default function Planificacion() {
                     <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin competiciones</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {competiciones.map(comp => (
-                        <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 3, height: 32, background: 'var(--danger)', borderRadius: 2, flexShrink: 0 }} />
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500 }}>{comp.nombre}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(comp.fecha), 'dd MMM yyyy', { locale: es })}{comp.tipo ? ` · ${comp.tipo}` : ''}</div>
+                     {competiciones.map(comp => {
+                        const diasRestantes = Math.ceil((parseISO(comp.fecha) - new Date()) / (1000 * 60 * 60 * 24))
+                        const semsRestantes = Math.floor(diasRestantes / 7)
+                        const diasExtra = diasRestantes % 7
+                        const pasado = diasRestantes < 0
+                        return (
+                          <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 3, height: 32, background: 'var(--danger)', borderRadius: 2, flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500 }}>{comp.nombre}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(parseISO(comp.fecha), 'dd MMM yyyy', { locale: es })}{comp.tipo ? ` · ${comp.tipo}` : ''}</div>
+                            </div>
+                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: pasado ? 'var(--text3)' : 'var(--danger)', textAlign: 'right', flexShrink: 0 }}>
+                              {pasado ? 'pasado' : semsRestantes > 0 ? `${semsRestantes}s ${diasExtra}d` : `${diasRestantes}d`}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
               </div>
