@@ -63,6 +63,9 @@ export default function Planificacion() {
   const [modalCopiarBloque, setModalCopiarBloque] = useState(null)
   const [formCopiarBloque, setFormCopiarBloque] = useState({ cliente_id: '', planificacion_id: '' })
   const [planesDestino, setPlanesDestino] = useState([])
+  const [controles, setControles] = useState([])
+  const [modalControl, setModalControl] = useState(false)
+  const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '' })
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) } }, [clienteSeleccionado])
 
