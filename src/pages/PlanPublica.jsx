@@ -569,7 +569,7 @@ export default function PlanPublica({ token }) {
   const estado = hoy < inicio ? 'pre' : hoy > fin ? 'post' : 'curso'
   const enCurso = estado === 'curso'
   const pct = estado === 'pre' ? 0 : estado === 'post' ? 100 : Math.round((diasTrans / totalDias) * 100)
-  const semanaActual = Math.max(1, Math.min(Math.floor(diasTrans / 7) + 1, totalSemanas))
+ const semanaActual = Math.max(1, Math.min(Math.ceil(diasTrans / 7) || 1, totalSemanas))
 
   /* meta: semana global de inicio/fin de cada bloque */
   let acc = 0
