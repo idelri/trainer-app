@@ -294,15 +294,26 @@ export default function Planificacion() {
 
     return (
       <div style={{ borderBottom: '1px solid var(--border)', background: esSemanaActual ? 'var(--accent-light)' : 'transparent' }}>
-        {compsSem.map(comp => (
-          <div key={comp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: 'var(--danger-light)', borderBottom: '1px solid var(--danger)', cursor: 'pointer' }}
-            onClick={() => { setFormComp({ nombre: comp.nombre, fecha: comp.fecha, tipo: comp.tipo || '', objetivo: comp.objetivo || '', notas: comp.notas || '' }); setModalComp({ ...comp }) }}>
-            <Trophy size={12} color="var(--danger)" />
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)' }}>{comp.nombre}</span>
-            <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(comp.fecha), 'dd MMM', { locale: es })}</span>
-            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={e => { e.stopPropagation(); eliminarComp(comp.id) }}><X size={11} /></button>
+       {compsSem.map(comp => (
+          <div key={comp.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: 'var(--danger-light)', borderBottom: '1px solid var(--danger)', cursor: 'pointer' }}
+              onClick={() => setObjetivoVisible(v => ({ ...v, [`comp-${comp.id}`]: !v[`comp-${comp.id}`] }))}>
+              <Trophy size={12} color="var(--danger)" />
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)' }}>{comp.nombre}</span>
+              <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(comp.fecha), 'dd MMM', { locale: es })}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); setFormComp({ nombre: comp.nombre, fecha: comp.fecha, tipo: comp.tipo || '', objetivo: comp.objetivo || '', notas: comp.notas || '' }); setModalComp({ ...comp }) }}>Editar</button>
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); eliminarComp(comp.id) }}><X size={11} /></button>
+              </div>
+            </div>
+            {objetivoVisible[`comp-${comp.id}`] && (comp.objetivo || comp.notas) && (
+              <div style={{ padding: '8px 16px 10px 36px', background: 'var(--danger-light)', borderBottom: '1px solid var(--danger)' }}>
+                {comp.objetivo && <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--danger)', marginBottom: 3 }}>🎯 {comp.objetivo}</div>}
+                {comp.notas && <div style={{ fontSize: 12, color: 'var(--danger)', opacity: 0.8 }}>{comp.notas}</div>}
+              </div>
+            )}
           </div>
-       ))}
+        ))}
         {ctrlsSem.map(ctrl => (
           <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: '#eff6ff', borderBottom: '1px solid #3b82f6', cursor: 'pointer' }}
             onClick={() => { setFormControl({ nombre: ctrl.nombre, fecha: ctrl.fecha, tipo: ctrl.tipo || '', notas: ctrl.notas || '' }); setModalControl({ ...ctrl }) }}>
