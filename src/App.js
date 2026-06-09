@@ -80,7 +80,7 @@ export default function App() {
         </div>
       </aside>
       <main className="main">
-        <Page />
+      <Page setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />
       </main>
     </div>
   )
