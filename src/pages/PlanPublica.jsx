@@ -311,9 +311,9 @@ function SemanaRow({ sem, sub, fecha, globalNum, esActual, comp, ctrl, registerR
               <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3 }}>
                 obj <b style={{ color: T.ink2, fontWeight: 500 }}>{sem.km_objetivo}km</b>
                 {sem.km_real != null && <> · real <b style={{ color: T.ink, fontWeight: 500 }}>{sem.km_real}km</b></>}
+                {pctKm != null && <> · <b style={{ color: pctColor, fontWeight: 600 }}>{pctKm}%</b></>}
               </span>
             )}
-            {pctKm != null && <span style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 600, color: pctColor }}>{pctKm}%</span>}
           </div>
           {totalZ > 0 && (
             <div style={{ marginTop: 6 }}>
