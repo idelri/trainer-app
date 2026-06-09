@@ -28,6 +28,9 @@ export default function Pagos() {
   const [filtro, setFiltro] = useState('todos')
   const [sortCol, setSortCol] = useState('estado')
   const [sortDir, setSortDir] = useState('asc')
+  const [historico, setHistorico] = useState([])
+  const [rango, setRango] = useState(6)
+  const [mesFin, setMesFin] = useState(new Date())
 
   const mesStr = format(mes, 'yyyy-MM')
   const mesLabel = format(mes, 'MMMM yyyy', { locale: es })
