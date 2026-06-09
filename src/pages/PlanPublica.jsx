@@ -417,7 +417,7 @@ function Subbloque({ b, sub, startGlobal, semanas, comps, ctrls, inicio, isOpen,
             <div style={{ background: T.bg, borderRadius: 10, overflow: 'hidden', border: `1px solid ${T.bg2}` }}>
               {sems.map(sem => {
                 const globalNum = startGlobal + sem.numero - 1
-                const fechaSem = addWeeks(inicio, globalNum - 1)
+               const fechaSem = addWeeks(new Date(b.fecha_inicio + 'T12:00:00'), sem.numero - 1)
                 const hoy = new Date()
                 const esActual = hoy >= fechaSem && hoy < addWeeks(fechaSem, 1)
                 const inWeek = arr => arr.filter(c => { const f = parseISO(c.fecha); return f >= fechaSem && f < addWeeks(fechaSem, 1) })
