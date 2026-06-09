@@ -315,12 +315,23 @@ export default function Planificacion() {
           </div>
         ))}
         {ctrlsSem.map(ctrl => (
-          <div key={ctrl.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: '#eff6ff', borderBottom: '1px solid #3b82f6', cursor: 'pointer' }}
-            onClick={() => { setFormControl({ nombre: ctrl.nombre, fecha: ctrl.fecha, tipo: ctrl.tipo || '', notas: ctrl.notas || '' }); setModalControl({ ...ctrl }) }}>
-            <span style={{ fontSize: 12 }}>🔬</span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: '#3b82f6' }}>{ctrl.nombre}</span>
-            <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(ctrl.fecha), 'dd MMM', { locale: es })}</span>
-            <button className="btn btn-ghost btn-sm" style={{ color: '#3b82f6', marginLeft: 'auto' }} onClick={e => { e.stopPropagation(); eliminarControl(ctrl.id) }}><X size={11} /></button>
+          <div key={ctrl.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: '#eff6ff', borderBottom: '1px solid #3b82f6', cursor: 'pointer' }}
+              onClick={() => setObjetivoVisible(v => ({ ...v, [`ctrl-${ctrl.id}`]: !v[`ctrl-${ctrl.id}`] }))}>
+              <span style={{ fontSize: 12 }}>🔬</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#3b82f6' }}>{ctrl.nombre}</span>
+              <span style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'var(--mono)', opacity: 0.8 }}>{format(parseISO(ctrl.fecha), 'dd MMM', { locale: es })}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                <button className="btn btn-ghost btn-sm" style={{ color: '#3b82f6' }} onClick={e => { e.stopPropagation(); setFormControl({ nombre: ctrl.nombre, fecha: ctrl.fecha, tipo: ctrl.tipo || '', notas: ctrl.notas || '' }); setModalControl({ ...ctrl }) }}>Editar</button>
+                <button className="btn btn-ghost btn-sm" style={{ color: '#3b82f6' }} onClick={e => { e.stopPropagation(); eliminarControl(ctrl.id) }}><X size={11} /></button>
+              </div>
+            </div>
+            {objetivoVisible[`ctrl-${ctrl.id}`] && ctrl.notas && (
+              <div style={{ padding: '8px 16px 10px 36px', background: '#eff6ff', borderBottom: '1px solid #3b82f6' }}>
+                {ctrl.tipo && <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7, marginBottom: 3, textTransform: 'uppercase' }}>{ctrl.tipo}</div>}
+                <div style={{ fontSize: 12, color: '#3b82f6', opacity: 0.9 }}>{ctrl.notas}</div>
+              </div>
+            )}
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer' }} onClick={() => abrirSemana(b.id, num)}>
