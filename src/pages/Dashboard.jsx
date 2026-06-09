@@ -21,7 +21,7 @@ export default function Dashboard({ setPage, setClientePlanificacion }) {
 
   const porDeporte = {}
   clientes.forEach(c => {
-    const dep = c.deporte || 'Sin deporte'
+    const dep = c.servicios?.[0]?.deporte || c.servicios?.deporte || 'Sin deporte'
     if (!porDeporte[dep]) porDeporte[dep] = []
     porDeporte[dep].push(c)
   })
