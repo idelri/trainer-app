@@ -658,15 +658,16 @@ export default function Planificacion() {
                     })}
                   </div>
 
-                 {controles.length > 0 && (
-                    <div style={{ display: 'flex', marginBottom: 3, position: 'relative', height: 20 }}>
+                {controles.length > 0 && (
+                    <div style={{ display: 'flex', marginBottom: 3, position: 'relative', height: 36 }}>
                       {controles.map(ctrl => {
                         const pct = (differenceInWeeks(parseISO(ctrl.fecha), parseISO(planificacion.fecha_inicio)) / totalSemanas) * 100
                         return (
                           <div key={ctrl.id} onClick={() => { setFormControl({ nombre: ctrl.nombre, fecha: ctrl.fecha, tipo: ctrl.tipo || '', notas: ctrl.notas || '' }); setModalControl({ ...ctrl }) }}
                             style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, cursor: 'pointer' }}>
-                            <div style={{ fontSize: 11 }}>🔬</div>
-                            <div style={{ fontSize: 8, fontFamily: 'var(--mono)', color: '#3b82f6', whiteSpace: 'nowrap', textAlign: 'center' }}>{ctrl.nombre}</div>
+                            <div style={{ fontSize: 13 }}>🔬</div>
+                            <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', whiteSpace: 'nowrap', marginTop: 1, textAlign: 'center' }}>{ctrl.nombre}</div>
+                            <div style={{ fontSize: 8, fontFamily: 'var(--mono)', color: '#3b82f6', whiteSpace: 'nowrap', opacity: 0.8 }}>{format(parseISO(ctrl.fecha), 'dd MMM', { locale: es })}</div>
                           </div>
                         )
                       })}
