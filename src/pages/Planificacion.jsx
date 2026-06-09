@@ -67,6 +67,7 @@ export default function Planificacion() {
   const [modalControl, setModalControl] = useState(false)
   const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '' })
   useEffect(() => { cargarClientes() }, [])
+  useEffect(() => { if (clientePlanificacion && !clienteSeleccionado) { setClienteSeleccionado(clientePlanificacion) } }, [clientePlanificacion])
   useEffect(() => { if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) } }, [clienteSeleccionado])
 
   async function cargarClientes() {
