@@ -461,6 +461,7 @@ export default function Planificacion({ clientePlanificacion }) {
         </div>
         <div className="flex gap-2" style={{ position: 'relative' }}>
           {planificacion && <button className="btn btn-ghost btn-sm" onClick={copiarEnlace}>🔗 Compartir</button>}
+          {planificacion && <button className="btn btn-ghost btn-sm" onClick={() => window.print()}>🖨️ Imprimir</button>}
           {planificacion && clienteSeleccionado && (
             <button className="btn btn-ghost" onClick={() => { setFormPlan({ cliente_id: planificacion.cliente_id, nombre: planificacion.nombre, fecha_inicio: planificacion.fecha_inicio, fecha_fin: planificacion.fecha_fin, notas: planificacion.notas || '' }); setModalPlan('editar') }}>Editar</button>
           )}
