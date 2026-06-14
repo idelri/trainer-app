@@ -294,7 +294,7 @@ function SemanaRow({ sem, sub, fecha, globalNum, esActual, comp, ctrl, registerR
           <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ctrl, opacity: 0.8, marginLeft: 'auto' }}>{fDiaMes(parseISO(c.fecha))}</span>
         </div>
       ))}
-      <div onClick={() => sem.notas && setOpen(o => !o)} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '9px 14px', cursor: sem.notas ? 'pointer' : 'default' }}>
+    <div onClick={() => (sem.notas || sem.comentario) && setOpen(o => !o)} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '9px 14px', cursor: (sem.notas || sem.comentario) ? 'pointer' : 'default' }}>
         <div style={{ flexShrink: 0, marginTop: 1 }}>
           <div style={{ width: 30, height: 30, borderRadius: '50%', background: esActual ? T.green : carga.color, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: esActual ? `0 0 0 2px ${T.green}, 0 0 0 4px ${T.greenL}` : 'none' }}>
             <span style={{ fontFamily: T.mono, fontSize: 10.5, fontWeight: 500, color: '#fff' }}>S{globalNum}</span>
