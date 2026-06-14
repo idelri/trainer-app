@@ -290,7 +290,7 @@ export default function Planificacion({ clientePlanificacion }) {
     const fechaSemana = addWeeks(parseISO(b.fecha_inicio), num - 1)
     const compsSem = competiciones.filter(c => { const fc = parseISO(c.fecha); return fc >= fechaSemana && fc < addWeeks(fechaSemana, 1) })
     const ctrlsSem = controles.filter(c => { const fc = parseISO(c.fecha); return fc >= fechaSemana && fc < addWeeks(fechaSemana, 1) })
-    const tieneContenido = sem?.notas || sem?.zona1_2_real > 0 || sem?.zona3_4_real > 0 || sem?.zona5_real > 0
+    const tieneContenido = sem?.notas || sem?.comentario || sem?.zona1_2_real > 0 || sem?.zona3_4_real > 0 || sem?.zona5_real > 0
     const hoy = new Date()
     const esSemanaActual = hoy >= fechaSemana && hoy < addWeeks(fechaSemana, 1)
 
