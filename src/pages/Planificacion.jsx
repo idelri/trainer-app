@@ -223,9 +223,10 @@ export default function Planificacion({ clientePlanificacion }) {
     const semsBloque = semanas[bloque_id] || []
     const semanaExistente = semsBloque.find(s => s.numero === numero)
     const subDeLaSemana = (subbloques[bloque_id] || []).find(s => numero >= s.semana_inicio && numero <= s.semana_fin)
-    setFormSemana({
+  setFormSemana({
       objetivo: semanaExistente?.objetivo || (subDeLaSemana?.nombre || ''),
       notas: semanaExistente?.notas || '',
+      comentario: semanaExistente?.comentario || '',
       carga: semanaExistente?.carga || 'media',
       zona1_2_real: semanaExistente?.zona1_2_real || 0,
       zona3_4_real: semanaExistente?.zona3_4_real || 0,
