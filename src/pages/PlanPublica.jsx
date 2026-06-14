@@ -337,9 +337,17 @@ function SemanaRow({ sem, sub, fecha, globalNum, esActual, comp, ctrl, registerR
           <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.ink3 }}>{fDiaMes(fecha)}</span>
         </div>
       </div>
-      {open && sem.notas && (
+      {open && (sem.notas || sem.comentario) && (
         <div style={{ padding: '0 14px 12px 55px' }}>
-          <Bullets text={sem.notas} color={T.ink3} />
+          {sem.notas && <Bullets text={sem.notas} color={T.ink3} />}
+          {sem.comentario && (
+            <div style={{ marginTop: sem.notas ? 10 : 0, padding: '8px 10px', background: T.bg, borderRadius: 6, borderLeft: `3px solid ${sub?.color || T.green}` }}>
+              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Comentario</div>
+              {sem.comentario.split('\n').filter(l => l.trim()).map((l, i) => (
+                <div key={i} style={{ fontSize: 12, color: T.ink2, marginBottom: 2 }}>{l}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
