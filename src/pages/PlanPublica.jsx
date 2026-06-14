@@ -333,7 +333,7 @@ function SemanaRow({ sem, sub, fecha, globalNum, esActual, comp, ctrl, registerR
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 2 }}>
-          {sem.notas && <Chevron open={open} size={11} />}
+      {(sem.notas || sem.comentario) && <Chevron open={open} size={11} />}
           <span style={{ fontFamily: T.mono, fontSize: 9.5, color: T.ink3 }}>{fDiaMes(fecha)}</span>
         </div>
       </div>
