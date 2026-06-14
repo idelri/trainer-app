@@ -47,7 +47,7 @@ export default function Planificacion({ clientePlanificacion }) {
   const [formPlan, setFormPlan] = useState(EMPTY_PLAN)
   const [formBloque, setFormBloque] = useState(EMPTY_BLOQUE)
   const [formComp, setFormComp] = useState(EMPTY_COMP)
-  const [formSemana, setFormSemana] = useState({ objetivo: '', notas: '', carga: 'media', zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0, km_objetivo: null, km_real: null })
+ const [formSemana, setFormSemana] = useState({ objetivo: '', notas: '', comentario: '', carga: 'media', zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0, km_objetivo: null, km_real: null })
   const [saving, setSaving] = useState(false)
   const [clienteData, setClienteData] = useState(null)
   const [modalSemanaTipo, setModalSemanaTipo] = useState(false)
