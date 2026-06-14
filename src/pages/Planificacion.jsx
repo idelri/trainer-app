@@ -394,7 +394,7 @@ export default function Planificacion({ clientePlanificacion }) {
             <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaSem}</div>
           </div>
         </div>
-        {objetivoVisible[`sem-${b.id}-${num}`] && tieneContenido && (
+      {objetivoVisible[`sem-${b.id}-${num}`] && tieneContenido && (
           <div style={{ padding: '0 16px 12px 56px' }}>
             {sem?.notas && (
               <div style={{ marginBottom: 10 }}>
@@ -403,6 +403,14 @@ export default function Planificacion({ clientePlanificacion }) {
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 5 }} />
                     <span style={{ fontSize: 12, color: 'var(--text2)' }}>{linea}</span>
                   </div>
+                ))}
+              </div>
+            )}
+            {sem?.comentario && (
+              <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 6, borderLeft: `3px solid ${b.color || '#2d6a4f'}` }}>
+                <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Comentario post-semana</div>
+                {sem.comentario.split('\n').filter(l => l.trim()).map((linea, i) => (
+                  <div key={i} style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>{linea}</div>
                 ))}
               </div>
             )}
