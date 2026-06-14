@@ -163,7 +163,7 @@ export default function Planificacion({ clientePlanificacion }) {
     if (!modalSemana) return
     setSaving(true)
     const { bloque_id, numero, semanaExistente } = modalSemana
-    const datos = { objetivo: formSemana.objetivo || null, notas: formSemana.notas || null, carga: formSemana.carga, zona1_2_real: formSemana.zona1_2_real || 0, zona3_4_real: formSemana.zona3_4_real || 0, zona5_real: formSemana.zona5_real || 0, km_objetivo: formSemana.km_objetivo || null, km_real: formSemana.km_real || null }
+    const datos = { objetivo: formSemana.objetivo || null, notas: formSemana.notas || null, comentario: formSemana.comentario || null, carga: formSemana.carga, zona1_2_real: formSemana.zona1_2_real || 0, zona3_4_real: formSemana.zona3_4_real || 0, zona5_real: formSemana.zona5_real || 0, km_objetivo: formSemana.km_objetivo || null, km_real: formSemana.km_real || null }
     if (semanaExistente) { await supabase.from('semanas').update(datos).eq('id', semanaExistente.id) }
     else { await supabase.from('semanas').insert({ bloque_id, numero, ...datos }) }
     setSaving(false); setModalSemana(null); cargarPlanificacion()
