@@ -1,19 +1,48 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Plus, X, ChevronDown, ChevronRight, Trash2, Copy } from 'lucide-react'
+import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '' }
-const EMPTY_BLOQUE = { nombre: '', color: COLORES[0], nota: '' }
-const EMPTY_EJERCICIO = { nombre: '', series: '', reps: '', rpe: '', notas: '', media_tipo: 'youtube', media_url: '', video_url: '' }
 
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
   return m ? m[1] : null
+}
+
+/* input que guarda solo, sin botones, al perder el foco o tras una pausa */
+function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) {
+  const [v, setV] = useState(value || '')
+  const timer = useRef(null)
+  useEffect(() => { setV(value || '') }, [value])
+  function handleChange(e) {
+    const val = e.target.value
+    setV(val)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => onSave(val), 700)
+  }
+  function handleBlur() {
+    clearTimeout(timer.current)
+    onSave(v)
+  }
+  const Comp = textarea ? 'textarea' : 'input'
+  return (
+    <Comp
+      value={v}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      style={{
+        border: 'none', background: 'transparent', outline: 'none', width: '100%',
+        fontFamily: 'inherit', fontSize: fontSize || 13, color: 'inherit', padding: 0,
+        resize: textarea ? 'vertical' : 'none', ...style,
+      }}
+      rows={textarea ? 2 : undefined}
+    />
+  )
 }
 
 export default function Sesiones() {
@@ -27,10 +56,6 @@ export default function Sesiones() {
 
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
-  const [modalBloque, setModalBloque] = useState(null)
-  const [formBloque, setFormBloque] = useState(EMPTY_BLOQUE)
-  const [modalEjercicio, setModalEjercicio] = useState(null)
-  const [formEjercicio, setFormEjercicio] = useState(EMPTY_EJERCICIO)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { cargarClientes() }, [])
@@ -79,9 +104,26 @@ export default function Sesiones() {
     const datos = { titulo: formSesion.titulo, fecha: formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
-    } else {
-      const { data } = await supabase.from('sesiones').insert({ ...datos, cliente_id: clienteSeleccionado }).select().single()
-      if (data) setSesionAbierta(data)
+      setSaving(false); setModalSesion(null); cargarSesiones()
+      return
+    }
+    // Nueva sesión: crear con 4 bloques x 3 ejercicios por defecto
+    const { data: nueva } = await supabase.from('sesiones').insert({ ...datos, cliente_id: clienteSeleccionado }).select().single()
+    if (nueva) {
+      for (let i = 0; i < 4; i++) {
+        const { data: b } = await supabase.from('sesion_bloques').insert({
+          sesion_id: nueva.id, nombre: `Bloque ${i + 1}`, color: COLORES[i % COLORES.length], nota: '', orden: i,
+        }).select().single()
+        if (b) {
+          for (let j = 0; j < 3; j++) {
+            await supabase.from('sesion_ejercicios').insert({
+              bloque_id: b.id, nombre: '', series: '', reps: '', rpe: '', notas: '',
+              media_tipo: 'youtube', media_url: '', video_url: '', orden: j,
+            })
+          }
+        }
+      }
+      setSesionAbierta(nueva)
     }
     setSaving(false); setModalSesion(null); cargarSesiones()
   }
@@ -99,66 +141,49 @@ export default function Sesiones() {
     alert(`Enlace copiado:\n${url}`)
   }
 
-  function abrirNuevoBloque() {
-    setFormBloque({ ...EMPTY_BLOQUE, color: COLORES[bloques.length % COLORES.length] })
-    setModalBloque({})
+  async function actualizarBloque(id, campo, valor) {
+    await supabase.from('sesion_bloques').update({ [campo]: valor }).eq('id', id)
+    setBloques(bs => bs.map(b => b.id === id ? { ...b, [campo]: valor } : b))
   }
 
-  function abrirEditarBloque(b) {
-    setFormBloque({ nombre: b.nombre, color: b.color || COLORES[0], nota: b.nota || '' })
-    setModalBloque(b)
+  async function cambiarColorBloque(id, color) {
+    await supabase.from('sesion_bloques').update({ color }).eq('id', id)
+    setBloques(bs => bs.map(b => b.id === id ? { ...b, color } : b))
   }
 
-  async function guardarBloque() {
-    if (!formBloque.nombre) return
-    setSaving(true)
-    const datos = { nombre: formBloque.nombre, color: formBloque.color, nota: formBloque.nota || null }
-    if (modalBloque?.id) {
-      await supabase.from('sesion_bloques').update(datos).eq('id', modalBloque.id)
-    } else {
-      await supabase.from('sesion_bloques').insert({ ...datos, sesion_id: sesionAbierta.id, orden: bloques.length })
+  async function añadirBloque() {
+    const { data: b } = await supabase.from('sesion_bloques').insert({
+      sesion_id: sesionAbierta.id, nombre: `Bloque ${bloques.length + 1}`, color: COLORES[bloques.length % COLORES.length], nota: '', orden: bloques.length,
+    }).select().single()
+    if (b) {
+      setBloques(bs => [...bs, b])
+      setEjercicios(e => ({ ...e, [b.id]: [] }))
     }
-    setSaving(false); setModalBloque(null); cargarDetalle(sesionAbierta.id)
   }
 
   async function eliminarBloque(id) {
     if (!window.confirm('¿Eliminar este bloque y sus ejercicios?')) return
     await supabase.from('sesion_bloques').delete().eq('id', id)
-    cargarDetalle(sesionAbierta.id)
+    setBloques(bs => bs.filter(b => b.id !== id))
   }
 
-  function abrirNuevoEjercicio(bloqueId) {
-    setFormEjercicio(EMPTY_EJERCICIO)
-    setModalEjercicio({ bloque_id: bloqueId })
+  async function añadirEjercicio(bloqueId) {
+    const lista = ejercicios[bloqueId] || []
+    const { data: e } = await supabase.from('sesion_ejercicios').insert({
+      bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '',
+      media_tipo: 'youtube', media_url: '', video_url: '', orden: lista.length,
+    }).select().single()
+    if (e) setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] }))
   }
 
-  function abrirEditarEjercicio(e, bloqueId) {
-    setFormEjercicio({ nombre: e.nombre, series: e.series || '', reps: e.reps || '', rpe: e.rpe || '', notas: e.notas || '', media_tipo: e.media_tipo || 'youtube', media_url: e.media_url || '', video_url: e.video_url || '' })
-    setModalEjercicio({ ...e, bloque_id: bloqueId })
+  async function actualizarEjercicio(bloqueId, id, campo, valor) {
+    await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
+    setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
   }
 
-  async function guardarEjercicio() {
-    if (!formEjercicio.nombre) return
-    setSaving(true)
-    const datos = {
-      nombre: formEjercicio.nombre, series: formEjercicio.series || null, reps: formEjercicio.reps || null,
-      rpe: formEjercicio.rpe || null, notas: formEjercicio.notas || null,
-      media_tipo: formEjercicio.media_tipo, media_url: formEjercicio.media_url || null,
-      video_url: formEjercicio.video_url || null,
-    }
-    if (modalEjercicio?.id) {
-      await supabase.from('sesion_ejercicios').update(datos).eq('id', modalEjercicio.id)
-    } else {
-      const lista = ejercicios[modalEjercicio.bloque_id] || []
-      await supabase.from('sesion_ejercicios').insert({ ...datos, bloque_id: modalEjercicio.bloque_id, orden: lista.length })
-    }
-    setSaving(false); setModalEjercicio(null); cargarDetalle(sesionAbierta.id)
-  }
-
-  async function eliminarEjercicio(id) {
-    if (!window.confirm('¿Eliminar este ejercicio?')) return
+  async function eliminarEjercicio(bloqueId, id) {
     await supabase.from('sesion_ejercicios').delete().eq('id', id)
-    cargarDetalle(sesionAbierta.id)
+    setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).filter(e => e.id !== id) }))
   }
 
   async function duplicarSesion(s) {
@@ -197,7 +222,7 @@ export default function Sesiones() {
         {sesionAbierta && (
           <div className="flex gap-2">
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Fecha / duración</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>
           </div>
         )}
@@ -237,64 +262,105 @@ export default function Sesiones() {
 
       {sesionAbierta && (
         <div>
-          {sesionAbierta.objetivo && (
-            <div className="card" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo</div>
-              <div style={{ fontSize: 13 }}>{sesionAbierta.objetivo}</div>
-            </div>
-          )}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo general</div>
+            <InlineInput
+              value={sesionAbierta.objetivo}
+              placeholder="Ej: Seguir construyendo base de movilidad y fuerza general..."
+              textarea
+              fontSize={13}
+              onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })) }}
+            />
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bloques.map((b, idx) => (
               <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 6, background: b.color || COLORES[0], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'white' }}>{String(idx + 1).padStart(2, '0')}</span>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {COLORES.map(c => (
+                      <div key={c} onClick={() => cambiarColorBloque(b.id, c)}
+                        style={{ width: 16, height: 16, borderRadius: '50%', background: c, cursor: 'pointer', border: b.color === c ? '2px solid var(--text)' : '2px solid transparent' }} />
+                    ))}
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{b.nombre}</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarBloque(b)}>Editar</button>
+                  <div style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                    <InlineInput value={b.nombre} placeholder={`Bloque ${idx + 1}`} fontSize={14}
+                      style={{ fontWeight: 600 }}
+                      onSave={v => actualizarBloque(b.id, 'nombre', v)} />
+                  </div>
                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                 </div>
-                {b.nota && (
-                  <div style={{ padding: '0 16px 12px', fontSize: 12.5, color: 'var(--text2)' }}>{b.nota}</div>
-                )}
+                <div style={{ padding: '0 16px 10px', fontSize: 12.5, color: 'var(--text2)' }}>
+                  <InlineInput value={b.nota} placeholder="Nota del bloque (opcional)..." textarea fontSize={12.5}
+                    onSave={v => actualizarBloque(b.id, 'nota', v)} />
+                </div>
                 <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(ejercicios[b.id] || []).map(e => {
                     const id = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
                     const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
                     return (
                       <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                        {thumb && <img src={thumb} alt={e.nombre} style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                        <div style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {thumb ? <img src={thumb} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 9, color: 'var(--text3)' }}>sin media</span>}
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{e.nombre}</div>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                            {e.series && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>Series: {e.series}</span>}
-                            {e.reps && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>Reps: {e.reps}</span>}
-                            {e.rpe && <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>RPE: {e.rpe}</span>}
+                          <InlineInput value={e.nombre} placeholder="Nombre del ejercicio" fontSize={13} style={{ fontWeight: 600 }}
+                            onSave={v => actualizarEjercicio(b.id, e.id, 'nombre', v)} />
+                          <div style={{ display: 'flex', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
+                              <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
+                              <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>RPE</span>
+                              <div style={{ width: 36 }}><InlineInput value={e.rpe} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'rpe', v)} /></div>
+                            </div>
                           </div>
-                          {e.notas && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>{e.notas}</div>}
+                          <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                            <select className="form-select" style={{ fontSize: 11, padding: '3px 6px', width: 'auto' }} value={e.media_tipo} onChange={ev => actualizarEjercicio(b.id, e.id, 'media_tipo', ev.target.value)}>
+                              <option value="youtube">YouTube</option>
+                              <option value="imagen">Imagen</option>
+                              <option value="video">Vídeo</option>
+                              <option value="gif">GIF</option>
+                            </select>
+                            <div style={{ flex: 1 }}>
+                              <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
+                                onSave={v => actualizarEjercicio(b.id, e.id, 'media_url', v)} />
+                            </div>
+                          </div>
+                          {e.media_tipo !== 'youtube' && (
+                            <div style={{ marginTop: 4 }}>
+                              <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
+                                onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
+                            </div>
+                          )}
+                          <div style={{ marginTop: 6 }}>
+                            <InlineInput value={e.notas} placeholder="Notas (opcional)..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }}
+                              onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
+                          </div>
                         </div>
-                        <div className="flex gap-1" style={{ flexShrink: 0 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarEjercicio(e, b.id)}>Editar</button>
-                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarEjercicio(e.id)}><X size={12} /></button>
-                        </div>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminarEjercicio(b.id, e.id)}><X size={12} /></button>
                       </div>
                     )
                   })}
-                  <button className="btn btn-ghost btn-sm" onClick={() => abrirNuevoEjercicio(b.id)} style={{ alignSelf: 'flex-start' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id)} style={{ alignSelf: 'flex-start' }}>
                     <Plus size={12} /> Ejercicio
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn btn-ghost" onClick={abrirNuevoBloque} style={{ alignSelf: 'flex-start' }}>
+            <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}>
               <Plus size={13} /> Bloque
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal sesión */}
+      {/* Modal sesión: solo título, fecha, duración (lo mínimo que necesita una identidad) */}
       {modalSesion && (
         <div className="modal-backdrop" onClick={() => setModalSesion(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -307,82 +373,12 @@ export default function Sesiones() {
               <div className="form-group"><label className="form-label">Fecha *</label><input className="form-input" type="date" value={formSesion.fecha} onChange={e => setFormSesion(f => ({ ...f, fecha: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">Duración (min)</label><input className="form-input" type="number" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} placeholder="Ej: 45" /></div>
             </div>
-            <div className="form-group"><label className="form-label">Objetivo general</label><textarea className="form-textarea" value={formSesion.objetivo} onChange={e => setFormSesion(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Seguir construyendo base de movilidad y fuerza general..." /></div>
+            {modalSesion === 'nueva' && (
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar directamente.</p>
+            )}
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSesion(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSesion} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal bloque */}
-      {modalBloque && (
-        <div className="modal-backdrop" onClick={() => setModalBloque(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{modalBloque?.id ? 'Editar bloque' : 'Nuevo bloque'}</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalBloque(null)}><X size={14} /></button>
-            </div>
-            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formBloque.nombre} onChange={e => setFormBloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Activación, Fuerza general..." autoFocus /></div>
-            <div className="form-group">
-              <label className="form-label">Color</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                {COLORES.map(c => <div key={c} onClick={() => setFormBloque(f => ({ ...f, color: c }))} style={{ width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer', border: formBloque.color === c ? '3px solid var(--text)' : '3px solid transparent' }} />)}
-              </div>
-            </div>
-            <div className="form-group"><label className="form-label">Nota del bloque (opcional)</label><textarea className="form-textarea" value={formBloque.nota} onChange={e => setFormBloque(f => ({ ...f, nota: e.target.value }))} placeholder="Ej: Usa pesos que permitan mantener buena técnica..." /></div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModalBloque(null)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarBloque} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal ejercicio */}
-      {modalEjercicio && (
-        <div className="modal-backdrop" onClick={() => setModalEjercicio(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{modalEjercicio?.id ? 'Editar ejercicio' : 'Nuevo ejercicio'}</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalEjercicio(null)}><X size={14} /></button>
-            </div>
-            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formEjercicio.nombre} onChange={e => setFormEjercicio(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Wall sit con disco" autoFocus /></div>
-            <div className="form-row">
-              <div className="form-group"><label className="form-label">Series</label><input className="form-input" value={formEjercicio.series} onChange={e => setFormEjercicio(f => ({ ...f, series: e.target.value }))} placeholder="Ej: 2" /></div>
-              <div className="form-group"><label className="form-label">Reps</label><input className="form-input" value={formEjercicio.reps} onChange={e => setFormEjercicio(f => ({ ...f, reps: e.target.value }))} placeholder="Ej: 12, 8/lado, 15''" /></div>
-              <div className="form-group"><label className="form-label">RPE</label><input className="form-input" value={formEjercicio.rpe} onChange={e => setFormEjercicio(f => ({ ...f, rpe: e.target.value }))} placeholder="Ej: 7" /></div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tipo de media</label>
-              <select className="form-select" value={formEjercicio.media_tipo} onChange={e => setFormEjercicio(f => ({ ...f, media_tipo: e.target.value }))}>
-                <option value="youtube">Enlace de YouTube</option>
-                <option value="imagen">Imagen propia (URL)</option>
-                <option value="video">Vídeo propio (URL)</option>
-                <option value="gif">GIF (URL)</option>
-              </select>
-            </div>
-            {formEjercicio.media_tipo === 'youtube' ? (
-              <div className="form-group">
-                <label className="form-label">Enlace de YouTube</label>
-                <input className="form-input" value={formEjercicio.media_url} onChange={e => setFormEjercicio(f => ({ ...f, media_url: e.target.value }))} placeholder="https://www.youtube.com/watch?v=..." />
-                {ytId(formEjercicio.media_url) && <img src={`https://img.youtube.com/vi/${ytId(formEjercicio.media_url)}/hqdefault.jpg`} alt="preview" style={{ width: 100, borderRadius: 8, marginTop: 8 }} />}
-              </div>
-            ) : (
-              <div className="form-group">
-                <label className="form-label">URL de la {formEjercicio.media_tipo === 'imagen' ? 'imagen' : formEjercicio.media_tipo === 'gif' ? 'GIF' : 'vídeo'}</label>
-                <input className="form-input" value={formEjercicio.media_url} onChange={e => setFormEjercicio(f => ({ ...f, media_url: e.target.value }))} placeholder="https://..." />
-                <div className="form-group" style={{ marginTop: 10 }}>
-                  <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
-                  <input className="form-input" value={formEjercicio.video_url} onChange={e => setFormEjercicio(f => ({ ...f, video_url: e.target.value }))} placeholder="Si quieres un enlace adicional para ver el vídeo completo" />
-                </div>
-              </div>
-            )}
-            <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formEjercicio.notas} onChange={e => setFormEjercicio(f => ({ ...f, notas: e.target.value }))} placeholder="Ej: Contrae abdomen con la intención de que no haya espacio..." /></div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModalEjercicio(null)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarEjercicio} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
         </div>
