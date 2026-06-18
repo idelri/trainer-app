@@ -418,7 +418,7 @@ export default function Sesiones() {
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
      {!loading && clienteSeleccionado && !sesionAbierta && (
-       <Calendario
+      <Calendario
           sesiones={sesiones}
           notas={notas}
           competiciones={competicionesCal}
@@ -428,11 +428,23 @@ export default function Sesiones() {
             setModalSesion('nueva')
           }}
           onNuevaCompeticion={(fecha) => {
+            setEditandoComp(null)
             setFormCompCal({ nombre: '', fecha, tipo: '', objetivo: '', notas: '' })
             setModalCompCal(true)
           }}
+          onEditarCompeticion={(c) => {
+            setEditandoComp(c)
+            setFormCompCal({ nombre: c.nombre, fecha: c.fecha, tipo: c.tipo || '', objetivo: c.objetivo || '', notas: c.notas || '' })
+            setModalCompCal(true)
+          }}
           onNuevaNota={(fecha) => {
+            setEditandoNota(null)
             setFormNotaCal({ texto: '', fecha })
+            setModalNotaCal(true)
+          }}
+          onEditarNota={(n) => {
+            setEditandoNota(n)
+            setFormNotaCal({ texto: n.texto, fecha: n.fecha })
             setModalNotaCal(true)
           }}
           onDuplicar={duplicarSesion}
