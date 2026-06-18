@@ -584,7 +584,7 @@ export default function Sesiones() {
               <button className="btn btn-primary" disabled={saving} onClick={async () => {
                 if (!formNotaCal.texto) return
                 setSaving(true)
-                await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, titulo: formNotaCal.texto.slice(0, 60), fecha: formNotaCal.fecha, objetivo: formNotaCal.texto, duracion_min: null })
+                await supabase.from('sesion_notas').insert({ cliente_id: clienteSeleccionado, fecha: formNotaCal.fecha, texto: formNotaCal.texto })
                 setSaving(false); setModalNotaCal(false); cargarSesiones()
               }}>{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
