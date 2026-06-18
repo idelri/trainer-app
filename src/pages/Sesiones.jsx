@@ -191,11 +191,14 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                     <span onClick={e => { e.stopPropagation(); onEliminarNota(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                   </div>
                 )
-                if (item._tipo === 'competicion') return (
-                  <div key={item.id} onClick={() => onEditarCompeticion(item)}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>🏆</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+             if (item._tipo === 'competicion') return (
+                  <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                    onClick={() => onEditarCompeticion(item)}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                      <span>🏆</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+                    </span>
+                    <span onClick={e => { e.stopPropagation(); onEliminarCompeticion(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                   </div>
                 )
                 return (
