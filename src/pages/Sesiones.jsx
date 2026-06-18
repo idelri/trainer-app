@@ -626,12 +626,16 @@ export default function Sesiones() {
             <div className="form-group"><label className="form-label">Nota</label><textarea className="form-textarea" value={formNotaCal.texto} onChange={e => setFormNotaCal(f => ({ ...f, texto: e.target.value }))} placeholder="Escribe aquí tu nota..." style={{ minHeight: 100 }} autoFocus /></div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalNotaCal(false)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={saving} onClick={async () => {
+            <button className="btn btn-primary" disabled={saving} onClick={async () => {
                 if (!formNotaCal.texto) return
                 setSaving(true)
-                await supabase.from('sesion_notas').insert({ cliente_id: clienteSeleccionado, fecha: formNotaCal.fecha, texto: formNotaCal.texto })
+                if (editandoNota) {
+                  await supabase.from('sesion_notas').update({ texto: formNotaCal.texto, fecha: formNotaCal.fecha }).eq('id', editandoNota.id)
+                } else {
+                  await supabase.from('sesion_notas').insert({ cliente_id: clienteSeleccionado, fecha: formNotaCal.fecha, texto: formNotaCal.texto })
+                }
                 setSaving(false); setModalNotaCal(false); cargarSesiones()
-              }}>{saving ? 'Guardando...' : 'Guardar'}</button>
+              }}>{saving ? 'Guardando...' : editandoNota ? 'Guardar cambios' : 'Guardar'}</button>
             </div>
           </div>
         </div>
