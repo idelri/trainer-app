@@ -587,7 +587,7 @@ export default function Sesiones() {
         <div className="modal-backdrop" onClick={() => setModalCompCal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span className="modal-title">Nueva competición</span>
+            <span className="modal-title">{editandoComp ? 'Editar competición' : 'Nueva competición'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalCompCal(false)}><X size={14} /></button>
             </div>
             <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formCompCal.nombre} onChange={e => setFormCompCal(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Media maratón Sevilla" autoFocus /></div>
