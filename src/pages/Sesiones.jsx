@@ -211,14 +211,22 @@ export default function Sesiones() {
     setClientes(data || [])
   }
 
+  const [notas, setNotas] = useState([])
+  const [competicionesCal, setCompeticionesCal] = useState([])
+
   async function cargarSesiones() {
     setLoading(true)
-    const { data } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false })
-    setSesiones(data || [])
+    const [{ data: ses }, { data: nots }, { data: comps }] = await Promise.all([
+      supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false }),
+      supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
+      supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
+    ])
+    setSesiones(ses || [])
+    setNotas(nots || [])
+    setCompeticionesCal(comps || [])
     setSesionAbierta(null)
     setLoading(false)
   }
-
   async function cargarDetalle(sesionId) {
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionId).order('orden')
     setBloques(bls || [])
