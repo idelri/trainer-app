@@ -339,7 +339,13 @@ export default function Sesiones() {
                             </select>
                             <div style={{ flex: 1 }}>
                               <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
-                                onSave={v => actualizarEjercicio(b.id, e.id, 'media_url', v)} />
+                                onSave={async v => {
+                                  await actualizarEjercicio(b.id, e.id, 'media_url', v)
+                                  if (e.media_tipo === 'youtube' && v && !e.nombre) {
+                                    const titulo = await ytTitulo(v)
+                                    if (titulo) await actualizarEjercicio(b.id, e.id, 'nombre', titulo)
+                                  }
+                                }} />
                             </div>
                           </div>
                           {e.media_tipo !== 'youtube' && (
