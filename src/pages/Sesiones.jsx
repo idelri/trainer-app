@@ -55,6 +55,37 @@ function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) 
   )
 }
 
+function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaNota }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 4 }}>+</button>
+      {open && (
+        <div style={{ position: 'absolute', top: 20, right: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 130, overflow: 'hidden' }}>
+          {[
+            { label: '📝 Nota', action: () => { onNuevaNota(fecha); setOpen(false) } },
+            { label: '🏆 Competición', action: () => { onNuevaCompeticion(fecha); setOpen(false) } },
+            { label: '💪 Sesión', action: () => { onNuevaSesion(fecha); setOpen(false) } },
+          ].map(({ label, action }) => (
+            <button key={label} onClick={action}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 function Calendario({ sesiones, onAbrirSesion, onNuevaSesion, onDuplicar, onEliminar }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
