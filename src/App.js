@@ -25,7 +25,7 @@ export default function App() {
   const [clientePlanificacion, setClientePlanificacion] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [publicToken, setPublicToken] = useState(null)
-
+  const [publicSesionToken, setPublicSesionToken] = useState(null)
   useEffect(() => {
     // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
