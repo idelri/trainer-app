@@ -381,12 +381,20 @@ export default function Sesiones() {
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
      {!loading && clienteSeleccionado && !sesionAbierta && (
-        <Calendario
+       <Calendario
           sesiones={sesiones}
           onAbrirSesion={setSesionAbierta}
           onNuevaSesion={(fecha) => {
             setFormSesion({ ...EMPTY_SESION, fecha })
             setModalSesion('nueva')
+          }}
+          onNuevaCompeticion={(fecha) => {
+            setFormCompCal({ nombre: '', fecha, tipo: '', objetivo: '', notas: '' })
+            setModalCompCal(true)
+          }}
+          onNuevaNota={(fecha) => {
+            setFormNotaCal({ texto: '', fecha })
+            setModalNotaCal(true)
           }}
           onDuplicar={duplicarSesion}
           onEliminar={eliminarSesion}
