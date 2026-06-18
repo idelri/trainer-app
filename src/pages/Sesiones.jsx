@@ -198,7 +198,10 @@ export default function Sesiones() {
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
-
+  const [modalCompCal, setModalCompCal] = useState(false)
+  const [formCompCal, setFormCompCal] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' })
+  const [modalNotaCal, setModalNotaCal] = useState(false)
+  const [formNotaCal, setFormNotaCal] = useState({ texto: '', fecha: '' })
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
   useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
