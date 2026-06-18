@@ -394,6 +394,8 @@ export default function Sesiones() {
      {!loading && clienteSeleccionado && !sesionAbierta && (
        <Calendario
           sesiones={sesiones}
+          notas={notas}
+          competiciones={competicionesCal}
           onAbrirSesion={setSesionAbierta}
           onNuevaSesion={(fecha) => {
             setFormSesion({ ...EMPTY_SESION, fecha })
