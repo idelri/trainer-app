@@ -181,16 +181,16 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                 <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
               </div>
              {sesDia.map(item => {
-                if (item._tipo === 'nota') return (
-                  <div key={item.id} title={item.texto}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+               if (item._tipo === 'nota') return (
+                  <div key={item.id} onClick={() => onEditarNota(item)}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span>📝</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
                   </div>
                 )
                 if (item._tipo === 'competicion') return (
-                  <div key={item.id} title={item.nombre}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div key={item.id} onClick={() => onEditarCompeticion(item)}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span>🏆</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
                   </div>
