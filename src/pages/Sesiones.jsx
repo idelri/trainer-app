@@ -55,6 +55,106 @@ function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) 
   )
 }
 
+function Calendario({ sesiones, onAbrirSesion, onNuevaSesion, onDuplicar, onEliminar }) {
+  const [vista, setVista] = useState('mes')
+  const [cursor, setCursor] = useState(new Date())
+
+  const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+  const finMes = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
+  const inicioSemana = new Date(cursor)
+  inicioSemana.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7))
+
+  const diasMes = () => {
+    const dias = []
+    const inicio = new Date(inicioMes)
+    inicio.setDate(1 - ((inicioMes.getDay() + 6) % 7))
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(inicio)
+      d.setDate(inicio.getDate() + i)
+      dias.push(d)
+    }
+    return dias
+  }
+
+  const diasSemana = () => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(inicioSemana)
+      d.setDate(inicioSemana.getDate() + i)
+      return d
+    })
+  }
+
+  const dias = vista === 'mes' ? diasMes() : diasSemana()
+  const hoy = new Date()
+  const fKey = d => format(d, 'yyyy-MM-dd')
+
+  const sesionPorDia = {}
+  sesiones.forEach(s => {
+    if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
+    sesionPorDia[s.fecha].push(s)
+  })
+
+  const navPrev = () => {
+    if (vista === 'mes') setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
+    else { const d = new Date(cursor); d.setDate(d.getDate() - 7); setCursor(d) }
+  }
+  const navNext = () => {
+    if (vista === 'mes') setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
+    else { const d = new Date(cursor); d.setDate(d.getDate() + 7); setCursor(d) }
+  }
+
+  const titulo = vista === 'mes'
+    ? format(cursor, 'MMMM yyyy', { locale: es })
+    : `${format(inicioSemana, 'dd MMM', { locale: es })} — ${format(dias[6], 'dd MMM yyyy', { locale: es })}`
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <button className="btn btn-ghost btn-sm" onClick={navPrev}>‹</button>
+        <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{titulo}</span>
+        <button className="btn btn-ghost btn-sm" onClick={navNext}>›</button>
+        <div className="flex gap-1" style={{ marginLeft: 'auto' }}>
+          {['mes', 'semana'].map(v => (
+            <button key={v} className="btn btn-ghost btn-sm"
+              style={vista === v ? { background: 'var(--bg2)', fontWeight: 600 } : {}}
+              onClick={() => setVista(v)}>
+              {v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+        {['L','M','X','J','V','S','D'].map(d => (
+          <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
+        ))}
+        {dias.map((dia, i) => {
+          const key = fKey(dia)
+          const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
+          const esHoy = fKey(dia) === fKey(hoy)
+          const sesDia = sesionPorDia[key] || []
+          return (
+            <div key={i} style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {dia.getDate()}
+                </span>
+                <button onClick={() => onNuevaSesion(key)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 4 }} title="Nueva sesión">+</button>
+              </div>
+              {sesDia.map(s => (
+                <div key={s.id} onClick={() => onAbrirSesion(s)}
+                  style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.titulo}</span>
+                  <span onClick={e => { e.stopPropagation(); onEliminar(s.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                </div>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 export default function Sesiones() {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
