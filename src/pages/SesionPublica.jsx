@@ -106,7 +106,7 @@ export default function SesionPublica({ token }) {
                       {thumb && <img src={thumb} alt={e.nombre} style={{ width: 78, height: 78, flexShrink: 0, borderRadius: 11, objectFit: 'cover', border: `1px solid ${T.line}`, background: T.paper }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
                      <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
-                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink3, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
+                         <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
                           {e.nombre}
                         </h3>
                         {videoLink && (
