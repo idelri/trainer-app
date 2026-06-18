@@ -180,13 +180,29 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                 </span>
                 <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
               </div>
-              {sesDia.map(s => (
-                <div key={s.id} onClick={() => onAbrirSesion(s)}
-                  style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.titulo}</span>
-                  <span onClick={e => { e.stopPropagation(); onEliminar(s.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                </div>
-              ))}
+             {sesDia.map(item => {
+                if (item._tipo === 'nota') return (
+                  <div key={item.id} title={item.texto}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>📝</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
+                  </div>
+                )
+                if (item._tipo === 'competicion') return (
+                  <div key={item.id} title={item.nombre}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'default', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>🏆</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+                  </div>
+                )
+                return (
+                  <div key={item.id} onClick={() => onAbrirSesion(item)}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>💪 {item.titulo}</span>
+                    <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                  </div>
+                )
+              })}
             </div>
           )
         })}
