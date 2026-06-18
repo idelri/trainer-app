@@ -122,7 +122,15 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
   const sesionPorDia = {}
   sesiones.forEach(s => {
     if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
-    sesionPorDia[s.fecha].push(s)
+    sesionPorDia[s.fecha].push({ ...s, _tipo: 'sesion' })
+  })
+  ;(notas || []).forEach(n => {
+    if (!sesionPorDia[n.fecha]) sesionPorDia[n.fecha] = []
+    sesionPorDia[n.fecha].push({ ...n, _tipo: 'nota' })
+  })
+  ;(competiciones || []).forEach(c => {
+    if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
+    sesionPorDia[c.fecha].push({ ...c, _tipo: 'competicion' })
   })
 
   const navPrev = () => {
