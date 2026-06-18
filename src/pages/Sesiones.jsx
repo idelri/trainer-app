@@ -532,6 +532,56 @@ export default function Sesiones() {
             </div>
           </div>
         </div>
+     )}
+
+      {/* Modal competición desde calendario */}
+      {modalCompCal && (
+        <div className="modal-backdrop" onClick={() => setModalCompCal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva competición</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCompCal(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formCompCal.nombre} onChange={e => setFormCompCal(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Media maratón Sevilla" autoFocus /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Fecha</label><input className="form-input" type="date" value={formCompCal.fecha} onChange={e => setFormCompCal(f => ({ ...f, fecha: e.target.value }))} /></div>
+              <div className="form-group"><label className="form-label">Tipo</label><input className="form-input" value={formCompCal.tipo} onChange={e => setFormCompCal(f => ({ ...f, tipo: e.target.value }))} placeholder="Ej: Carrera, Triatlón..." /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Objetivo</label><input className="form-input" value={formCompCal.objetivo} onChange={e => setFormCompCal(f => ({ ...f, objetivo: e.target.value }))} /></div>
+            <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formCompCal.notas} onChange={e => setFormCompCal(f => ({ ...f, notas: e.target.value }))} /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalCompCal(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving} onClick={async () => {
+                if (!formCompCal.nombre) return
+                setSaving(true)
+                await supabase.from('competiciones').insert({ cliente_id: clienteSeleccionado, nombre: formCompCal.nombre, fecha: formCompCal.fecha, tipo: formCompCal.tipo || null, objetivo: formCompCal.objetivo || null, notas: formCompCal.notas || null })
+                setSaving(false); setModalCompCal(false)
+              }}>{saving ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nota desde calendario */}
+      {modalNotaCal && (
+        <div className="modal-backdrop" onClick={() => setModalNotaCal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nota · {formNotaCal.fecha}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalNotaCal(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group"><label className="form-label">Nota</label><textarea className="form-textarea" value={formNotaCal.texto} onChange={e => setFormNotaCal(f => ({ ...f, texto: e.target.value }))} placeholder="Escribe aquí tu nota..." style={{ minHeight: 100 }} autoFocus /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalNotaCal(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving} onClick={async () => {
+                if (!formNotaCal.texto) return
+                setSaving(true)
+                await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, titulo: formNotaCal.texto.slice(0, 60), fecha: formNotaCal.fecha, objetivo: formNotaCal.texto, duracion_min: null })
+                setSaving(false); setModalNotaCal(false); cargarSesiones()
+              }}>{saving ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
