@@ -453,6 +453,16 @@ export default function Sesiones() {
             setFormNotaCal({ texto: n.texto, fecha: n.fecha })
             setModalNotaCal(true)
           }}
+         onEliminarCompeticion={async (id) => {
+            if (!window.confirm('¿Eliminar esta competición?')) return
+            await supabase.from('competiciones').delete().eq('id', id)
+            cargarSesiones()
+          }}
+          onEliminarNota={async (id) => {
+            if (!window.confirm('¿Eliminar esta nota?')) return
+            await supabase.from('sesion_notas').delete().eq('id', id)
+            cargarSesiones()
+          }}
           onDuplicar={duplicarSesion}
           onEliminar={eliminarSesion}
         />
