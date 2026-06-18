@@ -249,25 +249,17 @@ export default function Sesiones() {
 
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
-      {!loading && clienteSeleccionado && !sesionAbierta && (
-        sesiones.length === 0 ? (
-          <div className="empty"><p>No hay sesiones para este cliente.</p></div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {sesiones.map(s => (
-              <div key={s.id} className="card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setSesionAbierta(s)}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{s.titulo}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
-                    {format(parseISO(s.fecha), 'dd MMM yyyy', { locale: es })}{s.duracion_min ? ` · ${s.duracion_min} min` : ''}
-                  </div>
-                </div>
-                <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); duplicarSesion(s) }} title="Duplicar"><Copy size={13} /></button>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); eliminarSesion(s.id) }}><X size={13} /></button>
-              </div>
-            ))}
-          </div>
-        )
+     {!loading && clienteSeleccionado && !sesionAbierta && (
+        <Calendario
+          sesiones={sesiones}
+          onAbrirSesion={setSesionAbierta}
+          onNuevaSesion={(fecha) => {
+            setFormSesion({ ...EMPTY_SESION, fecha })
+            setModalSesion('nueva')
+          }}
+          onDuplicar={duplicarSesion}
+          onEliminar={eliminarSesion}
+        />
       )}
 
       {sesionAbierta && (
