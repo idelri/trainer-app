@@ -27,11 +27,17 @@ export default function App() {
   const [publicToken, setPublicToken] = useState(null)
 
   useEffect(() => {
-    // Detectar si es una URL pública /plan/TOKEN
+    // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
-    const match = path.match(/^\/plan\/([a-f0-9]+)$/)
-    if (match) {
-      setPublicToken(match[1])
+    const matchPlan = path.match(/^\/plan\/([a-f0-9]+)$/)
+    if (matchPlan) {
+      setPublicToken(matchPlan[1])
+      setAuthLoading(false)
+      return
+    }
+    const matchSesion = path.match(/^\/sesion\/([a-f0-9]+)$/)
+    if (matchSesion) {
+      setPublicSesionToken(matchSesion[1])
       setAuthLoading(false)
       return
     }
