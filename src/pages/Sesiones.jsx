@@ -599,12 +599,17 @@ export default function Sesiones() {
             <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formCompCal.notas} onChange={e => setFormCompCal(f => ({ ...f, notas: e.target.value }))} /></div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalCompCal(false)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={saving} onClick={async () => {
+             <button className="btn btn-primary" disabled={saving} onClick={async () => {
                 if (!formCompCal.nombre) return
                 setSaving(true)
-                await supabase.from('competiciones').insert({ cliente_id: clienteSeleccionado, nombre: formCompCal.nombre, fecha: formCompCal.fecha, tipo: formCompCal.tipo || null, objetivo: formCompCal.objetivo || null, notas: formCompCal.notas || null })
-                setSaving(false); setModalCompCal(false)
-              }}>{saving ? 'Guardando...' : 'Guardar'}</button>
+                const datos = { nombre: formCompCal.nombre, fecha: formCompCal.fecha, tipo: formCompCal.tipo || null, objetivo: formCompCal.objetivo || null, notas: formCompCal.notas || null }
+                if (editandoComp) {
+                  await supabase.from('competiciones').update(datos).eq('id', editandoComp.id)
+                } else {
+                  await supabase.from('competiciones').insert({ ...datos, cliente_id: clienteSeleccionado })
+                }
+                setSaving(false); setModalCompCal(false); cargarSesiones()
+              }}>{saving ? 'Guardando...' : editandoComp ? 'Guardar cambios' : 'Guardar'}</button>
             </div>
           </div>
         </div>
