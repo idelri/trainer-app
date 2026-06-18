@@ -95,7 +95,7 @@ export default function SesionPublica({ token }) {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-              {(ejercicios[b.id] || []).map(e => {
+             {(ejercicios[b.id] || []).map((e, eIdx) => {
                 const yid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
                 const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
                 const videoLink = e.media_tipo === 'youtube' ? e.media_url : e.video_url
