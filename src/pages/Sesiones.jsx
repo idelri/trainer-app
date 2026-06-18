@@ -139,7 +139,7 @@ function Calendario({ sesiones, onAbrirSesion, onNuevaSesion, onDuplicar, onElim
                 <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {dia.getDate()}
                 </span>
-                <button onClick={() => onNuevaSesion(key)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 4 }} title="Nueva sesión">+</button>
+                <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
               </div>
               {sesDia.map(s => (
                 <div key={s.id} onClick={() => onAbrirSesion(s)}
