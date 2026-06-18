@@ -55,8 +55,9 @@ export default function App() {
 
   if (authLoading) return null
 
-  // Vista pública
+ // Vista pública
   if (publicToken) return <PlanPublica token={publicToken} />
+  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
 
   if (!session) return <Login />
 
