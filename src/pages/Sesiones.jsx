@@ -86,7 +86,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaNota }) {
     </div>
   )
 }
-function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onNuevaNota, onEditarNota, onDuplicar, onEliminar }) {
+function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onEliminarCompeticion, onNuevaNota, onEditarNota, onEliminarNota, onDuplicar, onEliminar }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
 
