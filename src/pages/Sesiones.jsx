@@ -181,11 +181,14 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                 <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
               </div>
              {sesDia.map(item => {
-               if (item._tipo === 'nota') return (
-                  <div key={item.id} onClick={() => onEditarNota(item)}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>📝</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
+              if (item._tipo === 'nota') return (
+                  <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                    onClick={() => onEditarNota(item)}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                      <span>📝</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
+                    </span>
+                    <span onClick={e => { e.stopPropagation(); onEliminarNota(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                   </div>
                 )
                 if (item._tipo === 'competicion') return (
