@@ -503,7 +503,7 @@ export default function Sesiones() {
                     onSave={v => actualizarBloque(b.id, 'nota', v)} />
                 </div>
                 <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {(ejercicios[b.id] || []).map(e => {
+                  {(ejercicios[b.id] || []).map((e, eIdx) => {
                     const id = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
                     const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
                     return (
