@@ -13,6 +13,16 @@ function ytId(url) {
   return m ? m[1] : null
 }
 
+async function ytTitulo(url) {
+  try {
+    const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`)
+    const data = await res.json()
+    return data.title || null
+  } catch {
+    return null
+  }
+}
+
 /* input que guarda solo, sin botones, al perder el foco o tras una pausa */
 function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) {
   const [v, setV] = useState(value || '')
