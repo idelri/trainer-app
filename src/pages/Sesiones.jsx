@@ -250,13 +250,31 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                           </div>
                         )
                         if (item._tipo === 'competicion') return (
-                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                          <div key={item.id}
+                            draggable
+                            onDragStart={() => setArrastrando(item)}
+                            onDragEnd={() => setArrastrando(null)}
+                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
                             onClick={() => onEditarCompeticion(item)}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
                               <span>🏆</span>
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
                             </span>
                             <span onClick={e => { e.stopPropagation(); onEliminarCompeticion(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                          </div>
+                        )
+                        if (item._tipo === 'control') return (
+                          <div key={item.id}
+                            draggable
+                            onDragStart={() => setArrastrando(item)}
+                            onDragEnd={() => setArrastrando(null)}
+                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#eff6ff', color: '#3b82f6', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                              <span>🔬</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+                            </span>
                           </div>
                         )
                         return (
