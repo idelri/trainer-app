@@ -160,16 +160,15 @@ export default function FeedbackForm({ onSubmit, submitting }) {
         <>
           <Section>
             <Q>¿Cómo de dura te ha parecido la sesión en global?</Q>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {Array.from({ length: 11 }, (_, n) => (
                 <button key={n} type="button" onClick={() => set('rpe.value', n)}
-                  title={RPE_LABELS[n]}
-                  style={{ width: 38, height: 38, borderRadius: 9, border: `1.5px solid ${fb.rpe.value === n ? T.accent : T.line}`, background: fb.rpe.value === n ? T.accent : T.card, color: fb.rpe.value === n ? '#fff' : T.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-                  {n}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${fb.rpe.value === n ? T.accent : T.line}`, background: fb.rpe.value === n ? T.accent + '14' : T.card, cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: fb.rpe.value === n ? T.accent : T.paper, color: fb.rpe.value === n ? '#fff' : T.ink, fontWeight: 700, fontSize: 13 }}>{n}</span>
+                  <span style={{ fontSize: 13, color: fb.rpe.value === n ? T.accent : T.ink2, fontWeight: fb.rpe.value === n ? 600 : 400 }}>{RPE_LABELS[n]}</span>
                 </button>
               ))}
             </div>
-            {fb.rpe.value != null && <p style={{ fontSize: 11.5, color: T.ink3, marginTop: 6 }}>{RPE_LABELS[fb.rpe.value]}</p>}
           </Section>
 
           <Section>
