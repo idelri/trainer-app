@@ -160,15 +160,23 @@ export default function SesionPublica({ token }) {
             </div>
           ) : (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
-              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>Cuéntame cómo te ha ido, lleva menos de un minuto.</p>
+              <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
+              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Esta será tu última oportunidad para modificarlo.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
               <FeedbackForm
+                initial={editandoFeedback ? feedbackEnviado.data : null}
                 submitting={enviandoFeedback}
                 onSubmit={async (data) => {
                   setEnviandoFeedback(true)
-                  const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
-                  setEnviandoFeedback(false)
-                  if (nuevo) setFeedbackEnviado(nuevo)
+                  if (editandoFeedback) {
+                    const { data: act } = await supabase.from('sesion_feedback').update({ data, editado: true }).eq('id', feedbackEnviado.id).select().single()
+                    setEnviandoFeedback(false)
+                    setEditandoFeedback(false)
+                    if (act) setFeedbackEnviado(act)
+                  } else {
+                    const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
+                    setEnviandoFeedback(false)
+                    if (nuevo) setFeedbackEnviado(nuevo)
+                  }
                 }}
               />
             </div>
