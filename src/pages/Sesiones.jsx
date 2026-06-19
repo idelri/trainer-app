@@ -572,6 +572,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
           sesiones={sesiones}
           notas={notas}
           competiciones={competicionesCal}
+          controles={controlesCal}
           bloquesPlan={bloquesPlan}
           subbloquesPlan={subbloquesPlan}
           clipboard={clipboard}
