@@ -25,6 +25,7 @@ export default function SesionPublica({ token }) {
   const [error, setError] = useState(false)
   const [feedbackEnviado, setFeedbackEnviado] = useState(null)
   const [enviandoFeedback, setEnviandoFeedback] = useState(false)
+  const [editandoFeedback, setEditandoFeedback] = useState(false)
 
   useEffect(() => { cargar() }, [token])
 
