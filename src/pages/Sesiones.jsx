@@ -619,7 +619,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
             if (clienteDestino === clienteSeleccionado) cargarSesiones()
           }}
           onMoverItem={async (item, nuevaFecha) => {
-            const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : null
+          const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : item._tipo === 'nota' ? 'sesion_notas' : null
             if (!tabla) return
             await supabase.from(tabla).update({ fecha: nuevaFecha }).eq('id', item.id)
             cargarSesiones()
