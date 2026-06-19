@@ -298,17 +298,35 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [notas, setNotas] = useState([])
   const [competicionesCal, setCompeticionesCal] = useState([])
 
+  const [bloquesPlan, setBloquesPlan] = useState([])
+  const [subbloquesPlan, setSubbloquesPlan] = useState({})
+
   async function cargarSesiones() {
     setLoading(true)
-    const [{ data: ses }, { data: nots }, { data: comps }] = await Promise.all([
+    const [{ data: ses }, { data: nots }, { data: comps }, { data: plan }] = await Promise.all([
       supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false }),
       supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
+      supabase.from('planificaciones').select('id, fecha_inicio').eq('cliente_id', clienteSeleccionado).order('fecha_inicio', { ascending: false }).limit(1).maybeSingle(),
     ])
     setSesiones(ses || [])
     setNotas(nots || [])
     setCompeticionesCal(comps || [])
     setSesionAbierta(null)
+
+    if (plan) {
+      const { data: bls } = await supabase.from('bloques').select('*').eq('planificacion_id', plan.id).order('orden')
+      setBloquesPlan(bls || [])
+      if (bls && bls.length > 0) {
+        const { data: subs } = await supabase.from('subbloques').select('*').in('bloque_id', bls.map(b => b.id)).order('semana_inicio')
+        const map = {}
+        ;(subs || []).forEach(s => { if (!map[s.bloque_id]) map[s.bloque_id] = []; map[s.bloque_id].push(s) })
+        setSubbloquesPlan(map)
+      }
+    } else {
+      setBloquesPlan([])
+      setSubbloquesPlan({})
+    }
     setLoading(false)
   }
   async function cargarDetalle(sesionId) {
