@@ -41,8 +41,10 @@ export default function SesionPublica({ token }) {
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').in('bloque_id', bls.map(b => b.id)).order('orden')
       const map = {}
       ;(ejs || []).forEach(e => { if (!map[e.bloque_id]) map[e.bloque_id] = []; map[e.bloque_id].push(e) })
-      setEjercicios(map)
+     setEjercicios(map)
     }
+    const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
+    setFeedbackEnviado(fb || null)
     setLoading(false)
   }
 
