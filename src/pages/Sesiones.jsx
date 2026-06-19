@@ -664,10 +664,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
           </div>
         </div>
       )}
-    </div>
-  )
-}
-{/* Modal duplicar sesión */}
+   {/* Modal duplicar sesión */}
       {modalDuplicar && (
         <div className="modal-backdrop" onClick={() => setModalDuplicar(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -687,3 +684,6 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
           </div>
         </div>
       )}
+    </div>
+  )
+}
