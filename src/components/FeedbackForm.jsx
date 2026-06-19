@@ -211,15 +211,7 @@ export default function FeedbackForm({ onSubmit, submitting }) {
         </Section>
       )}
 
-      {/* Sensación final: completed y partial */}
-      {(status === 'completed' || status === 'partial') && (
-        <Section>
-          <Q>¿Cómo te has sentido al terminar?</Q>
-          {['Mejor que antes de empezar', 'Igual que antes de empezar', 'Cansado/a pero bien', 'Cargado/a o con molestias', 'Peor que antes de empezar'].map(op => (
-            <OptionBtn key={op} active={fb.postSessionFeeling === op} onClick={() => set('postSessionFeeling', op)}>{op}</OptionBtn>
-          ))}
-        </Section>
-      )}
+     
 
       {/* Observaciones generales: siempre */}
       {status && (
