@@ -138,9 +138,32 @@ export default function SesionPublica({ token }) {
                 )
               })}
             </div>
-          </section>
+         </section>
         ))}
 
+        {/* FEEDBACK POST-SESIÓN */}
+        <div style={{ marginTop: 36 }}>
+          {feedbackEnviado ? (
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d' }}>✓ Feedback ya enviado</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534' }}>Si quieres modificar alguna respuesta, contacta por WhatsApp.</p>
+            </div>
+          ) : (
+            <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
+              <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
+              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>Cuéntame cómo te ha ido, lleva menos de un minuto.</p>
+              <FeedbackForm
+                submitting={enviandoFeedback}
+                onSubmit={async (data) => {
+                  setEnviandoFeedback(true)
+                  const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
+                  setEnviandoFeedback(false)
+                  if (nuevo) setFeedbackEnviado(nuevo)
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
