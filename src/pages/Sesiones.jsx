@@ -90,7 +90,7 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
-  const [menu, setMenu] = useState(null) // { x, y, fecha, item? }
+  const [menu, setMenu] = useState(null)
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
   const inicioSemana = new Date(cursor)
@@ -117,6 +117,7 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
   const dias = vista === 'mes' ? diasMes() : diasSemana()
   const hoy = new Date()
   const fKey = d => format(d, 'yyyy-MM-dd')
+
   function bloqueDeFecha(fecha) {
     for (const b of bloquesPlan) {
       const inicio = new Date(b.fecha_inicio + 'T12:00:00')
@@ -178,7 +179,20 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
               onClick={() => setVista(v)}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
-         const info = bloqueDeFecha(dia)
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+        {['L','M','X','J','V','S','D'].map(d => (
+          <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
+        ))}
+        {dias.map((dia, i) => {
+          const key = fKey(dia)
+          const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
+          const esHoy = fKey(dia) === fKey(hoy)
+          const sesDia = sesionPorDia[key] || []
+          const info = bloqueDeFecha(dia)
           const colorBloque = info?.bloque?.color || (info ? '#2d6a4f' : null)
           const colorSub = info?.sub?.color || colorBloque
           const tituloHover = info ? `${info.bloque.nombre}${info.sub ? ' — ' + info.sub.nombre : ''}` : undefined
@@ -188,19 +202,6 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
               onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
               onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
               style={{ background: colorBloque ? colorBloque + '12' : 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorSub ? `3px solid ${colorSub}` : '3px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
-          <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
-        ))}
-        {dias.map((dia, i) => {
-          const key = fKey(dia)
-          const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
-          const esHoy = fKey(dia) === fKey(hoy)
-          const sesDia = sesionPorDia[key] || []
-          return (
-            <div key={i}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
-              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
-              style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {dia.getDate()}
@@ -246,7 +247,6 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
         })}
       </div>
 
-      {/* Menú contextual */}
       {menu && (
         <div onClick={e => e.stopPropagation()}
           style={{ position: 'fixed', top: menu.y, left: menu.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
