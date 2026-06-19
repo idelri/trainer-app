@@ -125,11 +125,19 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
       if (fecha >= inicio && fecha <= fin) {
         const diasDesdeInicio = Math.floor((fecha - inicio) / 86400000)
         const semanaNum = Math.floor(diasDesdeInicio / 7) + 1
-        const sub = (subbloquesPlan[b.id] || []).find(s => semanaNum >= s.semana_inicio && semanaNum <= s.semana_fin)
-        return { bloque: b, sub }
+        const subs = subbloquesPlan[b.id] || []
+        const sub = subs.find(s => semanaNum >= s.semana_inicio && semanaNum <= s.semana_fin)
+        const subIdx = subs.findIndex(s => s.id === sub?.id)
+        const bloqueIdx = bloquesPlan.findIndex(bb => bb.id === b.id)
+        return { bloque: b, sub, bloqueNum: bloqueIdx + 1, subNum: subIdx + 1, semanaNum }
       }
     }
     return null
+  }
+
+  function infoSemana(lunes) {
+    const jueves = new Date(lunes); jueves.setDate(jueves.getDate() + 3)
+    return bloqueDeFecha(jueves)
   }
 
   const sesionPorDia = {}
