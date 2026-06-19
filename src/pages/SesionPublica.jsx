@@ -146,7 +146,7 @@ export default function SesionPublica({ token }) {
           {feedbackEnviado ? (
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px', textAlign: 'center' }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d' }}>✓ Feedback ya enviado</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534' }}>Si quieres modificar alguna respuesta, contacta por WhatsApp.</p>
+              <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534' }}>¿Quieres modificar algo? Escríbeme por WhatsApp.</p>
             </div>
           ) : (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
