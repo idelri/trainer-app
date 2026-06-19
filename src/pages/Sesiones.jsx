@@ -374,7 +374,28 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).filter(e => e.id !== id) }))
   }
 
-  async function duplicarSesion(s, fechaDestino) {
+  async function pegarSesion(sesionOrigen, fechaDestino, clienteDestino) {
+    setSaving(true)
+    const { data: nuevaSesion } = await supabase.from('sesiones').insert({
+      cliente_id: clienteDestino, titulo: sesionOrigen.titulo, fecha: fechaDestino,
+      objetivo: sesionOrigen.objetivo, duracion_min: sesionOrigen.duracion_min,
+    }).select().single()
+    const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
+    for (const b of bls || []) {
+      const { data: nb } = await supabase.from('sesion_bloques').insert({
+        sesion_id: nuevaSesion.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
+      }).select().single()
+      const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
+      for (const e of ejs || []) {
+        await supabase.from('sesion_ejercicios').insert({
+          bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas,
+          media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
+        })
+      }
+    }
+    setSaving(false)
+    if (clienteDestino === clienteSeleccionado) cargarSesiones()
+  }
     setSaving(true)
     const { data: nuevaSesion } = await supabase.from('sesiones').insert({
       cliente_id: s.cliente_id, titulo: s.titulo + ' (copia)', fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
