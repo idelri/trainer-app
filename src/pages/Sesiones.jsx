@@ -396,6 +396,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setSaving(false)
     if (clienteDestino === clienteSeleccionado) cargarSesiones()
   }
+  async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
     const { data: nuevaSesion } = await supabase.from('sesiones').insert({
       cliente_id: s.cliente_id, titulo: s.titulo + ' (copia)', fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
