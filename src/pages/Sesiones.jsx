@@ -667,3 +667,23 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     </div>
   )
 }
+{/* Modal duplicar sesión */}
+      {modalDuplicar && (
+        <div className="modal-backdrop" onClick={() => setModalDuplicar(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Duplicar sesión</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalDuplicar(null)}><X size={14} /></button>
+            </div>
+            <p style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 10 }}>Se duplicará "{modalDuplicar.titulo}" con todos sus bloques y ejercicios.</p>
+            <div className="form-group"><label className="form-label">Nueva fecha</label><input className="form-input" type="date" value={fechaDuplicar} onChange={e => setFechaDuplicar(e.target.value)} autoFocus /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalDuplicar(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving} onClick={async () => {
+                await duplicarSesion(modalDuplicar, fechaDuplicar)
+                setModalDuplicar(null)
+              }}>{saving ? 'Duplicando...' : 'Duplicar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
