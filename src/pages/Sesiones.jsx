@@ -580,7 +580,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
           clienteSeleccionado={clienteSeleccionado}
           onCopiar={(item) => setClipboard(item)}
           onPegar={async (item, fecha, clienteDestino) => { await pegarSesion(item, fecha, clienteDestino); if (clienteDestino === clienteSeleccionado) cargarSesiones() }}
-          onMoverSesion={async (item, nuevaFecha) => { await supabase.from('sesiones').update({ fecha: nuevaFecha }).eq('id', item.id); cargarSesiones() }}
+          onMoverItem={async (item, nuevaFecha) => {
+            const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : null
+            if (!tabla) return
+            await supabase.from(tabla).update({ fecha: nuevaFecha }).eq('id', item.id)
+            cargarSesiones()
+          }}
           onAbrirSesion={setSesionAbierta}
           onNuevaSesion={(fecha) => {
             setFormSesion({ ...EMPTY_SESION, fecha })
