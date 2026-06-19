@@ -348,17 +348,21 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [bloquesPlan, setBloquesPlan] = useState([])
   const [subbloquesPlan, setSubbloquesPlan] = useState({})
 
+  const [controlesCal, setControlesCal] = useState([])
+
   async function cargarSesiones() {
     setLoading(true)
-    const [{ data: ses }, { data: nots }, { data: comps }, { data: plan }] = await Promise.all([
+    const [{ data: ses }, { data: nots }, { data: comps }, { data: ctrls }, { data: plan }] = await Promise.all([
       supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false }),
       supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
+      supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('planificaciones').select('id, fecha_inicio').eq('cliente_id', clienteSeleccionado).order('fecha_inicio', { ascending: false }).limit(1).maybeSingle(),
     ])
     setSesiones(ses || [])
     setNotas(nots || [])
     setCompeticionesCal(comps || [])
+    setControlesCal(ctrls || [])
     setSesionAbierta(null)
 
     if (plan) {
