@@ -239,8 +239,13 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
                       </div>
                       {sesDia.map(item => {
-                        if (item._tipo === 'nota') return (
-                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                       if (item._tipo === 'nota') return (
+                          <div key={item.id}
+                            draggable
+                            onDragStart={() => setArrastrando(item)}
+                            onDragEnd={() => setArrastrando(null)}
+                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
                             onClick={() => onEditarNota(item)}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
                               <span>📝</span>
