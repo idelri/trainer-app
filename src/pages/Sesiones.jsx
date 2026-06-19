@@ -191,65 +191,87 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-        {['L','M','X','J','V','S','D'].map(d => (
-          <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
-        ))}
-        {dias.map((dia, i) => {
-          const key = fKey(dia)
-          const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
-          const esHoy = fKey(dia) === fKey(hoy)
-          const sesDia = sesionPorDia[key] || []
-          const info = bloqueDeFecha(dia)
-          const colorBloque = info?.bloque?.color || (info ? '#2d6a4f' : null)
-          const colorSub = info?.sub?.color || colorBloque
-          const tituloHover = info ? `${info.bloque.nombre}${info.sub ? ' — ' + info.sub.nombre : ''}` : undefined
+     <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
+          {['L','M','X','J','V','S','D'].map(d => (
+            <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
+          ))}
+        </div>
+
+        {Array.from({ length: Math.ceil(dias.length / 7) }, (_, semIdx) => {
+          const diasSem = dias.slice(semIdx * 7, semIdx * 7 + 7)
+          const lunes = diasSem[0]
+          const info = infoSemana(lunes)
           return (
-            <div key={i} title={tituloHover}
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
-              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
-              style={{ background: colorBloque ? colorBloque + '12' : 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorSub ? `3px solid ${colorSub}` : '3px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {dia.getDate()}
-                </span>
-                <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
+            <div key={semIdx}>
+              {info && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg2)', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text2)' }}>
+                    <strong style={{ fontWeight: 600, color: 'var(--text)' }}>Semana {info.semanaNum}</strong>
+                    {info.sub && <> · SB{info.bloqueNum}.{info.subNum} {info.sub.nombre}</>}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: (info.bloque.color || '#2d6a4f') + '1a', color: info.bloque.color || '#2d6a4f' }}>
+                    B{info.bloqueNum} {info.bloque.nombre}
+                  </span>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
+                {diasSem.map((dia, i) => {
+                  const key = fKey(dia)
+                  const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
+                  const esHoy = fKey(dia) === fKey(hoy)
+                  const sesDia = sesionPorDia[key] || []
+                  const colorLinea = info?.bloque?.color || null
+                  return (
+                    <div key={i}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
+                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
+                      style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorLinea ? `2px solid ${colorLinea}` : '2px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {dia.getDate()}
+                        </span>
+                        <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
+                      </div>
+                      {sesDia.map(item => {
+                        if (item._tipo === 'nota') return (
+                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                            onClick={() => onEditarNota(item)}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                              <span>📝</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
+                            </span>
+                            <span onClick={e => { e.stopPropagation(); onEliminarNota(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                          </div>
+                        )
+                        if (item._tipo === 'competicion') return (
+                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
+                            onClick={() => onEditarCompeticion(item)}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                              <span>🏆</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
+                            </span>
+                            <span onClick={e => { e.stopPropagation(); onEliminarCompeticion(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                          </div>
+                        )
+                        return (
+                          <div key={item.id}
+                            draggable
+                            onDragStart={() => setArrastrando(item)}
+                            onDragEnd={() => setArrastrando(null)}
+                            onClick={() => onAbrirSesion(item)}
+                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>💪 {item.titulo}</span>
+                            <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
               </div>
-              {sesDia.map(item => {
-                if (item._tipo === 'nota') return (
-                  <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
-                    onClick={() => onEditarNota(item)}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
-                      <span>📝</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.texto.slice(0, 30)}</span>
-                    </span>
-                    <span onClick={e => { e.stopPropagation(); onEliminarNota(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                  </div>
-                )
-                if (item._tipo === 'competicion') return (
-                  <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
-                    onClick={() => onEditarCompeticion(item)}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
-                      <span>🏆</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nombre}</span>
-                    </span>
-                    <span onClick={e => { e.stopPropagation(); onEliminarCompeticion(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                  </div>
-                )
-                return (
-                  <div key={item.id}
-                    draggable
-                    onDragStart={() => setArrastrando(item)}
-                    onDragEnd={() => setArrastrando(null)}
-                    onClick={() => onAbrirSesion(item)}
-                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>💪 {item.titulo}</span>
-                    <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                  </div>
-                )
-              })}
             </div>
           )
         })}
