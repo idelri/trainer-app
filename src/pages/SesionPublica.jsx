@@ -144,9 +144,19 @@ export default function SesionPublica({ token }) {
         {/* FEEDBACK POST-SESIÓN */}
         <div style={{ marginTop: 36 }}>
           {feedbackEnviado ? (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d' }}>✓ Feedback ya enviado</p>
-              <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534' }}>¿Quieres modificar algo? Escríbeme por WhatsApp.</p>
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px' }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d', textAlign: 'center' }}>✓ Feedback enviado</p>
+              {feedbackEnviado.editado ? (
+                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534', textAlign: 'center' }}>Ya has modificado este feedback. Si necesitas otro cambio, escríbeme por WhatsApp.</p>
+              ) : (
+                <>
+                  <p style={{ margin: '6px 0 12px', fontSize: 12.5, color: '#166534', textAlign: 'center' }}>¿Quieres modificar algo?</p>
+                  <button type="button" onClick={() => setEditandoFeedback(true)}
+                    style={{ display: 'block', margin: '0 auto', padding: '9px 18px', borderRadius: 10, border: '1px solid #15803d', background: '#fff', color: '#15803d', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    Sí, quiero modificar mi respuesta
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
