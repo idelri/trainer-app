@@ -178,12 +178,16 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
               onClick={() => setVista(v)}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-        {['L','M','X','J','V','S','D'].map(d => (
+         const info = bloqueDeFecha(dia)
+          const colorBloque = info?.bloque?.color || (info ? '#2d6a4f' : null)
+          const colorSub = info?.sub?.color || colorBloque
+          const tituloHover = info ? `${info.bloque.nombre}${info.sub ? ' — ' + info.sub.nombre : ''}` : undefined
+          return (
+            <div key={i} title={tituloHover}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
+              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
+              style={{ background: colorBloque ? colorBloque + '12' : 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorSub ? `3px solid ${colorSub}` : '3px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
           <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
         ))}
         {dias.map((dia, i) => {
