@@ -44,8 +44,8 @@ function TextArea({ value, onChange, placeholder }) {
   )
 }
 
-export default function FeedbackForm({ onSubmit, submitting }) {
-  const [fb, setFb] = useState(emptyFeedback())
+export default function FeedbackForm({ onSubmit, submitting, initial }) {
+  const [fb, setFb] = useState(initial || emptyFeedback())
   const set = (path, value) => setFb(f => {
     const next = JSON.parse(JSON.stringify(f))
     let o = next; const keys = path.split('.')
