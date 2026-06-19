@@ -153,6 +153,10 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
     sesionPorDia[c.fecha].push({ ...c, _tipo: 'competicion' })
   })
+  ;(controles || []).forEach(c => {
+    if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
+    sesionPorDia[c.fecha].push({ ...c, _tipo: 'control' })
+  })
 
   const navPrev = () => {
     if (vista === 'mes') setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
