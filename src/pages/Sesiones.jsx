@@ -86,12 +86,13 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaNota }) {
     </div>
   )
 }
-function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onEliminarCompeticion, onNuevaNota, onEditarNota, onEliminarNota, onDuplicar, onEliminar }) {
+function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onEliminarCompeticion, onNuevaNota, onEditarNota, onEliminarNota, onDuplicar, onEliminar, onMoverSesion, clipboard, onCopiar, onPegar, clientes, clienteSeleccionado }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
+  const [arrastrando, setArrastrando] = useState(null)
+  const [menu, setMenu] = useState(null) // { x, y, fecha, item? }
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
-  const finMes = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
   const inicioSemana = new Date(cursor)
   inicioSemana.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7))
 
@@ -107,13 +108,11 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
     return dias
   }
 
-  const diasSemana = () => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(inicioSemana)
-      d.setDate(inicioSemana.getDate() + i)
-      return d
-    })
-  }
+  const diasSemana = () => Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(inicioSemana)
+    d.setDate(inicioSemana.getDate() + i)
+    return d
+  })
 
   const dias = vista === 'mes' ? diasMes() : diasSemana()
   const hoy = new Date()
@@ -146,12 +145,19 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
     ? format(cursor, 'MMMM yyyy', { locale: es })
     : `${format(inicioSemana, 'dd MMM', { locale: es })} — ${format(dias[6], 'dd MMM yyyy', { locale: es })}`
 
+  function cerrarMenu() { setMenu(null) }
+
   return (
-    <div>
+    <div onClick={cerrarMenu}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <button className="btn btn-ghost btn-sm" onClick={navPrev}>‹</button>
         <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{titulo}</span>
         <button className="btn btn-ghost btn-sm" onClick={navNext}>›</button>
+        {clipboard && (
+          <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', background: 'var(--accent-light)', padding: '3px 8px', borderRadius: 6 }}>
+            📋 {clipboard.titulo} copiada
+          </span>
+        )}
         <div className="flex gap-1" style={{ marginLeft: 'auto' }}>
           {['mes', 'semana'].map(v => (
             <button key={v} className="btn btn-ghost btn-sm"
@@ -173,15 +179,19 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
           const esHoy = fKey(dia) === fKey(hoy)
           const sesDia = sesionPorDia[key] || []
           return (
-            <div key={i} style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
+            <div key={i}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverSesion(arrastrando, key); setArrastrando(null) } }}
+              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
+              style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {dia.getDate()}
                 </span>
                 <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
               </div>
-             {sesDia.map(item => {
-              if (item._tipo === 'nota') return (
+              {sesDia.map(item => {
+                if (item._tipo === 'nota') return (
                   <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fef9c3', color: '#854d0e', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
                     onClick={() => onEditarNota(item)}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
@@ -191,7 +201,7 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                     <span onClick={e => { e.stopPropagation(); onEliminarNota(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                   </div>
                 )
-             if (item._tipo === 'competicion') return (
+                if (item._tipo === 'competicion') return (
                   <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fbe9e6', color: '#c0392b', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}
                     onClick={() => onEditarCompeticion(item)}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
@@ -202,8 +212,13 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
                   </div>
                 )
                 return (
-                  <div key={item.id} onClick={() => onAbrirSesion(item)}
-                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                  <div key={item.id}
+                    draggable
+                    onDragStart={() => setArrastrando(item)}
+                    onDragEnd={() => setArrastrando(null)}
+                    onClick={() => onAbrirSesion(item)}
+                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                    style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>💪 {item.titulo}</span>
                     <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                   </div>
@@ -213,6 +228,39 @@ function Calendario({ sesiones, notas, competiciones, onAbrirSesion, onNuevaSesi
           )
         })}
       </div>
+
+      {/* Menú contextual */}
+      {menu && (
+        <div onClick={e => e.stopPropagation()}
+          style={{ position: 'fixed', top: menu.y, left: menu.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+          {menu.item && (
+            <button onClick={() => { onCopiar(menu.item); cerrarMenu() }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 12.5, background: 'none', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              📋 Copiar sesión
+            </button>
+          )}
+          {clipboard && (
+            <button onClick={() => { onPegar(clipboard, menu.fecha, clienteSeleccionado); cerrarMenu() }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 12.5, background: 'none', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              📌 Pegar aquí
+            </button>
+          )}
+          {clipboard && clientes && clientes.length > 1 && (
+            <div style={{ borderTop: '1px solid var(--border)' }}>
+              <div style={{ padding: '6px 14px 2px', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>Pegar en otro cliente</div>
+              {clientes.filter(c => c.id !== clienteSeleccionado).map(c => (
+                <button key={c.id} onClick={() => { onPegar(clipboard, menu.fecha, c.id); cerrarMenu() }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 14px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  {c.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
