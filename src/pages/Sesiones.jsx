@@ -517,10 +517,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
      {!loading && clienteSeleccionado && !sesionAbierta && (
-      <Calendario
+     <Calendario
           sesiones={sesiones}
           notas={notas}
           competiciones={competicionesCal}
+          bloquesPlan={bloquesPlan}
+          subbloquesPlan={subbloquesPlan}
           clipboard={clipboard}
           clientes={clientes}
           clienteSeleccionado={clienteSeleccionado}
