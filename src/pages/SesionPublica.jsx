@@ -23,6 +23,8 @@ export default function SesionPublica({ token }) {
   const [ejercicios, setEjercicios] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [feedbackEnviado, setFeedbackEnviado] = useState(null)
+  const [enviandoFeedback, setEnviandoFeedback] = useState(false)
 
   useEffect(() => { cargar() }, [token])
 
