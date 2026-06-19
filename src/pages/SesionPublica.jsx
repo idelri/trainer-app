@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
+import FeedbackForm from '../components/FeedbackForm'
 import { es } from 'date-fns/locale'
 
 const T = {
