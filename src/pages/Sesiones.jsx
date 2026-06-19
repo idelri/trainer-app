@@ -230,6 +230,8 @@ export default function Sesiones() {
   const [saving, setSaving] = useState(false)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
+  const [modalDuplicar, setModalDuplicar] = useState(null)
+  const [fechaDuplicar, setFechaDuplicar] = useState('')
   const [modalCompCal, setModalCompCal] = useState(false)
   const [formCompCal, setFormCompCal] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' })
   const [editandoComp, setEditandoComp] = useState(null)
