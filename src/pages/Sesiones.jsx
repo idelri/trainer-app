@@ -370,10 +370,10 @@ export default function Sesiones() {
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).filter(e => e.id !== id) }))
   }
 
-  async function duplicarSesion(s) {
+  async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
     const { data: nuevaSesion } = await supabase.from('sesiones').insert({
-      cliente_id: s.cliente_id, titulo: s.titulo + ' (copia)', fecha: format(new Date(), 'yyyy-MM-dd'),
+      cliente_id: s.cliente_id, titulo: s.titulo + ' (copia)', fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
       objetivo: s.objetivo, duracion_min: s.duracion_min,
     }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
