@@ -117,6 +117,19 @@ function Calendario({ sesiones, notas, competiciones, bloquesPlan, subbloquesPla
   const dias = vista === 'mes' ? diasMes() : diasSemana()
   const hoy = new Date()
   const fKey = d => format(d, 'yyyy-MM-dd')
+  function bloqueDeFecha(fecha) {
+    for (const b of bloquesPlan) {
+      const inicio = new Date(b.fecha_inicio + 'T12:00:00')
+      const fin = new Date(inicio); fin.setDate(fin.getDate() + b.semanas * 7 - 1)
+      if (fecha >= inicio && fecha <= fin) {
+        const diasDesdeInicio = Math.floor((fecha - inicio) / 86400000)
+        const semanaNum = Math.floor(diasDesdeInicio / 7) + 1
+        const sub = (subbloquesPlan[b.id] || []).find(s => semanaNum >= s.semana_inicio && semanaNum <= s.semana_fin)
+        return { bloque: b, sub }
+      }
+    }
+    return null
+  }
 
   const sesionPorDia = {}
   sesiones.forEach(s => {
