@@ -143,7 +143,7 @@ export default function SesionPublica({ token }) {
 
         {/* FEEDBACK POST-SESIÓN */}
         <div style={{ marginTop: 36 }}>
-          {feedbackEnviado ? (
+          {feedbackEnviado && !editandoFeedback ? (
           <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px' }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d', textAlign: 'center' }}>✓ Feedback enviado</p>
               {feedbackEnviado.editado ? (
