@@ -219,7 +219,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                   </span>
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 1, background: 'var(--border)' }}>
                 {diasSem.map((dia, i) => {
                   const key = fKey(dia)
                   const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
