@@ -106,8 +106,9 @@ export default function Clientes() {
     cargar()
   }
 
-  const activos = clientes.filter(c => c.estado === 'activo')
-  const bajas = clientes.filter(c => c.estado === 'baja')
+  const clientesFiltrados = filtroTipo === 'todos' ? clientes : clientes.filter(c => (c.tipo_cliente || 'estandar') === filtroTipo)
+  const activos = clientesFiltrados.filter(c => c.estado === 'activo')
+  const bajas = clientesFiltrados.filter(c => c.estado === 'baja')
 
   if (loading) return <div className="empty"><p>Cargando...</p></div>
 
