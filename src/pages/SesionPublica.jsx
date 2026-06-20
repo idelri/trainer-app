@@ -76,7 +76,7 @@ export default function SesionPublica({ token }) {
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{sesion.titulo}</h1>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 9, marginTop: 12, fontSize: 13, color: 'rgba(255,255,255,0.66)' }}>
             {sesion.duracion_min && <><span>{sesion.duracion_min} min</span><span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} /></>}
-            <span style={{ textTransform: 'capitalize' }}>{format(parseISO(sesion.fecha), 'dd MMM yyyy', { locale: es })}</span>
+           {sesion.fecha && <span style={{ textTransform: 'capitalize' }}>{format(parseISO(sesion.fecha), 'dd MMM yyyy', { locale: es })}</span>}
           </div>
           {sesion.objetivo && (
             <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.13)' }}>
