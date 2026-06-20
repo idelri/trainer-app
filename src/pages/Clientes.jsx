@@ -19,6 +19,7 @@ export default function Clientes() {
   const [form, setForm] = useState(EMPTY_CLIENTE)
   const [servicio, setServicio] = useState(EMPTY_SERVICIO)
   const [saving, setSaving] = useState(false)
+  const [filtroTipo, setFiltroTipo] = useState('todos')
 
   useEffect(() => { cargar() }, [])
 
