@@ -67,7 +67,6 @@ export default function Clientes() {
       objetivo: form.objetivo || null,
       tipo_cliente: form.tipo_cliente || 'estandar',
     }
-    }
 
     let clienteId
     if (modal === 'nuevo') {
