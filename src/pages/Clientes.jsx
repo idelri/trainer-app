@@ -113,7 +113,7 @@ export default function Clientes() {
 
   return (
     <div>
-      <div className="page-header">
+     <div className="page-header">
         <div>
           <h2 className="page-title">Clientes</h2>
           <p className="page-subtitle">{activos.length} activos · {bajas.length} bajas</p>
@@ -121,6 +121,20 @@ export default function Clientes() {
         <button className="btn btn-primary" onClick={abrirNuevo}>
           <Plus size={14} /> Nuevo cliente
         </button>
+      </div>
+
+      <div className="flex gap-2" style={{ marginBottom: 16 }}>
+        {[
+          { value: 'todos', label: 'Todos' },
+          { value: 'estandar', label: 'De pago' },
+          { value: 'familia_gratis', label: 'Familia / Gratis' },
+        ].map(f => (
+          <button key={f.value} className="btn btn-ghost btn-sm"
+            style={filtroTipo === f.value ? { background: 'var(--bg2)', fontWeight: 600 } : {}}
+            onClick={() => setFiltroTipo(f.value)}>
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Activos */}
