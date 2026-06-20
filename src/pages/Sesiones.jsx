@@ -685,7 +685,7 @@ async function guardarSesion() {
 
       {sesionAbierta && (
         <div>
-          <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo general</div>
             <InlineInput
               value={sesionAbierta.objetivo}
@@ -693,6 +693,28 @@ async function guardarSesion() {
               textarea
               fontSize={13}
               onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })) }}
+            />
+          </div>
+
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>🎒 Material necesario</div>
+            <InlineInput
+              value={sesionAbierta.material}
+              placeholder="Ej: Esterilla, discos y mancuernas, goma (resistencia baja)..."
+              textarea
+              fontSize={13}
+              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })) }}
+            />
+          </div>
+
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>✏️ Indicaciones generales</div>
+            <InlineInput
+              value={sesionAbierta.indicaciones}
+              placeholder="Ej: Realiza los ejercicios del bloque en orden, las series que toquen y pasa al siguiente..."
+              textarea
+              fontSize={13}
+              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })) }}
             />
           </div>
 
