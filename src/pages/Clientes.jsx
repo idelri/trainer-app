@@ -210,13 +210,20 @@ export default function Clientes() {
               <div className="form-group">
                 <label className="form-label">Nombre *</label>
                 <input className="form-input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
-              </div>
               <div className="form-group">
                 <label className="form-label">Estado</label>
                 <select className="form-select" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}>
                   <option value="activo">Activo</option>
                   <option value="baja">Baja</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tipo de cliente</label>
+                <select className="form-select" value={form.tipo_cliente} onChange={e => setForm(f => ({ ...f, tipo_cliente: e.target.value }))}>
+                  <option value="estandar">Estándar</option>
+                  <option value="familia_gratis">Familia / Gratis</option>
+                </select>
+              </div>
               </div>
             </div>
             <div className="form-row">
