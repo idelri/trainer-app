@@ -596,6 +596,23 @@ async function guardarSesion() {
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
      {!loading && clienteSeleccionado && !sesionAbierta && (
+        <>
+          {sesiones.filter(s => !s.fecha).length > 0 && (
+            <div className="card" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+                Sin fecha asignada — {sesiones.filter(s => !s.fecha).length}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {sesiones.filter(s => !s.fecha).map(s => (
+                  <div key={s.id} onClick={() => setSesionAbierta(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12.5 }}>
+                    💪 {s.titulo}
+                    <span onClick={e => { e.stopPropagation(); eliminarSesion(s.id) }} style={{ opacity: 0.5, marginLeft: 4 }}>×</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
      <Calendario
           sesiones={sesiones}
           notas={notas}
