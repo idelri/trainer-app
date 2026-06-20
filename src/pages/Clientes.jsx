@@ -38,10 +38,11 @@ export default function Clientes() {
     setModal('nuevo')
   }
 
-  function abrirEditar(c) {
+ function abrirEditar(c) {
     setForm({
       nombre: c.nombre || '', email: c.email || '', telefono: c.telefono || '',
-      estado: c.estado || 'activo', fecha_inicio: c.fecha_inicio || '', objetivo: c.objetivo || ''
+      estado: c.estado || 'activo', fecha_inicio: c.fecha_inicio || '', objetivo: c.objetivo || '',
+      tipo_cliente: c.tipo_cliente || 'estandar'
     })
     const s = c.servicios?.[0]
     setServicio(s ? {
