@@ -174,8 +174,13 @@ export default function SesionPublica({ token }) {
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
                     if (act) setFeedbackEnviado(act)
-                  } else {
+                 } else {
                     const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
+                    if (!sesion.fecha) {
+                      const hoyStr = format(new Date(), 'yyyy-MM-dd')
+                      await supabase.from('sesiones').update({ fecha: hoyStr }).eq('id', sesion.id)
+                      setSesion(s => ({ ...s, fecha: hoyStr }))
+                    }
                     setEnviandoFeedback(false)
                     if (nuevo) setFeedbackEnviado(nuevo)
                   }
