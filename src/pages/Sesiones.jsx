@@ -677,9 +677,10 @@ async function guardarSesion() {
             await supabase.from('sesion_notas').delete().eq('id', id)
             cargarSesiones()
           }}
-          onDuplicar={duplicarSesion}
+         onDuplicar={duplicarSesion}
           onEliminar={eliminarSesion}
         />
+        </>
       )}
 
       {sesionAbierta && (
