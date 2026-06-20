@@ -142,7 +142,10 @@ export default function Clientes() {
               const s = c.servicios?.[0]
               return (
                 <tr key={c.id}>
-                  <td><span className="font-medium">{c.nombre}</span></td>
+                 <td>
+                    <span className="font-medium">{c.nombre}</span>
+                    {c.tipo_cliente === 'familia_gratis' && <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 10 }}>Gratis</span>}
+                  </td>
                   <td>
                     <div style={{ fontSize: 12.5, color: 'var(--text2)' }}>{c.email}</div>
                     <div style={{ fontSize: 12.5, color: 'var(--text3)' }}>{c.telefono}</div>
