@@ -430,8 +430,9 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setModalSesion(s)
   }
 
-  async function guardarSesion() {
-    if (!formSesion.titulo || !formSesion.fecha) return
+async function guardarSesion() {
+    if (!formSesion.titulo) return
+    if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
     const datos = { titulo: formSesion.titulo, fecha: formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null }
     if (modalSesion?.id) {
