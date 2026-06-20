@@ -38,8 +38,8 @@ export default function Pagos() {
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { cargarPagos() }, [mesStr])
   useEffect(() => { cargarHistorico() }, [rango, mesFin])
-  async function cargarClientes() {
-    const { data } = await supabase.from('clientes').select('id, nombre').order('nombre')
+ async function cargarClientes() {
+    const { data } = await supabase.from('clientes').select('id, nombre').neq('tipo_cliente', 'familia_gratis').order('nombre')
     setClientes(data || [])
   }
 
