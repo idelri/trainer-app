@@ -196,9 +196,9 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
       </div>
 
      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 1, background: 'var(--border)' }}>
           {['L','M','X','J','V','S','D'].map(d => (
-            <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600 }}>{d}</div>
+            <div key={d} style={{ background: 'var(--bg)', padding: '6px 0', textAlign: 'center', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, minWidth: 0 }}>{d}</div>
           ))}
         </div>
 
