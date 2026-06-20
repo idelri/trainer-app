@@ -58,7 +58,6 @@ export default function Clientes() {
 
   async function guardar() {
     if (!form.nombre.trim()) return
-    setSaving(true)
     const datosCliente = {
       nombre: form.nombre.trim(),
       email: form.email || null,
@@ -66,6 +65,8 @@ export default function Clientes() {
       estado: form.estado,
       fecha_inicio: form.fecha_inicio || null,
       objetivo: form.objetivo || null,
+      tipo_cliente: form.tipo_cliente || 'estandar',
+    }
     }
 
     let clienteId
