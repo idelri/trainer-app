@@ -141,7 +141,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
   }
 
   const sesionPorDia = {}
-  sesiones.forEach(s => {
+  sesiones.filter(s => s.fecha).forEach(s => {
     if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
     sesionPorDia[s.fecha].push({ ...s, _tipo: 'sesion' })
   })
