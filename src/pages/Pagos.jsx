@@ -59,16 +59,16 @@ export default function Pagos() {
     })
     setHistorico(porMes)
   }
-  async function cargarPagos() {
+ async function cargarPagos() {
     setLoading(true)
     const { data } = await supabase
       .from('pagos')
-      .select('*, clientes(nombre)')
+      .select('*, clientes!inner(nombre, tipo_cliente)')
       .eq('mes_facturado', mesStr)
+      .neq('clientes.tipo_cliente', 'familia_gratis')
     setPagos(data || [])
     setLoading(false)
   }
-
   function toggleSort(col) {
     if (sortCol === col) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc')
