@@ -47,7 +47,42 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
         rZ1: sems.reduce((a, x) => a + (x.zona1_2_real || 0), 0),
         rZ3: sems.reduce((a, x) => a + (x.zona3_4_real || 0), 0),
         rZ5: sems.reduce((a, x) => a + (x.zona5_real || 0), 0),
-        oZ1: 0, oZ3: 0, oZ5: 0,
+      oZ1: (() => {
+          const subsB = subbloques[b.id] || []
+          const sems = semanas[b.id] || []
+          return sems.reduce((acc, s) => {
+            const sub = subsB.find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+            if (!sub) return acc
+            const tot = (sub.zona1_2||0)+(sub.zona3_4||0)+(sub.zona5||0)
+            if (!tot) return acc
+            const base = (s.zona1_2_real||0)+(s.zona3_4_real||0)+(s.zona5_real||0) || 200
+            return acc + Math.round((sub.zona1_2/tot)*base)
+          }, 0)
+        })(),
+        oZ3: (() => {
+          const subsB = subbloques[b.id] || []
+          const sems = semanas[b.id] || []
+          return sems.reduce((acc, s) => {
+            const sub = subsB.find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+            if (!sub) return acc
+            const tot = (sub.zona1_2||0)+(sub.zona3_4||0)+(sub.zona5||0)
+            if (!tot) return acc
+            const base = (s.zona1_2_real||0)+(s.zona3_4_real||0)+(s.zona5_real||0) || 200
+            return acc + Math.round((sub.zona3_4/tot)*base)
+          }, 0)
+        })(),
+        oZ5: (() => {
+          const subsB = subbloques[b.id] || []
+          const sems = semanas[b.id] || []
+          return sems.reduce((acc, s) => {
+            const sub = subsB.find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+            if (!sub) return acc
+            const tot = (sub.zona1_2||0)+(sub.zona3_4||0)+(sub.zona5||0)
+            if (!tot) return acc
+            const base = (s.zona1_2_real||0)+(s.zona3_4_real||0)+(s.zona5_real||0) || 200
+            return acc + Math.round((sub.zona5/tot)*base)
+          }, 0)
+        })(),
         kmR: sems.some(s => s.km_real) ? sems.reduce((a, x) => a + (x.km_real || 0), 0) : null,
         kmO: sems.some(s => s.km_objetivo) ? sems.reduce((a, x) => a + (x.km_objetivo || 0), 0) : null,
       }
