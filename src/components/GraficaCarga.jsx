@@ -1,0 +1,150 @@
+import { useEffect, useRef, useState } from 'react'
+import { Chart, BarController, LineController, BarElement, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend } from 'chart.js'
+
+Chart.register(BarController, LineController, BarElement, LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend)
+
+const CZ1r = '#2d6a4f99', CZ3r = '#d6891099', CZ5r = '#c0392b99'
+const CZ1o = '#2d6a4f22', CZ3o = '#d6891022', CZ5o = '#c0392b22'
+const CKM  = '#3b82f6',   CKMo = '#94a3b8'
+
+export default function GraficaCarga({ bloques, semanas, subbloques }) {
+  const canvasRef = useRef(null)
+  const chartRef  = useRef(null)
+  const [show, setShow] = useState({ intensReal: true, intensObj: true, kmReal: true, kmObj: true })
+  const [agrup, setAgrup] = useState('semana')
+
+  const allSems = Object.values(semanas).flat()
+  const tieneDatos = allSems.some(s => s.zona1_2_real > 0 || s.zona3_4_real > 0 || s.zona5_real > 0 || s.km_real)
+
+  function buildData() {
+    if (agrup === 'semana') {
+      const rows = []
+      bloques.forEach(b => {
+        const bSems = (semanas[b.id] || []).sort((a, z) => a.numero - z.numero)
+        bSems.forEach(s => {
+          rows.push({
+            label: `S${s.numero}·${b.nombre.slice(0,6)}`,
+            rZ1: s.zona1_2_real || 0, rZ3: s.zona3_4_real || 0, rZ5: s.zona5_real || 0,
+            oZ1: 0, oZ3: 0, oZ5: 0,
+            kmR: s.km_real || null, kmO: s.km_objetivo || null
+          })
+        })
+      })
+      return rows
+    }
+    return bloques.map(b => {
+      const sems = semanas[b.id] || []
+      return {
+        label: b.nombre.slice(0, 12),
+        rZ1: sems.reduce((a, x) => a + (x.zona1_2_real || 0), 0),
+        rZ3: sems.reduce((a, x) => a + (x.zona3_4_real || 0), 0),
+        rZ5: sems.reduce((a, x) => a + (x.zona5_real || 0), 0),
+        oZ1: 0, oZ3: 0, oZ5: 0,
+        kmR: sems.some(s => s.km_real) ? sems.reduce((a, x) => a + (x.km_real || 0), 0) : null,
+        kmO: sems.some(s => s.km_objetivo) ? sems.reduce((a, x) => a + (x.km_objetivo || 0), 0) : null,
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (!tieneDatos || !canvasRef.current) return
+    const data = buildData()
+    if (!data.length) return
+
+    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+
+    const pctPlugin = {
+      id: 'pctLabels',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx
+        data.forEach((d, i) => {
+          const t = d.rZ1 + d.rZ3 + d.rZ5
+          if (!t) return
+          ;[{ mi: 0, v: d.rZ1 }, { mi: 1, v: d.rZ3 }, { mi: 2, v: d.rZ5 }].forEach(({ mi, v }) => {
+            const meta = chart.getDatasetMeta(mi)
+            if (meta.hidden) return
+            const bar = meta.data[i]
+            if (!bar) return
+            const pct = Math.round((v / t) * 100)
+            if (pct < 8) return
+            const barH = Math.abs(bar.base - bar.y)
+            if (barH < 14) return
+            ctx.save(); ctx.fillStyle = '#fff'; ctx.font = '500 9px sans-serif'
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+            ctx.fillText(pct + '%', bar.x, bar.y + barH / 2); ctx.restore()
+          })
+        })
+      }
+    }
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'bar',
+      plugins: [pctPlugin],
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [
+          { label: 'Z1-Z2 real', data: data.map(d => d.rZ1), backgroundColor: CZ1r, borderWidth: 0, stack: 'real', yAxisID: 'y', hidden: !show.intensReal },
+          { label: 'Z3-Z4 real', data: data.map(d => d.rZ3), backgroundColor: CZ3r, borderWidth: 0, stack: 'real', yAxisID: 'y', hidden: !show.intensReal },
+          { label: 'Z5+ real',   data: data.map(d => d.rZ5), backgroundColor: CZ5r, borderWidth: 0, borderRadius: 3, stack: 'real', yAxisID: 'y', hidden: !show.intensReal },
+          { label: 'Z1-Z2 obj', data: data.map(d => d.oZ1), backgroundColor: CZ1o, borderColor: '#2d6a4f', borderWidth: 1.5, stack: 'obj', yAxisID: 'y', hidden: !show.intensObj },
+          { label: 'Z3-Z4 obj', data: data.map(d => d.oZ3), backgroundColor: CZ3o, borderColor: '#d68910', borderWidth: 1.5, stack: 'obj', yAxisID: 'y', hidden: !show.intensObj },
+          { label: 'Z5+ obj',   data: data.map(d => d.oZ5), backgroundColor: CZ5o, borderColor: '#c0392b', borderWidth: 1.5, borderRadius: 3, stack: 'obj', yAxisID: 'y', hidden: !show.intensObj },
+          { label: 'km real', data: data.map(d => d.kmR), type: 'line', borderColor: CKM, borderWidth: 2, pointBackgroundColor: CKM, pointRadius: 4, fill: false, yAxisID: 'y2', tension: 0.3, spanGaps: true, hidden: !show.kmReal },
+          { label: 'km objetivo', data: data.map(d => d.kmO), type: 'line', borderColor: CKMo, borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: CKMo, pointBorderWidth: 1.5, fill: false, yAxisID: 'y2', tension: 0.3, spanGaps: true, hidden: !show.kmObj },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: item => item.dataset.yAxisID === 'y2' ? `${item.dataset.label}: ${item.raw} km` : `${item.dataset.label}: ${item.raw} min` } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+          y: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { font: { size: 10 } }, title: { display: true, text: 'min', font: { size: 10 }, color: '#888' }, position: 'left' },
+          y2: { grid: { display: false }, ticks: { font: { size: 10 }, color: CKM }, title: { display: true, text: 'km', font: { size: 10 }, color: CKM }, position: 'right' }
+        }
+      }
+    })
+
+    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null } }
+  }, [show, agrup, bloques, semanas])
+
+  if (!tieneDatos) return null
+
+  const Toggle = ({ id, label, dotStyle }) => (
+    <button onClick={() => setShow(s => ({ ...s, [id]: !s[id] }))}
+      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '0.5px solid var(--border)', background: show[id] ? 'var(--bg2)' : 'var(--bg)', color: show[id] ? 'var(--text)' : 'var(--text3)', cursor: 'pointer' }}>
+      <span style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, ...dotStyle }} />
+      {label}
+    </button>
+  )
+
+  return (
+    <div className="card" style={{ marginTop: 16, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Gráfica evolución de carga</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {['semana', 'bloque'].map(a => (
+            <button key={a} onClick={() => setAgrup(a)}
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '0.5px solid var(--border)', background: agrup === a ? 'var(--bg2)' : 'var(--bg)', fontWeight: agrup === a ? 600 : 400, color: 'var(--text2)', cursor: 'pointer' }}>
+              {a.charAt(0).toUpperCase() + a.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        <Toggle id="intensReal" label="Intensidad real" dotStyle={{ background: '#d68910' }} />
+        <Toggle id="intensObj"  label="Intensidad obj"  dotStyle={{ background: 'transparent', border: '1px dashed #d68910' }} />
+        <Toggle id="kmReal"     label="Km real"         dotStyle={{ background: CKM }} />
+        <Toggle id="kmObj"      label="Km objetivo"     dotStyle={{ background: 'transparent', border: `1px dashed ${CKMo}` }} />
+      </div>
+
+      <div style={{ position: 'relative', width: '100%', height: 260 }}>
+        <canvas ref={canvasRef} role="img" aria-label="Gráfica de evolución de carga de entrenamiento">Datos de carga de entrenamiento.</canvas>
+      </div>
+    </div>
+  )
+}
