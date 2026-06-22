@@ -175,7 +175,9 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
             if (item.dataset.yAxisID === 'y2') return `${item.dataset.label}: ${item.raw} km`
             const stackKey = item.dataset.stack
             const dsIdxStart = stackKey === 'real' ? 0 : 3
-            const total = [0,1,2].reduce((s,j) => s + (chart.data.datasets[dsIdxStart+j].data[item.dataIndex] || 0), 0)
+            const d = data[item.dataIndex]
+            const vals = stackKey === 'real' ? [d.rZ1, d.rZ3, d.rZ5] : [d.oZ1, d.oZ3, d.oZ5]
+            const total = vals.reduce((s, v) => s + v, 0)
             const pct = total ? Math.round((item.raw / total) * 100) : 0
             return `${item.dataset.label}: ${pct}%`
           }}}
