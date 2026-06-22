@@ -532,9 +532,9 @@ export default function Planificacion({ clientePlanificacion }) {
         )}
         {planificacion && (
           <div className="flex gap-2">
-            {['timeline', 'macro', 'subbloque', 'micro'].map(v => (
+          {['timeline', 'macro', 'subbloque', 'micro', 'sesiones'].map(v => (
               <button key={v} className="btn btn-ghost btn-sm" style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}} onClick={() => setVista(v)}>
-                {v === 'timeline' ? 'Resumen' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : 'Semana'}
+                {v === 'timeline' ? 'Resumen' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : v === 'micro' ? 'Semana' : 'Sesiones'}
               </button>
             ))}
           </div>
