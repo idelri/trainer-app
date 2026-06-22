@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { format, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers } from 'lucide-react'
+import SesionesPlan from './SesionesPlan'
 
 const FASES = {
   general: { label: 'General', color: '#6b7280' },
