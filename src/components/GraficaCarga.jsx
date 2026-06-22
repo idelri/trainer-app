@@ -105,9 +105,11 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
           const tObj  = d.oZ1 + d.oZ3 + d.oZ5
 
           ;[
-            { metas: [0,1,2], vals: [d.rZ1, d.rZ3, d.rZ5], total: tReal },
-            { metas: [3,4,5], vals: [d.oZ1, d.oZ3, d.oZ5], total: tObj },
-          ].forEach(({ metas, vals, total }) => {
+           const objColors = ['#1a5e38', '#8a5400', '#8b1a1a']
+          ;[
+            { metas: [0,1,2], vals: [d.rZ1, d.rZ3, d.rZ5], total: tReal, textColor: null },
+            { metas: [3,4,5], vals: [d.oZ1, d.oZ3, d.oZ5], total: tObj,  textColor: 'byZone' },
+          ].forEach(({ metas, vals, total, textColor }) => {
             if (!total) return
             metas.forEach((mi, vi) => {
               const meta = chart.getDatasetMeta(mi)
@@ -119,7 +121,7 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
               const barH = Math.abs(bar.base - bar.y)
               if (barH < 14) return
               ctx.save()
-              ctx.fillStyle = '#fff'
+              ctx.fillStyle = textColor === 'byZone' ? objColors[vi] : '#fff'
               ctx.font = '500 9px sans-serif'
               ctx.textAlign = 'center'
               ctx.textBaseline = 'middle'
@@ -127,7 +129,6 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
               ctx.restore()
             })
           })
-
           ;[
             { dsIdx: 6, val: d.kmR, color: CKM },
             { dsIdx: 7, val: d.kmO, color: CKMo },
