@@ -96,25 +96,54 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
 
     if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
 
-    const pctPlugin = {
+   const pctPlugin = {
       id: 'pctLabels',
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx
         data.forEach((d, i) => {
-          const t = d.rZ1 + d.rZ3 + d.rZ5
-          if (!t) return
-          ;[{ mi: 0, v: d.rZ1 }, { mi: 1, v: d.rZ3 }, { mi: 2, v: d.rZ5 }].forEach(({ mi, v }) => {
-            const meta = chart.getDatasetMeta(mi)
+          const tReal = d.rZ1 + d.rZ3 + d.rZ5
+          const tObj  = d.oZ1 + d.oZ3 + d.oZ5
+
+          ;[
+            { metas: [0,1,2], vals: [d.rZ1, d.rZ3, d.rZ5], total: tReal },
+            { metas: [3,4,5], vals: [d.oZ1, d.oZ3, d.oZ5], total: tObj },
+          ].forEach(({ metas, vals, total }) => {
+            if (!total) return
+            metas.forEach((mi, vi) => {
+              const meta = chart.getDatasetMeta(mi)
+              if (meta.hidden) return
+              const bar = meta.data[i]
+              if (!bar) return
+              const pct = Math.round((vals[vi] / total) * 100)
+              if (pct < 8) return
+              const barH = Math.abs(bar.base - bar.y)
+              if (barH < 14) return
+              ctx.save()
+              ctx.fillStyle = '#fff'
+              ctx.font = '500 9px sans-serif'
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'middle'
+              ctx.fillText(pct + '%', bar.x, bar.y + barH / 2)
+              ctx.restore()
+            })
+          })
+
+          ;[
+            { dsIdx: 6, val: d.kmR, color: CKM },
+            { dsIdx: 7, val: d.kmO, color: CKMo },
+          ].forEach(({ dsIdx, val, color }) => {
+            if (!val) return
+            const meta = chart.getDatasetMeta(dsIdx)
             if (meta.hidden) return
-            const bar = meta.data[i]
-            if (!bar) return
-            const pct = Math.round((v / t) * 100)
-            if (pct < 8) return
-            const barH = Math.abs(bar.base - bar.y)
-            if (barH < 14) return
-            ctx.save(); ctx.fillStyle = '#fff'; ctx.font = '500 9px sans-serif'
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-            ctx.fillText(pct + '%', bar.x, bar.y + barH / 2); ctx.restore()
+            const pt = meta.data[i]
+            if (!pt) return
+            ctx.save()
+            ctx.fillStyle = color
+            ctx.font = '500 9px sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'bottom'
+            ctx.fillText(val + ' km', pt.x, pt.y - 5)
+            ctx.restore()
           })
         })
       }
