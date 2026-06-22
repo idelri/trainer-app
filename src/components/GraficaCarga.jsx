@@ -170,7 +170,14 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: item => item.dataset.yAxisID === 'y2' ? `${item.dataset.label}: ${item.raw} km` : `${item.dataset.label}: ${item.raw} min` } }
+          tooltip: { callbacks: { label: item => {
+            if (item.dataset.yAxisID === 'y2') return `${item.dataset.label}: ${item.raw} km`
+            const stackKey = item.dataset.stack
+            const dsIdxStart = stackKey === 'real' ? 0 : 3
+            const total = [0,1,2].reduce((s,j) => s + (chart.data.datasets[dsIdxStart+j].data[item.dataIndex] || 0), 0)
+            const pct = total ? Math.round((item.raw / total) * 100) : 0
+            return `${item.dataset.label}: ${pct}%`
+          }}}
         },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
