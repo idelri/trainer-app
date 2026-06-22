@@ -207,10 +207,10 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)' }}>Gráfica evolución de carga</span>
         <div style={{ display: 'flex', gap: 4 }}>
-          {['semana', 'bloque'].map(a => (
+         {['semana', 'subbloque', 'bloque'].map(a => (
             <button key={a} onClick={() => setAgrup(a)}
               style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '0.5px solid var(--border)', background: agrup === a ? 'var(--bg2)' : 'var(--bg)', fontWeight: agrup === a ? 600 : 400, color: 'var(--text2)', cursor: 'pointer' }}>
-              {a.charAt(0).toUpperCase() + a.slice(1)}
+              {a === 'semana' ? 'Semana' : a === 'subbloque' ? 'Sub bloque' : 'Bloque'}
             </button>
           ))}
         </div>
