@@ -40,6 +40,31 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
       })
       return rows
     }
+    if (agrup === 'subbloque') {
+      const rows = []
+      bloques.forEach((b, bIdx) => {
+        const subsB = (subbloques[b.id] || []).sort((a, z) => a.semana_inicio - z.semana_inicio)
+        const sems = semanas[b.id] || []
+        subsB.forEach((sub, sIdx) => {
+          const semsSub = sems.filter(s => s.numero >= sub.semana_inicio && s.numero <= sub.semana_fin)
+          const totalObjMin = (sub.zona1_2 || 0) + (sub.zona3_4 || 0) + (sub.zona5 || 0)
+          const totalReal = semsSub.reduce((a, s) => a + (s.zona1_2_real || 0) + (s.zona3_4_real || 0) + (s.zona5_real || 0), 0)
+          const base = totalReal || 200
+          rows.push({
+            label: `${bIdx + 1}.${sIdx + 1} ${sub.nombre.slice(0, 8)}`,
+            rZ1: semsSub.reduce((a, s) => a + (s.zona1_2_real || 0), 0),
+            rZ3: semsSub.reduce((a, s) => a + (s.zona3_4_real || 0), 0),
+            rZ5: semsSub.reduce((a, s) => a + (s.zona5_real || 0), 0),
+            oZ1: totalObjMin > 0 ? Math.round((sub.zona1_2 / totalObjMin) * base) : 0,
+            oZ3: totalObjMin > 0 ? Math.round((sub.zona3_4 / totalObjMin) * base) : 0,
+            oZ5: totalObjMin > 0 ? Math.round((sub.zona5 / totalObjMin) * base) : 0,
+            kmR: semsSub.some(s => s.km_real) ? semsSub.reduce((a, s) => a + (s.km_real || 0), 0) : null,
+            kmO: semsSub.some(s => s.km_objetivo) ? semsSub.reduce((a, s) => a + (s.km_objetivo || 0), 0) : null,
+          })
+        })
+      })
+      return rows
+    }
     return bloques.map(b => {
       const sems = semanas[b.id] || []
       return {
