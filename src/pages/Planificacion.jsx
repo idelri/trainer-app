@@ -557,6 +557,13 @@ export default function Planificacion({ clientePlanificacion }) {
       {!loading && planificacion && (
         <>
          {/* Stats */}
+         {vista === 'sesiones' && clienteSeleccionado && (
+            <SesionesPlan
+              clienteId={clienteSeleccionado}
+              bloquesPlan={bloques}
+              subbloquesPlan={subbloques}
+            />
+          )}
           {vista === 'timeline' && (
             <>
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
