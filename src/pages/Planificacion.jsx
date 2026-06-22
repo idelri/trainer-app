@@ -642,8 +642,13 @@ export default function Planificacion({ clientePlanificacion }) {
                       })}
                     </div>
                   )}
-                </div>
+               </div>
               </div>
+              <GraficaCarga
+                bloques={bloques}
+                semanas={semanas}
+                subbloques={subbloques}
+              />
             </>
           )}
 
