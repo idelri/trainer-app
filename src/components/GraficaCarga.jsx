@@ -22,10 +22,18 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
       bloques.forEach(b => {
         const bSems = (semanas[b.id] || []).sort((a, z) => a.numero - z.numero)
         bSems.forEach(s => {
+         const subsB = subbloques[b.id] || []
+          const subDeSem = subsB.find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+          const totalObjMin = subDeSem ? (subDeSem.zona1_2 || 0) + (subDeSem.zona3_4 || 0) + (subDeSem.zona5 || 0) : 0
+          const totalReal = (s.zona1_2_real || 0) + (s.zona3_4_real || 0) + (s.zona5_real || 0)
+          const baseMin = totalReal || 200
+          const oZ1v = subDeSem && totalObjMin > 0 ? Math.round((subDeSem.zona1_2 / totalObjMin) * baseMin) : 0
+          const oZ3v = subDeSem && totalObjMin > 0 ? Math.round((subDeSem.zona3_4 / totalObjMin) * baseMin) : 0
+          const oZ5v = subDeSem && totalObjMin > 0 ? Math.round((subDeSem.zona5 / totalObjMin) * baseMin) : 0
           rows.push({
             label: `S${s.numero}·${b.nombre.slice(0,6)}`,
             rZ1: s.zona1_2_real || 0, rZ3: s.zona3_4_real || 0, rZ5: s.zona5_real || 0,
-            oZ1: 0, oZ3: 0, oZ5: 0,
+            oZ1: oZ1v, oZ3: oZ3v, oZ5: oZ5v,
             kmR: s.km_real || null, kmO: s.km_objetivo || null
           })
         })
