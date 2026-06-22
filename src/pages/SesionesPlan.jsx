@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
-import SesionesPlan from './SesionesPlan'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false }
