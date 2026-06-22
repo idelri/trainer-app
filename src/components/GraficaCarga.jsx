@@ -212,7 +212,7 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
           }}}
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+         x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 90, minRotation: 45, autoSkip: false } },
           y: { grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { font: { size: 10 } }, title: { display: true, text: 'min', font: { size: 10 }, color: '#888' }, position: 'left' },
           y2: { grid: { display: false }, ticks: { font: { size: 10 }, color: CKM }, title: { display: true, text: 'km', font: { size: 10 }, color: CKM }, position: 'right' }
         }
