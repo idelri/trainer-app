@@ -31,7 +31,11 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
           const oZ3v = subDeSem && totalObjMin > 0 ? Math.round((subDeSem.zona3_4 / totalObjMin) * baseMin) : 0
           const oZ5v = subDeSem && totalObjMin > 0 ? Math.round((subDeSem.zona5 / totalObjMin) * baseMin) : 0
           rows.push({
-            label: `S${s.numero}·${b.nombre.slice(0,6)}`,
+           const bIdx = bloques.findIndex(bb => bb.id === b.id)
+            const subsB2 = subbloques[b.id] || []
+            const subDeSem2 = subsB2.find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+            const sIdx2 = subsB2.findIndex(sb => sb.id === subDeSem2?.id)
+            const subLabel = subDeSem2 ? ` ${bIdx+1}.${sIdx2+1}` : ''
             rZ1: s.zona1_2_real || 0, rZ3: s.zona3_4_real || 0, rZ5: s.zona5_real || 0,
             oZ1: oZ1v, oZ3: oZ3v, oZ5: oZ5v,
             kmR: s.km_real || null, kmO: s.km_objetivo || null
