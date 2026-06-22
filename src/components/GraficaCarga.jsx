@@ -253,7 +253,7 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
         <Toggle id="kmObj"      label="Km objetivo"     dotStyle={{ background: 'transparent', border: `1px dashed ${CKMo}` }} />
       </div>
 
-      <div style={{ position: 'relative', width: '100%', height: 260 }}>
+     <div style={{ position: 'relative', width: '100%', height: 300 }}>
         <canvas ref={canvasRef} role="img" aria-label="Gráfica de evolución de carga de entrenamiento">Datos de carga de entrenamiento.</canvas>
       </div>
     </div>
