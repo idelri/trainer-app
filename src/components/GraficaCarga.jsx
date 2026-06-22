@@ -104,8 +104,7 @@ export default function GraficaCarga({ bloques, semanas, subbloques }) {
           const tReal = d.rZ1 + d.rZ3 + d.rZ5
           const tObj  = d.oZ1 + d.oZ3 + d.oZ5
 
-          ;[
-           const objColors = ['#1a5e38', '#8a5400', '#8b1a1a']
+        const objColors = ['#1a5e38', '#8a5400', '#8b1a1a']
           ;[
             { metas: [0,1,2], vals: [d.rZ1, d.rZ3, d.rZ5], total: tReal, textColor: null },
             { metas: [3,4,5], vals: [d.oZ1, d.oZ3, d.oZ5], total: tObj,  textColor: 'byZone' },
