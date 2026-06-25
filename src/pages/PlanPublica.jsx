@@ -375,6 +375,7 @@ function Subbloque({ b, sub, startGlobal, semanas, comps, ctrls, inicio, isOpen,
     <div ref={el => registerRef && registerRef(sub.id, el)} style={{ scrollMarginTop: 80, borderTop: `1px solid ${T.border}` }}>
       <div onClick={onToggle} style={{ padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', background: isOpen ? (b.color || T.green) + '0c' : 'transparent' }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || T.green, flexShrink: 0 }} />
+        <span style={{ fontFamily: T.mono, fontSize: 10, color: col, fontWeight: 600, flexShrink: 0 }}>SB{idx + 1}</span>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{sub.nombre}</span>
         <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginLeft: 'auto' }}>S{startGlobal + sub.semana_inicio - 1}–S{startGlobal + sub.semana_fin - 1}</span>
         <Chevron open={isOpen} />
