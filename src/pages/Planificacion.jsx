@@ -1479,7 +1479,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                       style={{ fontSize: 13, color: 'var(--text3)', cursor: 'help' }}>ⓘ</span>
                   </div>
                   {(() => {
-                    const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Prevención y readaptación', 'Especificidad deportiva']
+                    const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Especificidad deportiva']
                     const prioridad = formSubbloque.enfoque_prioridad || {}
                     const totalPuntos = Object.values(prioridad).reduce((s, v) => s + v, 0)
                     return (
