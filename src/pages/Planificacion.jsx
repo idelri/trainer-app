@@ -1229,31 +1229,11 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                           </div>
                                         </div>
                                       )
-                                    })()}
-                                    
-                                        {sub.exigencia && (
+                                   })()}
+                                    {clienteData?.perfil_planificacion === 'fuerza_salud' && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia || sub.enfoque?.length > 0) && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {(sub.sesiones_min || sub.sesiones_max) && (
                                           <div>
-                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Exigencia</div>
-                                            <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, background: sub.exigencia === 'Baja' ? '#10b98120' : sub.exigencia === 'Moderada' ? '#f59e0b20' : '#ef444420', color: sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444', border: `1px solid ${sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444'}` }}>
-                                              {sub.exigencia}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {sub.enfoque?.length > 0 && (
-                                          <div>
-                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque</div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                              {sub.enfoque.map(e => (
-                                                <span key={e} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)', fontWeight: 500 }}>{e}</span>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                             
                                             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Frecuencia</div>
                                             <div style={{ fontSize: 13 }}>
                                               {sub.sesiones_min && sub.sesiones_max ? `${sub.sesiones_min}–${sub.sesiones_max}` : sub.sesiones_min || sub.sesiones_max} sesiones/semana
@@ -1266,7 +1246,18 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                             )}
                                           </div>
                                         )}
-                                       
+                                        {sub.exigencia && (
+                                          <div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Exigencia</div>
+                                            <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, background: sub.exigencia === 'Baja' ? '#10b98120' : sub.exigencia === 'Moderada' ? '#f59e0b20' : '#ef444420', color: sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444', border: `1px solid ${sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444'}` }}>
+                                              {sub.exigencia}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {sub.enfoque?.length > 0 && (
+                                          <div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                                               {sub.enfoque.map(e => (
                                                 <span key={e} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)', fontWeight: 500 }}>{e}</span>
                                               ))}
