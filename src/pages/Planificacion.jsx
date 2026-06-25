@@ -1478,20 +1478,54 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                       style={{ fontSize: 13, color: 'var(--text3)', cursor: 'help' }}>ⓘ</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Prevención y readaptación', 'Especificidad deportiva'].map(op => {
-                      const sel = (formSubbloque.enfoque || []).includes(op)
-                      return (
-                        <button key={op} onClick={() => setFormSubbloque(f => ({ ...f, enfoque: sel ? (f.enfoque || []).filter(x => x !== op) : [...(f.enfoque || []), op] }))}
-                          style={{ padding: '5px 10px', borderRadius: 16, border: `1.5px solid ${sel ? 'var(--accent)' : 'var(--border)'}`, background: sel ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: sel ? 600 : 400, color: sel ? 'var(--accent)' : 'var(--text2)' }}>
-                          {op}
-                        </button>
-                      )
-                    })}
-                  </div>
+                    {(() => {
+                    const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Prevención y readaptación', 'Especificidad deportiva']
+                    const prioridad = formSubbloque.enfoque_prioridad || {}
+                    const totalPuntos = Object.values(prioridad).reduce((s, v) => s + v, 0)
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {ENFOQUES.map(op => {
+                          const puntos = prioridad[op] || 0
+                          const pct = totalPuntos > 0 ? Math.round((puntos / totalPuntos) * 100) : 0
+                          return (
+                            <div key={op} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 12, color: puntos > 0 ? 'var(--text)' : 'var(--text3)', fontWeight: puntos > 0 ? 500 : 400, minWidth: 180, flexShrink: 0 }}>{op}</span>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                {[0,1,2,3,4,5].map(n => (
+                                  <button key={n} onClick={() => setFormSubbloque(f => {
+                                    const np = { ...(f.enfoque_prioridad || {}), [op]: n }
+                                    if (n === 0) delete np[op]
+                                    const enfoqueActivo = Object.entries(np).filter(([,v]) => v > 0).map(([k]) => k)
+                                    return { ...f, enfoque_prioridad: np, enfoque: enfoqueActivo }
+                                  })}
+                                    style={{ width: 24, height: 24, borderRadius: 6, border: `1.5px solid ${puntos >= n && n > 0 ? 'var(--accent)' : 'var(--border)'}`, background: puntos >= n && n > 0 ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 10, fontWeight: 600, color: puntos >= n && n > 0 ? 'var(--accent)' : 'var(--text3)' }}>
+                                    {n === 0 ? '✕' : n}
+                                  </button>
+                                ))}
+                              </div>
+                              {puntos > 0 && (
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 2 }} />
+                                  </div>
+                                  <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600, minWidth: 30 }}>{pct}%</span>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {totalPuntos > 0 && (
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 4 }}>
+                            {Object.entries(prioridad).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([k,v]) => `${k} ${Math.round((v/totalPuntos)*100)}%`).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               </>
             )}
-
+                
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSubbloque} disabled={saving}>{saving ? 'Guardando...' : modalSubbloque.id ? 'Guardar cambios' : 'Crear sub bloque'}</button>
