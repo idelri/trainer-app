@@ -1443,10 +1443,12 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
               </select>
             </div>
             <div className="form-group"><label className="form-label">Objetivo de la semana</label><input className="form-input" value={formSemana.objetivo} onChange={e => setFormSemana(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Aumentar volumen de carrera" autoFocus /></div>
-            <div className="form-row">
-              <div className="form-group"><label className="form-label">Km objetivo</label><input className="form-input" type="number" min="0" value={formSemana.km_objetivo || ''} onChange={e => setFormSemana(f => ({ ...f, km_objetivo: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 22" /></div>
-              <div className="form-group"><label className="form-label">Km real</label><input className="form-input" type="number" min="0" value={formSemana.km_real || ''} onChange={e => setFormSemana(f => ({ ...f, km_real: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 24" /></div>
-            </div>
+           {clienteData?.perfil_planificacion !== 'fuerza_salud' && (
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Km objetivo</label><input className="form-input" type="number" min="0" value={formSemana.km_objetivo || ''} onChange={e => setFormSemana(f => ({ ...f, km_objetivo: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 22" /></div>
+                <div className="form-group"><label className="form-label">Km real</label><input className="form-input" type="number" min="0" value={formSemana.km_real || ''} onChange={e => setFormSemana(f => ({ ...f, km_real: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 24" /></div>
+              </div>
+            )}
            <div className="form-group"><label className="form-label">Notas / Contenidos</label><textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes Z2\nTécnica de carrera"} style={{ minHeight: 120 }} /></div>
           <div className="form-group"><label className="form-label">Comentario post-semana</label><textarea className="form-textarea" value={formSemana.comentario} onChange={e => setFormSemana(f => ({ ...f, comentario: e.target.value }))} placeholder={"Ej: Semana de viaje, se ajustó volumen\nMolestia en rodilla los últimos 2 días"} style={{ minHeight: 80 }} /></div>
             <div className="form-group" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
