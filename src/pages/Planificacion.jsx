@@ -716,7 +716,9 @@ export default function Planificacion({ clientePlanificacion }) {
                         return (
                           <div key={sub.id} onClick={() => { setFormSubbloque({ nombre: sub.nombre, semana_inicio: sub.semana_inicio, semana_fin: sub.semana_fin, objetivo: sub.objetivo || '', notas: sub.notas || '', zona1_2: sub.zona1_2 || 0, zona3_4: sub.zona3_4 || 0, zona5: sub.zona5 || 0, km_min: sub.km_min || null, km_max: sub.km_max || null }); setModalSubbloque({ ...sub, bloque_id: b.id }) }}
                             title={sub.nombre} style={{ position: 'absolute', left: `${subOffset}%`, width: `${subWidth}%`, height: 28, background: b.color ? b.color + 'aa' : '#2d6a4f88', borderRadius: 3, padding: '3px 6px', overflow: 'hidden', border: `1px solid ${b.color || '#2d6a4f'}`, cursor: 'pointer' }}>
-                            <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.nombre}</div>
+                         <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {bloques.indexOf(b) + 1}.{(subbloques[b.id] || []).indexOf(sub) + 1} {sub.nombre}
+                            </div>
                           </div>
                         )
                       })
