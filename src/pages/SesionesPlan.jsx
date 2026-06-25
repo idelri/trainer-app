@@ -424,7 +424,35 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
                     const id = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
                     const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
                     return (
-                      <div key={e.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                     <div key={e.id}
+                        draggable
+                        onDragStart={() => setDraggingEj({ e, bloqueId: b.id })}
+                        onDragEnd={() => setDraggingEj(null)}
+                        onDragOver={ev => ev.preventDefault()}
+                        onDrop={async ev => {
+                          ev.preventDefault()
+                          if (!draggingEj || draggingEj.e.id === e.id) return
+                          const bloqueOrigen = draggingEj.bloqueId
+                          const bloqueDestino = b.id
+                          const ejOrigen = [...(ejercicios[bloqueOrigen] || [])]
+                          const fromIdx = ejOrigen.findIndex(x => x.id === draggingEj.e.id)
+                          if (fromIdx === -1) return
+                          const [moved] = ejOrigen.splice(fromIdx, 1)
+                          const ejDestinoBase = bloqueOrigen === bloqueDestino ? ejOrigen : [...(ejercicios[bloqueDestino] || [])]
+                          const toIdx = ejDestinoBase.findIndex(x => x.id === e.id)
+                          ejDestinoBase.splice(toIdx >= 0 ? toIdx : ejDestinoBase.length, 0, { ...moved, bloque_id: bloqueDestino })
+                          const origenFinal = ejOrigen.map((x, i) => ({ ...x, orden: i }))
+                          const destinoFinal = bloqueOrigen === bloqueDestino ? origenFinal : ejDestinoBase.map((x, i) => ({ ...x, orden: i }))
+                          const newEj = { ...ejercicios }
+                          newEj[bloqueOrigen] = origenFinal
+                          newEj[bloqueDestino] = destinoFinal
+                          setEjercicios(newEj)
+                          await supabase.from('sesion_ejercicios').update({ bloque_id: bloqueDestino, orden: toIdx >= 0 ? toIdx : ejDestinoBase.length - 1 }).eq('id', moved.id)
+                          await Promise.all(origenFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
+                          if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
+                          setDraggingEj(null)
+                        }}
+                        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
                         <div style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {thumb ? <img src={thumb} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 9, color: 'var(--text3)' }}>sin media</span>}
                         </div>
