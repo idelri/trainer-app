@@ -1452,6 +1452,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
            <div className="form-group"><label className="form-label">Notas / Contenidos</label><textarea className="form-textarea" value={formSemana.notas} onChange={e => setFormSemana(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes Z2\nTécnica de carrera"} style={{ minHeight: 120 }} /></div>
           <div className="form-group"><label className="form-label">Comentario post-semana</label><textarea className="form-textarea" value={formSemana.comentario} onChange={e => setFormSemana(f => ({ ...f, comentario: e.target.value }))} placeholder={"Ej: Semana de viaje, se ajustó volumen\nMolestia en rodilla los últimos 2 días"} style={{ minHeight: 80 }} /></div>
             <div className="form-group" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              {clienteData?.perfil_planificacion !== 'fuerza_salud' && (
               <label className="form-label">Zonas reales — minutos</label>
               {[{ key: 'zona1_2_real', label: 'Z1-Z2', sublabel: 'Base / Recuperación', color: '#10b981' }, { key: 'zona3_4_real', label: 'Z3-Z4', sublabel: 'Umbral / Calidad', color: '#f59e0b' }, { key: 'zona5_real', label: 'Z5-Z5+', sublabel: 'Alta intensidad', color: '#ef4444' }].map(zona => {
                 const total = (formSemana.zona1_2_real || 0) + (formSemana.zona3_4_real || 0) + (formSemana.zona5_real || 0)
