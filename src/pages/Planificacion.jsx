@@ -202,6 +202,8 @@ export default function Planificacion({ clientePlanificacion }) {
     if (!formSubbloque.nombre || !modalSubbloque?.bloque_id) return
     setSaving(true)
   const datos = { bloque_id: modalSubbloque.bloque_id, nombre: formSubbloque.nombre, semana_inicio: parseInt(formSubbloque.semana_inicio), semana_fin: parseInt(formSubbloque.semana_fin), objetivo: formSubbloque.objetivo || null, notas: formSubbloque.notas || null, zona1_2: parseInt(formSubbloque.zona1_2) || 0, zona3_4: parseInt(formSubbloque.zona3_4) || 0, zona5: parseInt(formSubbloque.zona5) || 0, km_min: formSubbloque.km_min || null, km_max: formSubbloque.km_max || null, sesiones_min: formSubbloque.sesiones_min ? parseInt(formSubbloque.sesiones_min) : null, sesiones_max: formSubbloque.sesiones_max ? parseInt(formSubbloque.sesiones_max) : null, duracion_media_min: formSubbloque.duracion_media_min ? parseInt(formSubbloque.duracion_media_min) : null, exigencia: formSubbloque.exigencia || null, enfoque: formSubbloque.enfoque?.length ? formSubbloque.enfoque : null, enfoque_prioridad: Object.keys(formSubbloque.enfoque_prioridad || {}).length ? formSubbloque.enfoque_prioridad : null }
+  enfoque_prioridad: Object.keys(formSubbloque.enfoque_prioridad || {}).length ? formSubbloque.enfoque_prioridad : null }
+    if (modalSubbloque.id) { await supabase.from('subbloques').update(datos).eq('id', modalSubbloque.id) }
     else { await supabase.from('subbloques').insert(datos) }
     setSaving(false); setModalSubbloque(null); cargarPlanificacion()
   }
