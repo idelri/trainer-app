@@ -66,7 +66,8 @@ export default function Clientes() {
       telefono: form.telefono || null,
       estado: form.estado,
       fecha_inicio: form.fecha_inicio || null,
-      objetivo: form.objetivo || null,
+      tipo_cliente: form.tipo_cliente || 'estandar',
+      perfil_planificacion: form.perfil_planificacion || 'resistencia',
       tipo_cliente: form.tipo_cliente || 'estandar',
     }
 
