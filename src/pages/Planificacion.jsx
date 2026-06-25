@@ -78,7 +78,7 @@ export default function Planificacion({ clientePlanificacion }) {
   }
 
   async function cargarClienteData(id) {
-    const { data } = await supabase.from('clientes').select('semana_tipo, disponibilidad, consideraciones').eq('id', id).single()
+    const { data } = await supabase.from('clientes').select('semana_tipo, disponibilidad, consideraciones, perfil_planificacion').eq('id', id).single()
     setClienteData(data || null)
     setFormSemanaTipo(data?.semana_tipo || {})
     setFormConsideraciones(data?.consideraciones || '')
