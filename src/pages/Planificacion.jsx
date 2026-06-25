@@ -1311,7 +1311,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                           </div>
                                         )}
                                       </div>
-                                  )}
+                                    )}
                                   </div>
                                 </div>
                               )}
