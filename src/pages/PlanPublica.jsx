@@ -484,8 +484,8 @@ function Bloque({ b, idx, m, inicio, comps, ctrls, registerRef, expandido, onTog
               </SubSection>
             </div>
           )}
-          {b.subbloques.map(sub => (
-            <Subbloque key={sub.id} b={b} sub={sub} startGlobal={m.startGlobal} semanas={b.semanasData} comps={comps} ctrls={ctrls} inicio={inicio}
+        {b.subbloques.map((sub, subIdx) => (
+            <Subbloque key={sub.id} b={b} sub={sub} subIdx={subIdx}
               isOpen={!!subAbierto[sub.id]} onToggle={() => onToggleSub(sub.id)} registerRef={registerRef} />
           ))}
         </div>
