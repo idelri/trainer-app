@@ -1227,7 +1227,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                               </div>
                                             )}
                                           </div>
-                                      </div>
+                                        </div>
                                       )
                                     })()}
                                     {clienteData?.perfil_planificacion === 'fuerza_salud' && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia || sub.enfoque?.length > 0) && (
