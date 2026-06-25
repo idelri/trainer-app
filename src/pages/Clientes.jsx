@@ -242,6 +242,13 @@ export default function Clientes() {
                   <option value="familia_gratis">Familia / Gratis</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label className="form-label">Perfil de planificación</label>
+                <select className="form-select" value={form.perfil_planificacion} onChange={e => setForm(f => ({ ...f, perfil_planificacion: e.target.value }))}>
+                  <option value="resistencia">Resistencia</option>
+                  <option value="fuerza_salud">Fuerza y salud</option>
+                </select>
+              </div>
               </div>
             </div>
             <div className="form-row">
