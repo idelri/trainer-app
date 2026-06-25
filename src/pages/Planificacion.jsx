@@ -1017,7 +1017,6 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                       <div>
                                         <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Volumen</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                          {/* Fila objetivo */}
                                           {(sub.km_min || sub.km_max) && (
                                             <div>
                                               <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Objetivo — {sub.km_min && sub.km_max ? `${sub.km_min}–${sub.km_max} km/sem` : sub.km_min ? `${sub.km_min}+ km/sem` : `máx ${sub.km_max} km/sem`}</div>
@@ -1032,6 +1031,27 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                               </div>
                                             </div>
                                           )}
+                                          {kmRealMedio > 0 && (
+                                            <div>
+                                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Real medio — {kmRealMedio} km/sem</div>
+                                              <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', width: `${Math.min((kmRealMedio / kmMax) * 100, 100)}%`, background: '#3b82f6', borderRadius: 5 }} />
+                                              </div>
+                                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                                                <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6' }}>{kmRealMedio} km</span>
+                                                {pctKm && (
+                                                  <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: kmRealMedio >= (sub.km_min || 0) ? '#10b981' : '#f59e0b' }}>
+                                                    {pctKm}% del objetivo
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {clienteData?.perfil_planificacion === 'fuerza_salud' && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia || sub.enfoque?.length > 0) && (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         {(sub.sesiones_min || sub.sesiones_max) && (
                                           <div>
@@ -1067,40 +1087,6 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                         )}
                                       </div>
                                     )}
-                                         {/* Fila real */}
-                                          {kmRealMedio > 0 && (
-                                            <div>
-                                              <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Real medio — {kmRealMedio} km/sem</div>
-                                              <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden' }}>
-                                                <div style={{ height: '100%', width: `${Math.min((kmRealMedio / kmMax) * 100, 100)}%`, background: '#3b82f6', borderRadius: 5 }} />
-                                              </div>
-                                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                                                <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6' }}>{kmRealMedio} km</span>
-                                                {pctKm && (
-                                                  <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, color: kmRealMedio >= (sub.km_min || 0) ? '#10b981' : '#f59e0b' }}>
-                                                    {pctKm}% del objetivo
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Bloque.</p></div>}
-            </div>
-          )}
 
           {/* ===== SEMANA ===== */}
           {vista === 'micro' && (
