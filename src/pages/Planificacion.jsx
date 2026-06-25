@@ -644,11 +644,15 @@ export default function Planificacion({ clientePlanificacion }) {
                   )}
                </div>
               </div>
-              <GraficaCarga
-                bloques={bloques}
-                semanas={semanas}
-                subbloques={subbloques}
-              />
+             {clienteData?.perfil_planificacion === 'fuerza_salud' ? (
+                <PanelFuerzaSalud clienteId={clienteSeleccionado} planificacion={planificacion} />
+              ) : (
+                <GraficaCarga
+                  bloques={bloques}
+                  semanas={semanas}
+                  subbloques={subbloques}
+                />
+              )}
             </>
           )}
 
