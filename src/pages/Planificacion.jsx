@@ -699,7 +699,7 @@ export default function Planificacion({ clientePlanificacion }) {
                     {bloques.map(b => (
                       <div key={b.id} style={{ width: `${(b.semanas / totalSemanas) * 100}%`, minWidth: 40 }}>
                         <div style={{ background: b.color || '#2d6a4f', borderRadius: '4px 4px 0 0', padding: '5px 8px', cursor: 'pointer', height: 40, overflow: 'hidden' }} onClick={() => abrirEditarBloque(b)}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.nombre}</div>
+                       <div style={{ fontSize: 10, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>B{bloques.indexOf(b) + 1} {b.nombre}</div>
                           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>{b.semanas}s</div>
                         </div>
                       </div>
