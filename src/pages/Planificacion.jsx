@@ -1230,22 +1230,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                         </div>
                                       )
                                     })()}
-                                    {clienteData?.perfil_planificacion === 'fuerza_salud' && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia || sub.enfoque?.length > 0) && (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {(sub.sesiones_min || sub.sesiones_max) && (
-                                          <div>
-                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Frecuencia</div>
-                                            <div style={{ fontSize: 13 }}>
-                                              {sub.sesiones_min && sub.sesiones_max ? `${sub.sesiones_min}–${sub.sesiones_max}` : sub.sesiones_min || sub.sesiones_max} sesiones/semana
-                                              {sub.duracion_media_min && <span style={{ color: 'var(--text3)', marginLeft: 8 }}>· {sub.duracion_media_min} min/sesión</span>}
-                                            </div>
-                                            {sub.duracion_media_min && (sub.sesiones_min || sub.sesiones_max) && (
-                                              <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 3 }}>
-                                                ↓ {sub.sesiones_min ? sub.sesiones_min * sub.duracion_media_min : '?'}{sub.sesiones_max && sub.sesiones_min !== sub.sesiones_max ? `–${sub.sesiones_max * sub.duracion_media_min}` : ''} min/semana estimados
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
+                                    
                                         {sub.exigencia && (
                                           <div>
                                             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Exigencia</div>
