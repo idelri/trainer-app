@@ -1288,64 +1288,140 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
         </div>
       )}
 
-      {modalSubbloque && (
+   {modalSubbloque && (
         <div className="modal-backdrop" onClick={() => setModalSubbloque(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">{modalSubbloque.id ? 'Editar sub bloque' : 'Nuevo sub bloque'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSubbloque(null)}><X size={14} /></button>
             </div>
-            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formSubbloque.nombre} onChange={e => setFormSubbloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Adaptación" autoFocus /></div>
+
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={formSubbloque.nombre} onChange={e => setFormSubbloque(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Adaptación" autoFocus />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Objetivos / Contenidos</label>
+              <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes suaves\nTécnica de carrera"} style={{ minHeight: 100 }} />
+            </div>
+
             <div className="form-row">
               <div className="form-group"><label className="form-label">Semana inicio *</label><input className="form-input" type="number" min="1" value={formSubbloque.semana_inicio} onChange={e => setFormSubbloque(f => ({ ...f, semana_inicio: e.target.value }))} /></div>
               <div className="form-group"><label className="form-label">Semana fin *</label><input className="form-input" type="number" min="1" value={formSubbloque.semana_fin} onChange={e => setFormSubbloque(f => ({ ...f, semana_fin: e.target.value }))} /></div>
             </div>
-            <div className="form-row">
-              <div className="form-group"><label className="form-label">Km/semana mín</label><input className="form-input" type="number" min="0" value={formSubbloque.km_min || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_min: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 20" /></div>
-              <div className="form-group"><label className="form-label">Km/semana máx</label><input className="form-input" type="number" min="0" value={formSubbloque.km_max || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_max: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 25" /></div>
-            </div>
-            <div className="form-group"><label className="form-label">Contenidos</label><textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes suaves\nTécnica de carrera"} style={{ minHeight: 120 }} /></div>
-            <div className="form-group">
-              <label className="form-label">Distribución de zonas</label>
-              {[{ key: 'zona1_2', label: 'Z1-Z2', sublabel: 'Recuperación / Base', color: '#10b981' }, { key: 'zona3_4', label: 'Z3-Z4', sublabel: 'Ritmos específicos / Calidad', color: '#f59e0b' }, { key: 'zona5', label: 'Z5-Z5+', sublabel: 'Techo', color: '#ef4444' }].map(zona => {
-                const bloqueada = formSubbloque[`lock_${zona.key}`]
-                return (
-                  <div key={zona.key} style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button onClick={() => setFormSubbloque(f => ({ ...f, [`lock_${zona.key}`]: !f[`lock_${zona.key}`] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, opacity: bloqueada ? 1 : 0.3 }} title={bloqueada ? 'Desbloquear' : 'Bloquear esta zona'}>🔒</button>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text3)' }}>{zona.sublabel}</span>
-                      </div>
-                      <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSubbloque[zona.key]}%</span>
-                    </div>
-                    <input type="range" min="0" max="100" value={formSubbloque[zona.key]} disabled={bloqueada}
-                      onChange={e => {
-                        const val = parseInt(e.target.value)
-                        const otrasZonas = ['zona1_2', 'zona3_4', 'zona5'].filter(k => k !== zona.key)
-                        const desbloqueadas = otrasZonas.filter(k => !formSubbloque[`lock_${k}`])
-                        if (desbloqueadas.length === 0) return
-                        const bloqueadasValor = otrasZonas.filter(k => formSubbloque[`lock_${k}`]).reduce((s, k) => s + (formSubbloque[k] || 0), 0)
-                        const resto = 100 - val - bloqueadasValor
-                        if (resto < 0) return
-                        const totalDesbloqueadas = desbloqueadas.reduce((s, k) => s + (formSubbloque[k] || 0), 0)
-                        const nuevasZonas = {}
-                        if (totalDesbloqueadas === 0) { desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round(resto / desbloqueadas.length) }) }
-                        else { desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round((formSubbloque[k] / totalDesbloqueadas) * resto) }) }
-                        setFormSubbloque(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
-                      }}
-                      style={{ width: '100%', accentColor: zona.color, opacity: bloqueada ? 0.4 : 1 }} />
-                  </div>
-                )
-              })}
-              {(formSubbloque.zona1_2 + formSubbloque.zona3_4 + formSubbloque.zona5) > 0 && (
-                <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', marginTop: 4 }}>
-                  {formSubbloque.zona1_2 > 0 && <div style={{ width: `${formSubbloque.zona1_2}%`, background: '#10b981' }} />}
-                  {formSubbloque.zona3_4 > 0 && <div style={{ width: `${formSubbloque.zona3_4}%`, background: '#f59e0b' }} />}
-                  {formSubbloque.zona5 > 0 && <div style={{ width: `${formSubbloque.zona5}%`, background: '#ef4444' }} />}
+
+            {clienteData?.perfil_planificacion !== 'fuerza_salud' ? (
+              <>
+                <div className="form-row">
+                  <div className="form-group"><label className="form-label">Km/semana mín</label><input className="form-input" type="number" min="0" value={formSubbloque.km_min || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_min: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 20" /></div>
+                  <div className="form-group"><label className="form-label">Km/semana máx</label><input className="form-input" type="number" min="0" value={formSubbloque.km_max || ''} onChange={e => setFormSubbloque(f => ({ ...f, km_max: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 25" /></div>
                 </div>
-              )}
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Distribución de zonas</label>
+                  {[{ key: 'zona1_2', label: 'Z1-Z2', sublabel: 'Recuperación / Base', color: '#10b981' }, { key: 'zona3_4', label: 'Z3-Z4', sublabel: 'Ritmos específicos / Calidad', color: '#f59e0b' }, { key: 'zona5', label: 'Z5-Z5+', sublabel: 'Techo', color: '#ef4444' }].map(zona => {
+                    const bloqueada = formSubbloque[`lock_${zona.key}`]
+                    return (
+                      <div key={zona.key} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <button onClick={() => setFormSubbloque(f => ({ ...f, [`lock_${zona.key}`]: !f[`lock_${zona.key}`] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, opacity: bloqueada ? 1 : 0.3 }} title={bloqueada ? 'Desbloquear' : 'Bloquear esta zona'}>🔒</button>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: zona.color }}>{zona.label}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text3)' }}>{zona.sublabel}</span>
+                          </div>
+                          <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{formSubbloque[zona.key]}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={formSubbloque[zona.key]} disabled={bloqueada}
+                          onChange={e => {
+                            const val = parseInt(e.target.value)
+                            const otrasZonas = ['zona1_2', 'zona3_4', 'zona5'].filter(k => k !== zona.key)
+                            const desbloqueadas = otrasZonas.filter(k => !formSubbloque[`lock_${k}`])
+                            if (desbloqueadas.length === 0) return
+                            const bloqueadasValor = otrasZonas.filter(k => formSubbloque[`lock_${k}`]).reduce((s, k) => s + (formSubbloque[k] || 0), 0)
+                            const resto = 100 - val - bloqueadasValor
+                            if (resto < 0) return
+                            const totalDesbloqueadas = desbloqueadas.reduce((s, k) => s + (formSubbloque[k] || 0), 0)
+                            const nuevasZonas = {}
+                            if (totalDesbloqueadas === 0) { desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round(resto / desbloqueadas.length) }) }
+                            else { desbloqueadas.forEach(k => { nuevasZonas[k] = Math.round((formSubbloque[k] / totalDesbloqueadas) * resto) }) }
+                            setFormSubbloque(f => ({ ...f, [zona.key]: val, ...nuevasZonas }))
+                          }}
+                          style={{ width: '100%', accentColor: zona.color, opacity: bloqueada ? 0.4 : 1 }} />
+                      </div>
+                    )
+                  })}
+                  {(formSubbloque.zona1_2 + formSubbloque.zona3_4 + formSubbloque.zona5) > 0 && (
+                    <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', marginTop: 4 }}>
+                      {formSubbloque.zona1_2 > 0 && <div style={{ width: `${formSubbloque.zona1_2}%`, background: '#10b981' }} />}
+                      {formSubbloque.zona3_4 > 0 && <div style={{ width: `${formSubbloque.zona3_4}%`, background: '#f59e0b' }} />}
+                      {formSubbloque.zona5 > 0 && <div style={{ width: `${formSubbloque.zona5}%`, background: '#ef4444' }} />}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Sesiones/semana mín</label>
+                    <input className="form-input" type="number" min="1" max="7" value={formSubbloque.sesiones_min || ''} onChange={e => setFormSubbloque(f => ({ ...f, sesiones_min: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 2" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Sesiones/semana máx</label>
+                    <input className="form-input" type="number" min="1" max="7" value={formSubbloque.sesiones_max || ''} onChange={e => setFormSubbloque(f => ({ ...f, sesiones_max: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 3" />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Duración media por sesión (min)</label>
+                  <input className="form-input" type="number" min="1" value={formSubbloque.duracion_media_min || ''} onChange={e => setFormSubbloque(f => ({ ...f, duracion_media_min: e.target.value ? parseInt(e.target.value) : null }))} placeholder="Ej: 45" />
+                  {formSubbloque.duracion_media_min && (formSubbloque.sesiones_min || formSubbloque.sesiones_max) && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                      ↓ Tiempo semanal estimado: {formSubbloque.sesiones_min ? formSubbloque.sesiones_min * formSubbloque.duracion_media_min : '?'}
+                      {formSubbloque.sesiones_max && formSubbloque.sesiones_min !== formSubbloque.sesiones_max ? `–${formSubbloque.sesiones_max * formSubbloque.duracion_media_min}` : ''} min/semana
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <label className="form-label" style={{ margin: 0 }}>Exigencia del sub bloque</label>
+                    <div style={{ position: 'relative' }}>
+                      <span title={`Baja: aprendizaje técnico, recuperación, readaptación inicial, movilidad y activación. Baja fatiga esperada.\n\nModerada: desarrollo progresivo de la fuerza y capacidad funcional. Volumen y complejidad moderados. Fatiga controlada. Nivel habitual.\n\nAlta: mayor volumen y/o complejidad. Mayor estrés fisiológico. Bloques específicos de rendimiento o fases avanzadas.`}
+                        style={{ fontSize: 13, color: 'var(--text3)', cursor: 'help' }}>ⓘ</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {['Baja', 'Moderada', 'Alta'].map(op => (
+                      <button key={op} onClick={() => setFormSubbloque(f => ({ ...f, exigencia: f.exigencia === op ? '' : op }))}
+                        style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${formSubbloque.exigencia === op ? (op === 'Baja' ? '#10b981' : op === 'Moderada' ? '#f59e0b' : '#ef4444') : 'var(--border)'}`, background: formSubbloque.exigencia === op ? (op === 'Baja' ? '#10b98120' : op === 'Moderada' ? '#f59e0b20' : '#ef444420') : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: formSubbloque.exigencia === op ? 600 : 400, color: formSubbloque.exigencia === op ? (op === 'Baja' ? '#10b981' : op === 'Moderada' ? '#f59e0b' : '#ef4444') : 'var(--text2)' }}>
+                        {op}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <label className="form-label" style={{ margin: 0 }}>Enfoque principal</label>
+                    <span title={`Movilidad: mejora del rango de movimiento, movilidad articular y calidad del movimiento.\n\nEstabilidad y control: activación muscular, control motor, estabilidad lumbopélvica, equilibrio y coordinación básica.\n\nFuerza base: fuerza general, hipertrofia, resistencia muscular y desarrollo progresivo de la capacidad de producir fuerza.\n\nPotencia y velocidad: trabajo explosivo, pliometría, velocidad, reactividad y producción rápida de fuerza.\n\nPrevención y readaptación: disminuir síntomas, favorecer la recuperación, prevenir recaídas y vuelta progresiva a la actividad.\n\nEspecificidad deportiva: ejercicios con transferencia al gesto deportivo o adaptados a las demandas específicas del deporte.`}
+                      style={{ fontSize: 13, color: 'var(--text3)', cursor: 'help' }}>ⓘ</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Prevención y readaptación', 'Especificidad deportiva'].map(op => {
+                      const sel = (formSubbloque.enfoque || []).includes(op)
+                      return (
+                        <button key={op} onClick={() => setFormSubbloque(f => ({ ...f, enfoque: sel ? (f.enfoque || []).filter(x => x !== op) : [...(f.enfoque || []), op] }))}
+                          style={{ padding: '5px 10px', borderRadius: 16, border: `1.5px solid ${sel ? 'var(--accent)' : 'var(--border)'}`, background: sel ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: sel ? 600 : 400, color: sel ? 'var(--accent)' : 'var(--text2)' }}>
+                          {op}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSubbloque} disabled={saving}>{saving ? 'Guardando...' : modalSubbloque.id ? 'Guardar cambios' : 'Crear sub bloque'}</button>
