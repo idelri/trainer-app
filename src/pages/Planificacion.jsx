@@ -1311,11 +1311,11 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                           </div>
                                         )}
                                       </div>
-                                    )}
+                                  )}
                                   </div>
                                 </div>
                               )}
-                              {semsDelSubNums.map(num =>
+                              {semsDelSubNums.map(num => <FilaSemana key={num} b={b} num={num} semsBloque={semsBloque} subsBloque={subsBloque} />)}
                             </div>
                           )
                         }) : Array.from({ length: b.semanas }, (_, i) => <FilaSemana key={i + 1} b={b} num={i + 1} semsBloque={semsBloque} subsBloque={subsBloque} />)}
