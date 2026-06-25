@@ -1300,14 +1300,39 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                             </span>
                                           </div>
                                         )}
-                                        {sub.enfoque?.length > 0 && (
+                                      {sub.enfoque?.length > 0 && (
                                           <div>
-                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque</div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                              {sub.enfoque.map(e => (
-                                                <span key={e} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 12, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)', fontWeight: 500 }}>{e}</span>
-                                              ))}
-                                            </div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque</div>
+                                            {(() => {
+                                              const prioridad = sub.enfoque_prioridad || {}
+                                              const totalPuntos = Object.values(prioridad).reduce((s, v) => s + v, 0)
+                                              return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                  {sub.enfoque.sort((a, b) => (prioridad[b] || 0) - (prioridad[a] || 0)).map(e => {
+                                                    const puntos = prioridad[e] || 0
+                                                    const pct = totalPuntos > 0 ? Math.round((puntos / totalPuntos) * 100) : null
+                                                    return (
+                                                      <div key={e} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent)', fontWeight: 500, flexShrink: 0 }}>{e}</span>
+                                                        {pct !== null && (
+                                                          <>
+                                                            <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                                                              <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 2 }} />
+                                                            </div>
+                                                            <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600, minWidth: 32 }}>{pct}%</span>
+                                                            <div style={{ display: 'flex', gap: 2 }}>
+                                                              {[1,2,3,4,5].map(n => (
+                                                                <div key={n} style={{ width: 8, height: 8, borderRadius: 2, background: puntos >= n ? 'var(--accent)' : 'var(--bg2)', border: '1px solid var(--border)' }} />
+                                                              ))}
+                                                            </div>
+                                                          </>
+                                                        )}
+                                                      </div>
+                                                    )
+                                                  })}
+                                                </div>
+                                              )
+                                            })()}
                                           </div>
                                         )}
                                       </div>
