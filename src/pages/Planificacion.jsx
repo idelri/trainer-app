@@ -1086,7 +1086,22 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                           </div>
                                         )}
                                       </div>
-                                    )}
+                                   )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {bloques.length === 0 && <div className="empty"><p>Añade bloques primero desde la vista Bloque.</p></div>}
+            </div>
+          )}
+
           {/* ===== SEMANA ===== */}
           {vista === 'micro' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
