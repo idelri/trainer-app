@@ -1526,7 +1526,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                 </div>
               </>
             )}
-                
+
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSubbloque(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSubbloque} disabled={saving}>{saving ? 'Guardando...' : modalSubbloque.id ? 'Guardar cambios' : 'Crear sub bloque'}</button>
