@@ -501,7 +501,7 @@ export default function Planificacion({ clientePlanificacion }) {
                     <Plus size={13} /> Bloque
                   </button>
                   <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
-                    onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); if (bloques.length === 0) { alert('Primero crea un bloque'); return }; setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0, km_min: null, km_max: null }); setModalSubbloque({ bloque_id: bloques[0].id }) }}>
+                    onClick={() => { setObjetivoVisible(v => ({ ...v, menuAnadir: false })); if (bloques.length === 0) { alert('Primero crea un bloque'); return }; setFormSubbloque({ nombre: '', semana_inicio: 1, semana_fin: 1, objetivo: '', notas: '', zona1_2: 0, zona3_4: 0, zona5: 0, km_min: null, km_max: null, sesiones_min: null, sesiones_max: null, duracion_media_min: null, exigencia: '', enfoque: [] }); setModalSubbloque({ bloque_id: bloques[0].id }) }}>
                     <Plus size={13} /> Sub bloque
                   </button>
                  <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px' }}
