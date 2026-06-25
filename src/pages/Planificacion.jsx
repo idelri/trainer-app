@@ -4,6 +4,7 @@ import { format, addWeeks, differenceInWeeks, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers } from 'lucide-react'
 import GraficaCarga from '../components/GraficaCarga'
+import PanelFuerzaSalud from '../components/PanelFuerzaSalud'
 import SesionesPlan from './SesionesPlan'
 
 const FASES = {
