@@ -1032,7 +1032,6 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                               </div>
                                             </div>
                                           )}
-                                          
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         {(sub.sesiones_min || sub.sesiones_max) && (
                                           <div>
