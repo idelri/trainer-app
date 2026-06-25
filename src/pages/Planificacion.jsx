@@ -1488,7 +1488,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                   <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 4, textAlign: 'right' }}>Total: {(formSemana.zona1_2_real || 0) + (formSemana.zona3_4_real || 0) + (formSemana.zona5_real || 0)} min</div>
                 </div>
               )}
-            </div>
+            </div>)}
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSemana(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSemana} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
