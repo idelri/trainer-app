@@ -5,7 +5,7 @@ import { Plus, X, Pencil, User } from 'lucide-react'
 
 const EMPTY_CLIENTE = {
   nombre: '', email: '', telefono: '', estado: 'activo',
-  fecha_inicio: '', objetivo: '', tipo_cliente: 'estandar'
+  fecha_inicio: '', objetivo: '', tipo_cliente: 'estandar', perfil_planificacion: 'resistencia'
 }
 const EMPTY_SERVICIO = {
   modalidad: 'online', tarifa_mensual: '', tarifa_sesion: '',
