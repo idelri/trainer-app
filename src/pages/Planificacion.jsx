@@ -1478,8 +1478,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                     <span title={`Movilidad: mejora del rango de movimiento, movilidad articular y calidad del movimiento.\n\nEstabilidad y control: activación muscular, control motor, estabilidad lumbopélvica, equilibrio y coordinación básica.\n\nFuerza base: fuerza general, hipertrofia, resistencia muscular y desarrollo progresivo de la capacidad de producir fuerza.\n\nPotencia y velocidad: trabajo explosivo, pliometría, velocidad, reactividad y producción rápida de fuerza.\n\nPrevención y readaptación: disminuir síntomas, favorecer la recuperación, prevenir recaídas y vuelta progresiva a la actividad.\n\nEspecificidad deportiva: ejercicios con transferencia al gesto deportivo o adaptados a las demandas específicas del deporte.`}
                       style={{ fontSize: 13, color: 'var(--text3)', cursor: 'help' }}>ⓘ</span>
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {(() => {
+                  {(() => {
                     const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Prevención y readaptación', 'Especificidad deportiva']
                     const prioridad = formSubbloque.enfoque_prioridad || {}
                     const totalPuntos = Object.values(prioridad).reduce((s, v) => s + v, 0)
