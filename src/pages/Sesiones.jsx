@@ -350,6 +350,7 @@ export default function Sesiones() {
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
+  const [draggingEj, setDraggingEj] = useState(null)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
   const [clipboard, setClipboard] = useState(null)
