@@ -357,7 +357,7 @@ function SemanaRow({ sem, sub, fecha, globalNum, esActual, comp, ctrl, registerR
 /* =================================================================
    SUBBLOQUE
 ================================================================= */
-function Subbloque({ b, sub, startGlobal, semanas, comps, ctrls, inicio, isOpen, onToggle, registerRef }) {
+function Subbloque({ b, sub, subIdx, startGlobal, semanas, comps, ctrls, inicio, isOpen, onToggle, registerRef }) {
   const [showCont, setShowCont] = useState(true)
   const [showMet, setShowMet] = useState(false)
   const sems = semanas.filter(s => s.numero >= sub.semana_inicio && s.numero <= sub.semana_fin)
