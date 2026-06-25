@@ -248,6 +248,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
+  const [draggingEj, setDraggingEj] = useState(null)
   const [clipboard, setClipboard] = useState(null)
 
   useEffect(() => { if (clienteId) cargarSesiones() }, [clienteId])
