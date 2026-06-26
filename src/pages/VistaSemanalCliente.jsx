@@ -380,8 +380,7 @@ export default function VistaSemanalCliente() {
                 </button>
                 <p style={{ fontSize: 12, color: T.text3, textAlign: 'center', margin: '-10px 0 0' }}>Tu entrenadora lo recibirá antes de planificar la siguiente semana.</p>
               </div>
-          )}
-            )}
+         ))}
           </div>
         </div>
       </div>
