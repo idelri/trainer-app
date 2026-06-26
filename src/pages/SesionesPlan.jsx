@@ -54,11 +54,29 @@ function DiaMenu({ fecha, onNuevaSesion }) {
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 4 }}>+</button>
       {open && (
         <div style={{ position: 'absolute', top: 20, right: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 130, overflow: 'hidden' }}>
-          <button onClick={() => { onNuevaSesion(fecha); setOpen(false) }}
+        <button onClick={() => { onNuevaSesion(fecha); setOpen(false) }}
             style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}>
             💪 Sesión
+          </button>
+          <button onClick={() => { onNuevaCompeticion(fecha); setOpen(false) }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            🏆 Competición
+          </button>
+          <button onClick={() => { onNuevaValoracion(fecha); setOpen(false) }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            🔬 Valoración / Control
+          </button>
+          <button onClick={() => { onNuevaNota(fecha); setOpen(false) }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+            📝 Nota
           </button>
         </div>
       )}
