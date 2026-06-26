@@ -580,8 +580,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
               <button className="btn btn-primary" onClick={guardarSesion} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
-        </div>
-     {modalComp && (
+       </div>
+      )}
+
+      {modalComp && (
         <div className="modal-backdrop" onClick={() => setModalComp(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
