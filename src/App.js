@@ -50,6 +50,12 @@ export default function App() {
       setAuthLoading(false)
       return
     }
+    const matchSemana = path.match(/^\/semana\/([a-f0-9-]+)$/)
+    if (matchSemana) {
+      setPublicSemanaToken(matchSemana[1])
+      setAuthLoading(false)
+      return
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
