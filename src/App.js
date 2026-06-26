@@ -73,6 +73,7 @@ export default function App() {
   if (publicToken) return <PlanPublica token={publicToken} />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
   if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
+if (publicSemanaToken) return <VistaSemanalCliente />
   if (!session) return <Login />
 
  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, planificacion: Planificacion }
