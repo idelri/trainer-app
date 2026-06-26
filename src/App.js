@@ -13,7 +13,6 @@ import Login from './pages/Login'
 import VistaSemanalCliente from './pages/VistaSemanalCliente'
 import './index.css'
 
-
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
   { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
