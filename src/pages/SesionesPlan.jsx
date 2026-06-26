@@ -40,7 +40,7 @@ function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) 
   )
 }
 
-function DiaMenu({ fecha, onNuevaSesion }) {
+function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
