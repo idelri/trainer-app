@@ -281,9 +281,13 @@ export default function VistaSemanalCliente() {
         {/* Check-in semanal */}
         <div style={{ margin: '16px 12px 0' }}>
           <div style={{ background: T.card, borderRadius: 16, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 16px 12px', background: '#f0fdf4', borderBottom: `1px solid #bbf7d0` }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#065f46', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>✅ Check-in semanal</p>
-              <p style={{ fontSize: 12, color: '#047857', margin: 0 }}>Valora cómo ha ido la semana</p>
+           <div onClick={() => setSeccionAbierta(seccionAbierta === 'checkin' ? null : 'checkin')}
+              style={{ padding: '16px 16px 14px', background: '#f0fdf4', borderBottom: seccionAbierta === 'checkin' ? `1px solid #bbf7d0` : 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#065f46', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>✅ Sensaciones de la semana</p>
+                <p style={{ fontSize: 12, color: '#047857', margin: 0 }}>Pulsa para valorar cómo ha ido la semana</p>
+              </div>
+              <span style={{ color: '#065f46', fontSize: 16 }}>{seccionAbierta === 'checkin' ? '▲' : '▼'}</span>
             </div>
 
             {checkinEnviado ? (
