@@ -1077,7 +1077,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                         )}
                                         {sub.enfoque?.length > 0 && (
                                           <div>
-                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque</div>
+                                            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Enfoque / Contenidos</div>
                                             {(() => {
                                               const prioridad = sub.enfoque_prioridad || {}
                                               const totalPuntos = Object.values(prioridad).reduce((s, v) => s + v, 0)
