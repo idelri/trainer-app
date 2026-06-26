@@ -958,7 +958,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {sub.notas && (
                                       <div>
-                                        <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Contenidos</div>
+                                        <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'white', background: b.color || '#2d6a4f', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6, display: 'inline-block', padding: '1px 7px', borderRadius: 4, fontWeight: 600 }}>Objetivos específicos</div>
                                         {sub.notas.split('\n').filter(l => l.trim()).map((linea, i) => (
                                           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0, marginTop: 4 }} />
