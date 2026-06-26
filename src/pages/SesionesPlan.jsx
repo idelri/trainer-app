@@ -515,7 +515,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSesion(null)}><X size={14} /></button>
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
-            <div className="form-row">
+           <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Fecha</label>
                 <input className="form-input" type="date" value={formSesion.fecha} disabled={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, fecha: e.target.value }))} />
@@ -525,6 +525,17 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
                 </label>
               </div>
               <div className="form-group"><label className="form-label">Duración (min)</label><input className="form-input" type="number" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} placeholder="Ej: 45" /></div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo de sesión</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['programada','📅 Programada'],['flexible','🔄 Flexible'],['opcional','⭐ Opcional']].map(([val, label]) => (
+                  <button key={val} onClick={() => setFormSesion(f => ({ ...f, tipo_sesion: val }))}
+                    style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${(formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--border)'}`, background: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: (formSesion.tipo_sesion || 'programada') === val ? 600 : 400, color: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--text2)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSesion(null)}>Cancelar</button>
