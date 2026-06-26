@@ -1423,7 +1423,7 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
             </div>
 
             <div className="form-group">
-              <label className="form-label">Objetivos / Contenidos</label>
+              <label className="form-label">Objetivos específicos</label>
               <textarea className="form-textarea" value={formSubbloque.notas} onChange={e => setFormSubbloque(f => ({ ...f, notas: e.target.value }))} placeholder={"Ej: Fuerza general\nRodajes suaves\nTécnica de carrera"} style={{ minHeight: 100 }} />
             </div>
 
