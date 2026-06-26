@@ -452,9 +452,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
             </div>
           )}
 
-          <Calendario
-            sesiones={sesiones}
-            <Calendario
+        <Calendario
             sesiones={sesiones}
             competiciones={competiciones}
             controles={controles}
