@@ -227,7 +227,7 @@ function Calendario({ sesiones, bloquesPlan, subbloquesPlan, onAbrirSesion, onNu
                         <span style={{ fontSize: 11, fontWeight: esHoy ? 700 : 400, fontFamily: 'var(--mono)', color: esHoy ? 'var(--accent)' : 'var(--text3)', background: esHoy ? 'var(--accent-light)' : 'transparent', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {dia.getDate()}
                         </span>
-                        <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} />
+                       <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaValoracion={onNuevaValoracion} onNuevaNota={onNuevaNota} />
                       </div>
                       {sesDia.map(item => (
                         <div key={item.id}
