@@ -137,7 +137,19 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
   const sesionPorDia = {}
   sesiones.filter(s => s.fecha).forEach(s => {
     if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
-    sesionPorDia[s.fecha].push(s)
+    sesionPorDia[s.fecha].push({ ...s, _tipo: 'sesion' })
+  })
+  competiciones.filter(c => c.fecha).forEach(c => {
+    if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
+    sesionPorDia[c.fecha].push({ ...c, _tipo: 'competicion' })
+  })
+  controles.filter(c => c.fecha).forEach(c => {
+    if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
+    sesionPorDia[c.fecha].push({ ...c, _tipo: 'control' })
+  })
+  notas.filter(n => n.fecha).forEach(n => {
+    if (!sesionPorDia[n.fecha]) sesionPorDia[n.fecha] = []
+    sesionPorDia[n.fecha].push({ ...n, _tipo: 'nota' })
   })
 
   const navPrev = () => {
