@@ -298,6 +298,12 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   async function cargarSesiones() {
     const { data } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteId).order('fecha', { ascending: false })
     setSesiones(data || [])
+    const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteId).order('fecha')
+    setCompeticiones(comps || [])
+    const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', clienteId).order('fecha')
+    setControles(ctrls || [])
+    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteId).order('fecha')
+    setNotas(nts || [])
   }
 
   async function cargarDetalle(sesionId) {
