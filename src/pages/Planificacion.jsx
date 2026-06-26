@@ -1252,8 +1252,9 @@ const pctKm = kmObjetivoMedio && kmRealMedio > 0 ? Math.round((kmRealMedio / kmO
                                                 <div style={{ height: 10, background: 'var(--bg2)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
                                                   {sub.km_min && <div style={{ position: 'absolute', left: 0, height: '100%', width: `${Math.min((sub.km_min / kmMax) * 100, 100)}%`, background: '#3b82f6', opacity: 0.25, borderRadius: 5 }} />}
                                                   {sub.km_max && <div style={{ position: 'absolute', left: 0, height: '100%', width: `${Math.min((sub.km_max / kmMax) * 100, 100)}%`, background: '#3b82f6', opacity: 0.15, borderRadius: 5 }} />}
-                                                </div>
-                                                {sub.km_min && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>{sub.km_min} km</span>}
+                                               </div>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                                                  {sub.km_min && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>{sub.km_min} km</span>}
                                                   {sub.km_min && sub.km_max && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>–</span>}
                                                   {sub.km_max && <span style={{ fontSize: 9, fontFamily: 'var(--mono)', color: '#3b82f6', opacity: 0.7 }}>{sub.km_max} km</span>}
                                                 </div>
