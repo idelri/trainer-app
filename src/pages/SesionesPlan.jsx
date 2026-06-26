@@ -425,6 +425,11 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
 
           <Calendario
             sesiones={sesiones}
+            <Calendario
+            sesiones={sesiones}
+            competiciones={competiciones}
+            controles={controles}
+            notas={notas}
             bloquesPlan={bloquesPlan || []}
             subbloquesPlan={subbloquesPlan || {}}
             onAbrirSesion={setSesionAbierta}
