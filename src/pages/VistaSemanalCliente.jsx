@@ -290,7 +290,7 @@ export default function VistaSemanalCliente() {
               <span style={{ color: '#065f46', fontSize: 16 }}>{seccionAbierta === 'checkin' ? '▲' : '▼'}</span>
             </div>
 
-            {checkinEnviado ? (
+            {seccionAbierta === 'checkin' && (checkinEnviado ? (
               <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
                 <p style={{ fontSize: 15, fontWeight: 500, color: T.text, margin: '0 0 6px' }}>¡Gracias!</p>
