@@ -283,7 +283,12 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [clipboard, setClipboard] = useState(null)
-
+  const [modalComp, setModalComp] = useState(false)
+  const [formComp, setFormComp] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' })
+  const [modalControl, setModalControl] = useState(false)
+  const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '' })
+  const [modalNota, setModalNota] = useState(false)
+  const [formNota, setFormNota] = useState({ texto: '', fecha: '' })
   useEffect(() => { if (clienteId) cargarSesiones() }, [clienteId])
   useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
 
