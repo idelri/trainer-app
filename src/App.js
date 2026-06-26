@@ -36,9 +36,15 @@ export default function App() {
       setAuthLoading(false)
       return
     }
-    const matchSesion = path.match(/^\/sesion\/([a-f0-9]+)$/)
+   const matchSesion = path.match(/^\/sesion\/([a-f0-9-]+)$/)
     if (matchSesion) {
       setPublicSesionToken(matchSesion[1])
+      setAuthLoading(false)
+      return
+    }
+    const matchCheckin = path.match(/^\/checkin\/([a-f0-9-]+)$/)
+    if (matchCheckin) {
+      setPublicCheckinToken(matchCheckin[1])
       setAuthLoading(false)
       return
     }
