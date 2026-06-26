@@ -420,9 +420,6 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
             subbloquesPlan={subbloquesPlan || {}}
             onAbrirSesion={setSesionAbierta}
            onNuevaSesion={(fecha) => { setFormSesion({ ...EMPTY_SESION, fecha }); setModalSesion('nueva') }}
-            onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '' }); setModalComp(true) }}
-            onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '' }); setModalControl(true) }}
-            onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha }); setModalNota(true) }}
             onEliminar={eliminarSesion}
             onMoverSesion={async (item, nuevaFecha) => { await supabase.from('sesiones').update({ fecha: nuevaFecha }).eq('id', item.id); cargarSesiones() }}
             clipboard={clipboard}
