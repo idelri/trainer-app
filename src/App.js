@@ -8,6 +8,7 @@ import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
 import PlanPublica from './pages/PlanPublica'
 import SesionPublica from './pages/SesionPublica'
+import CheckinSemanal from './pages/CheckinSemanal'
 import Login from './pages/Login'
 import './index.css'
 
