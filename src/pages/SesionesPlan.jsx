@@ -581,8 +581,85 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
             </div>
           </div>
         </div>
+     {modalComp && (
+        <div className="modal-backdrop" onClick={() => setModalComp(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva competición</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalComp(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formComp.nombre} onChange={e => setFormComp(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Media Maratón Barcelona" autoFocus /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Fecha *</label><input className="form-input" type="date" value={formComp.fecha} onChange={e => setFormComp(f => ({ ...f, fecha: e.target.value }))} /></div>
+              <div className="form-group"><label className="form-label">Tipo</label><input className="form-input" value={formComp.tipo} onChange={e => setFormComp(f => ({ ...f, tipo: e.target.value }))} placeholder="Ej: Carrera, Hyrox..." /></div>
+            </div>
+            <div className="form-group"><label className="form-label">Objetivo</label><input className="form-input" value={formComp.objetivo} onChange={e => setFormComp(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Bajar de 1h45min" /></div>
+            <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formComp.notas} onChange={e => setFormComp(f => ({ ...f, notas: e.target.value }))} /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalComp(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (!formComp.nombre || !formComp.fecha) return
+                await supabase.from('competiciones').insert({ cliente_id: clienteId, nombre: formComp.nombre, fecha: formComp.fecha, tipo: formComp.tipo || null, objetivo: formComp.objetivo || null, notas: formComp.notas || null })
+                setModalComp(false)
+              }}>Añadir competición</button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
-  )
-}
+
+      {modalControl && (
+        <div className="modal-backdrop" onClick={() => setModalControl(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva valoración / control</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalControl(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group"><label className="form-label">Nombre *</label><input className="form-input" value={formControl.nombre} onChange={e => setFormControl(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Test de fuerza, Valoración HRV..." autoFocus /></div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Fecha *</label><input className="form-input" type="date" value={formControl.fecha} onChange={e => setFormControl(f => ({ ...f, fecha: e.target.value }))} /></div>
+              <div className="form-group"><label className="form-label">Tipo</label>
+                <select className="form-select" value={formControl.tipo} onChange={e => setFormControl(f => ({ ...f, tipo: e.target.value }))}>
+                  <option value="">Sin categoría</option>
+                  <option value="Fuerza">Fuerza</option>
+                  <option value="Resistencia">Resistencia</option>
+                  <option value="Movilidad">Movilidad</option>
+                  <option value="Composición corporal">Composición corporal</option>
+                  <option value="HRV / Recuperación">HRV / Recuperación</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formControl.notas} onChange={e => setFormControl(f => ({ ...f, notas: e.target.value }))} placeholder="Protocolo, resultados, observaciones..." /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalControl(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (!formControl.nombre || !formControl.fecha) return
+                await supabase.from('controles').insert({ cliente_id: clienteId, nombre: formControl.nombre, fecha: formControl.fecha, tipo: formControl.tipo || null, notas: formControl.notas || null })
+                setModalControl(false)
+              }}>Añadir control</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalNota && (
+        <div className="modal-backdrop" onClick={() => setModalNota(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva nota</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalNota(false)}><X size={14} /></button>
+            </div>
+            <div className="form-group"><label className="form-label">Fecha</label><input className="form-input" type="date" value={formNota.fecha} onChange={e => setFormNota(f => ({ ...f, fecha: e.target.value }))} /></div>
+            <div className="form-group"><label className="form-label">Nota *</label><textarea className="form-textarea" style={{ minHeight: 100 }} value={formNota.texto} onChange={e => setFormNota(f => ({ ...f, texto: e.target.value }))} placeholder="Ej: Semana de viaje, ajustar volumen..." autoFocus /></div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalNota(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (!formNota.texto) return
+                await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: formNota.texto, fecha: formNota.fecha || null })
+                setModalNota(false)
+              }}>Guardar nota</button>
+            </div>
+          </div>
+        </div>
+      )}
 
