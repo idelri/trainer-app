@@ -664,4 +664,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
           </div>
         </div>
       )}
+      </div>
+  )
+}
 
