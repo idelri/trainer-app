@@ -241,18 +241,35 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
                         </span>
                        <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaValoracion={onNuevaValoracion} onNuevaNota={onNuevaNota} />
                       </div>
-                      {sesDia.map(item => (
-                        <div key={item.id}
-                          draggable
-                          onDragStart={() => setArrastrando(item)}
-                          onDragEnd={() => setArrastrando(null)}
-                          onClick={() => onAbrirSesion(item)}
-                          onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                          style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
-                          <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                        </div>
-                      ))}
+                    {sesDia.map(item => {
+                        if (item._tipo === 'competicion') return (
+                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--danger-light)', color: 'var(--danger)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
+                            🏆 {item.nombre}
+                          </div>
+                        )
+                        if (item._tipo === 'control') return (
+                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#eff6ff', color: '#3b82f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
+                            🔬 {item.nombre}
+                          </div>
+                        )
+                        if (item._tipo === 'nota') return (
+                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fefce8', color: '#854d0e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
+                            📝 {item.texto}
+                          </div>
+                        )
+                        return (
+                          <div key={item.id}
+                            draggable
+                            onDragStart={() => setArrastrando(item)}
+                            onDragEnd={() => setArrastrando(null)}
+                            onClick={() => onAbrirSesion(item)}
+                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
+                            <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )
                 })}
