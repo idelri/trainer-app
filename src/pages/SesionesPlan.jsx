@@ -242,31 +242,24 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
                        <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaValoracion={onNuevaValoracion} onNuevaNota={onNuevaNota} />
                       </div>
                     {sesDia.map(item => {
-                        if (item._tipo === 'competicion') return (
-                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--danger-light)', color: 'var(--danger)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
-                            🏆 {item.nombre}
-                          </div>
-                        )
-                        if (item._tipo === 'control') return (
-                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#eff6ff', color: '#3b82f6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
-                            🔬 {item.nombre}
-                          </div>
-                        )
-                        if (item._tipo === 'nota') return (
-                          <div key={item.id} style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: '#fefce8', color: '#854d0e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', boxSizing: 'border-box' }}>
-                            📝 {item.texto}
-                          </div>
-                        )
+                        const tipoEstilo = {
+                          sesion: { background: 'var(--accent-light)', color: 'var(--accent)' },
+                          competicion: { background: 'var(--danger-light)', color: 'var(--danger)' },
+                          control: { background: '#eff6ff', color: '#3b82f6' },
+                          nota: { background: '#fefce8', color: '#854d0e' },
+                        }[item._tipo]
+                        const icono = { sesion: '💪', competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
+                        const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
                         return (
                           <div key={item.id}
                             draggable
                             onDragStart={() => setArrastrando(item)}
                             onDragEnd={() => setArrastrando(null)}
-                            onClick={() => onAbrirSesion(item)}
+                            onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item) }}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
-                            <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
+                            <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
                         )
                       })}
@@ -286,7 +279,7 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
             <button onClick={() => { onCopiar(menu.item); cerrarMenu() }}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 12.5, background: 'none', border: 'none', cursor: 'pointer' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-              📋 Copiar sesión
+              📋 Copiar
             </button>
           )}
           {clipboard && (
@@ -373,6 +366,21 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
     cargarSesiones()
   }
 
+  const TABLA_POR_TIPO = { competicion: 'competiciones', control: 'controles', nota: 'sesion_notas' }
+
+  async function eliminarItem(item) {
+    if (item._tipo === 'sesion') return eliminarSesion(item.id)
+    if (!window.confirm('¿Eliminar este elemento?')) return
+    await supabase.from(TABLA_POR_TIPO[item._tipo]).delete().eq('id', item.id)
+    cargarSesiones()
+  }
+
+  async function moverItem(item, nuevaFecha) {
+    const tabla = item._tipo === 'sesion' ? 'sesiones' : TABLA_POR_TIPO[item._tipo]
+    await supabase.from(tabla).update({ fecha: nuevaFecha }).eq('id', item.id)
+    cargarSesiones()
+  }
+
   function copiarEnlace(s) {
     const url = `${window.location.origin}/sesion/${s.token_publico}`
     navigator.clipboard.writeText(url)
@@ -428,6 +436,19 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
     setSaving(false); cargarSesiones()
   }
 
+  async function pegarItem(item, fecha) {
+    if (item._tipo === 'sesion') return pegarSesion(item, fecha)
+    setSaving(true)
+    if (item._tipo === 'competicion') {
+      await supabase.from('competiciones').insert({ cliente_id: clienteId, nombre: item.nombre, fecha, tipo: item.tipo, objetivo: item.objetivo, notas: item.notas })
+    } else if (item._tipo === 'control') {
+      await supabase.from('controles').insert({ cliente_id: clienteId, nombre: item.nombre, fecha, tipo: item.tipo, notas: item.notas })
+    } else if (item._tipo === 'nota') {
+      await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: item.texto, fecha })
+    }
+    setSaving(false); cargarSesiones()
+  }
+
   return (
     <div>
       {!sesionAbierta && (
@@ -464,11 +485,11 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
             onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '' }); setModalComp(true) }}
             onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '' }); setModalControl(true) }}
             onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha }); setModalNota(true) }}
-            onEliminar={eliminarSesion}
-            onMoverSesion={async (item, nuevaFecha) => { await supabase.from('sesiones').update({ fecha: nuevaFecha }).eq('id', item.id); cargarSesiones() }}
+            onEliminar={eliminarItem}
+            onMoverSesion={moverItem}
             clipboard={clipboard}
             onCopiar={setClipboard}
-            onPegar={pegarSesion}
+            onPegar={pegarItem}
           />
         </>
       )}
