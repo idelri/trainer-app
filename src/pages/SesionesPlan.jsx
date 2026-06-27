@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Plus, X, Trash2, Copy } from 'lucide-react'
+import { Plus, X, Trash2, Copy, GripVertical } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada' }
@@ -304,6 +304,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
+  const [draggingBloque, setDraggingBloque] = useState(null)
   const [clipboard, setClipboard] = useState(null)
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
@@ -398,19 +399,37 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   }
 
   async function añadirBloque() {
-    const { data: b } = await supabase.from('sesion_bloques').insert({ sesion_id: sesionAbierta.id, nombre: `Bloque ${bloques.length + 1}`, color: COLORES[bloques.length % COLORES.length], nota: '', orden: bloques.length }).select().single()
+    const orden = bloques.length ? Math.max(...bloques.map(b => b.orden ?? 0)) + 1 : 0
+    const { data: b } = await supabase.from('sesion_bloques').insert({ sesion_id: sesionAbierta.id, nombre: `Bloque ${bloques.length + 1}`, color: COLORES[bloques.length % COLORES.length], nota: '', orden }).select().single()
     if (b) { setBloques(bs => [...bs, b]); setEjercicios(e => ({ ...e, [b.id]: [] })) }
   }
 
   async function eliminarBloque(id) {
     if (!window.confirm('¿Eliminar este bloque y sus ejercicios?')) return
     await supabase.from('sesion_bloques').delete().eq('id', id)
-    setBloques(bs => bs.filter(b => b.id !== id))
+    const restantes = bloques.filter(b => b.id !== id).map((b, i) => ({ ...b, orden: i }))
+    setBloques(restantes)
+    await Promise.all(restantes.map(b => supabase.from('sesion_bloques').update({ orden: b.orden }).eq('id', b.id)))
+  }
+
+  async function reordenarBloque(destinoId) {
+    if (!draggingBloque || draggingBloque.id === destinoId) return
+    const lista = [...bloques]
+    const fromIdx = lista.findIndex(x => x.id === draggingBloque.id)
+    const toIdx = lista.findIndex(x => x.id === destinoId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const [moved] = lista.splice(fromIdx, 1)
+    lista.splice(toIdx, 0, moved)
+    const final = lista.map((x, i) => ({ ...x, orden: i }))
+    setBloques(final)
+    setDraggingBloque(null)
+    await Promise.all(final.map(x => supabase.from('sesion_bloques').update({ orden: x.orden }).eq('id', x.id)))
   }
 
   async function añadirEjercicio(bloqueId) {
     const lista = ejercicios[bloqueId] || []
-    const { data: e } = await supabase.from('sesion_ejercicios').insert({ bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '', media_tipo: 'youtube', media_url: '', video_url: '', orden: lista.length }).select().single()
+    const orden = lista.length ? Math.max(...lista.map(e => e.orden ?? 0)) + 1 : 0
+    const { data: e } = await supabase.from('sesion_ejercicios').insert({ bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '', media_tipo: 'youtube', media_url: '', video_url: '', orden }).select().single()
     if (e) setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] }))
   }
 
@@ -421,7 +440,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
 
   async function eliminarEjercicio(bloqueId, id) {
     await supabase.from('sesion_ejercicios').delete().eq('id', id)
-    setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).filter(e => e.id !== id) }))
+    const restantes = (ejercicios[bloqueId] || []).filter(e => e.id !== id).map((e, i) => ({ ...e, orden: i }))
+    setEjercicios(ej => ({ ...ej, [bloqueId]: restantes }))
+    await Promise.all(restantes.map(e => supabase.from('sesion_ejercicios').update({ orden: e.orden }).eq('id', e.id)))
   }
 
   async function pegarSesion(s, fecha) {
@@ -510,8 +531,15 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bloques.map((b, idx) => (
-              <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
+              <div key={b.id} className="card"
+                draggable
+                onDragStart={() => setDraggingBloque(b)}
+                onDragEnd={() => setDraggingBloque(null)}
+                onDragOver={ev => ev.preventDefault()}
+                onDrop={ev => { ev.preventDefault(); reordenarBloque(b.id) }}
+                style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}`, opacity: draggingBloque?.id === b.id ? 0.5 : 1, cursor: 'grab' }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <GripVertical size={14} style={{ color: 'var(--text3)', flexShrink: 0 }} />
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {COLORES.map(c => <div key={c} onClick={() => cambiarColorBloque(b.id, c)} style={{ width: 16, height: 16, borderRadius: '50%', background: c, cursor: 'pointer', border: b.color === c ? '2px solid var(--text)' : '2px solid transparent' }} />)}
                   </div>
@@ -530,11 +558,12 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
                     return (
                      <div key={e.id}
                         draggable
-                        onDragStart={() => setDraggingEj({ e, bloqueId: b.id })}
-                        onDragEnd={() => setDraggingEj(null)}
-                        onDragOver={ev => ev.preventDefault()}
+                        onDragStart={ev => { ev.stopPropagation(); setDraggingEj({ e, bloqueId: b.id }) }}
+                        onDragEnd={ev => { ev.stopPropagation(); setDraggingEj(null) }}
+                        onDragOver={ev => { ev.preventDefault(); ev.stopPropagation() }}
                         onDrop={async ev => {
                           ev.preventDefault()
+                          ev.stopPropagation()
                           if (!draggingEj || draggingEj.e.id === e.id) return
                           const bloqueOrigen = draggingEj.bloqueId
                           const bloqueDestino = b.id
