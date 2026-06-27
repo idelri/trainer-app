@@ -305,6 +305,18 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [draggingBloque, setDraggingBloque] = useState(null)
+
+  useEffect(() => {
+    if (!draggingEj && !draggingBloque) return
+    const MARGEN = 90
+    const VELOCIDAD = 22
+    function autoScroll(ev) {
+      if (ev.clientY < MARGEN) window.scrollBy(0, -VELOCIDAD)
+      else if (ev.clientY > window.innerHeight - MARGEN) window.scrollBy(0, VELOCIDAD)
+    }
+    window.addEventListener('dragover', autoScroll)
+    return () => window.removeEventListener('dragover', autoScroll)
+  }, [draggingEj, draggingBloque])
   const [clipboard, setClipboard] = useState(null)
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
@@ -567,20 +579,24 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
                           if (!draggingEj || draggingEj.e.id === e.id) return
                           const bloqueOrigen = draggingEj.bloqueId
                           const bloqueDestino = b.id
-                          const ejOrigen = [...(ejercicios[bloqueOrigen] || [])]
-                          const fromIdx = ejOrigen.findIndex(x => x.id === draggingEj.e.id)
+                          const listaOrigenOriginal = ejercicios[bloqueOrigen] || []
+                          const fromIdx = listaOrigenOriginal.findIndex(x => x.id === draggingEj.e.id)
                           if (fromIdx === -1) return
+                          const movingDown = bloqueOrigen === bloqueDestino && listaOrigenOriginal.findIndex(x => x.id === e.id) > fromIdx
+                          const ejOrigen = [...listaOrigenOriginal]
                           const [moved] = ejOrigen.splice(fromIdx, 1)
                           const ejDestinoBase = bloqueOrigen === bloqueDestino ? ejOrigen : [...(ejercicios[bloqueDestino] || [])]
-                          const toIdx = ejDestinoBase.findIndex(x => x.id === e.id)
-                          ejDestinoBase.splice(toIdx >= 0 ? toIdx : ejDestinoBase.length, 0, { ...moved, bloque_id: bloqueDestino })
+                          let toIdx = ejDestinoBase.findIndex(x => x.id === e.id)
+                          if (toIdx === -1) toIdx = ejDestinoBase.length
+                          else if (movingDown) toIdx += 1
+                          ejDestinoBase.splice(toIdx, 0, { ...moved, bloque_id: bloqueDestino })
                           const origenFinal = ejOrigen.map((x, i) => ({ ...x, orden: i }))
                           const destinoFinal = bloqueOrigen === bloqueDestino ? origenFinal : ejDestinoBase.map((x, i) => ({ ...x, orden: i }))
                           const newEj = { ...ejercicios }
                           newEj[bloqueOrigen] = origenFinal
                           newEj[bloqueDestino] = destinoFinal
                           setEjercicios(newEj)
-                          await supabase.from('sesion_ejercicios').update({ bloque_id: bloqueDestino, orden: toIdx >= 0 ? toIdx : ejDestinoBase.length - 1 }).eq('id', moved.id)
+                          await supabase.from('sesion_ejercicios').update({ bloque_id: bloqueDestino, orden: toIdx }).eq('id', moved.id)
                           await Promise.all(origenFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                           if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                           setDraggingEj(null)
