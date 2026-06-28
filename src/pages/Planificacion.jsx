@@ -565,6 +565,7 @@ export default function Planificacion({ clientePlanificacion }) {
               clienteId={clienteSeleccionado}
               bloquesPlan={bloques}
               subbloquesPlan={subbloques}
+              clientes={clientes}
             />
           )}
           {vista === 'seguimiento' && clienteSeleccionado && (

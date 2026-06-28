@@ -84,7 +84,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, 
   )
 }
 
-function Calendario({ sesiones, competiciones = [], controles = [], notas = [], bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota, onEliminar, onMoverSesion, clipboard, onCopiar, onPegar }) {
+function Calendario({ sesiones, competiciones = [], controles = [], notas = [], bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota, onEliminar, onMoverSesion, clipboard, onCopiar, onPegar, onPegarOtroCliente }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
@@ -173,7 +173,12 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
         <button className="btn btn-ghost btn-sm" onClick={navPrev}>‹</button>
         <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize', minWidth: 160, textAlign: 'center' }}>{titulo}</span>
         <button className="btn btn-ghost btn-sm" onClick={navNext}>›</button>
-        {clipboard && <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', background: 'var(--accent-light)', padding: '3px 8px', borderRadius: 6 }}>📋 {clipboard.titulo} copiada</span>}
+        {clipboard && (
+          <>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', background: 'var(--accent-light)', padding: '3px 8px', borderRadius: 6 }}>📋 {clipboard.titulo || clipboard.nombre || clipboard.texto} copiada</span>
+            <button className="btn btn-ghost btn-sm" onClick={onPegarOtroCliente}>→ Otro cliente</button>
+          </>
+        )}
         <div className="flex gap-1" style={{ marginLeft: 'auto' }}>
           {['mes', 'semana'].map(v => (
             <button key={v} className="btn btn-ghost btn-sm" style={vista === v ? { background: 'var(--bg2)', fontWeight: 600 } : {}} onClick={() => setVista(v)}>
@@ -295,7 +300,7 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
   )
 }
 
-export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan }) {
+export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, clientes = [] }) {
   const [sesiones, setSesiones] = useState([])
   const [sesionAbierta, setSesionAbierta] = useState(null)
   const [bloques, setBloques] = useState([])
@@ -318,6 +323,8 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
     return () => window.removeEventListener('dragover', autoScroll)
   }, [draggingEj, draggingBloque])
   const [clipboard, setClipboard] = useState(null)
+  const [modalPegarOtro, setModalPegarOtro] = useState(false)
+  const [formPegarOtro, setFormPegarOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
@@ -457,29 +464,31 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
     await Promise.all(restantes.map(e => supabase.from('sesion_ejercicios').update({ orden: e.orden }).eq('id', e.id)))
   }
 
-  async function pegarSesion(s, fecha) {
+  async function pegarSesion(s, fecha, clienteDestino = clienteId) {
     setSaving(true)
-    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteId, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min }).select().single()
+    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
       for (const e of ejs || []) await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
     }
-    setSaving(false); cargarSesiones()
+    setSaving(false)
+    if (clienteDestino === clienteId) cargarSesiones()
   }
 
-  async function pegarItem(item, fecha) {
-    if (item._tipo === 'sesion') return pegarSesion(item, fecha)
+  async function pegarItem(item, fecha, clienteDestino = clienteId) {
+    if (item._tipo === 'sesion') return pegarSesion(item, fecha, clienteDestino)
     setSaving(true)
     if (item._tipo === 'competicion') {
-      await supabase.from('competiciones').insert({ cliente_id: clienteId, nombre: item.nombre, fecha, tipo: item.tipo, objetivo: item.objetivo, notas: item.notas })
+      await supabase.from('competiciones').insert({ cliente_id: clienteDestino, nombre: item.nombre, fecha, tipo: item.tipo, objetivo: item.objetivo, notas: item.notas })
     } else if (item._tipo === 'control') {
-      await supabase.from('controles').insert({ cliente_id: clienteId, nombre: item.nombre, fecha, tipo: item.tipo, notas: item.notas })
+      await supabase.from('controles').insert({ cliente_id: clienteDestino, nombre: item.nombre, fecha, tipo: item.tipo, notas: item.notas })
     } else if (item._tipo === 'nota') {
-      await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: item.texto, fecha })
+      await supabase.from('sesion_notas').insert({ cliente_id: clienteDestino, texto: item.texto, fecha })
     }
-    setSaving(false); cargarSesiones()
+    setSaving(false)
+    if (clienteDestino === clienteId) cargarSesiones()
   }
 
   return (
@@ -523,6 +532,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
             clipboard={clipboard}
             onCopiar={setClipboard}
             onPegar={pegarItem}
+            onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') }); setModalPegarOtro(true) }}
           />
         </>
       )}
@@ -770,6 +780,40 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan })
                 await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: formNota.texto, fecha: formNota.fecha || null })
                 setModalNota(false)
               }}>Guardar nota</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalPegarOtro && clipboard && (
+        <div className="modal-backdrop" onClick={() => setModalPegarOtro(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Pegar en otro cliente</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPegarOtro(false)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>
+              📋 {clipboard.titulo || clipboard.nombre || clipboard.texto}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={formPegarOtro.clienteDestino} onChange={e => setFormPegarOtro(f => ({ ...f, clienteDestino: e.target.value }))} autoFocus>
+                <option value="">Selecciona un cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Fecha *</label>
+              <input className="form-input" type="date" value={formPegarOtro.fecha} onChange={e => setFormPegarOtro(f => ({ ...f, fecha: e.target.value }))} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPegarOtro(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !formPegarOtro.clienteDestino || !formPegarOtro.fecha} onClick={async () => {
+                await pegarItem(clipboard, formPegarOtro.fecha, formPegarOtro.clienteDestino)
+                setModalPegarOtro(false)
+                const nombreDestino = clientes.find(c => c.id === formPegarOtro.clienteDestino)?.nombre || 'el cliente seleccionado'
+                alert(`Copiado en ${nombreDestino}`)
+              }}>{saving ? 'Pegando...' : 'Pegar'}</button>
             </div>
           </div>
         </div>
