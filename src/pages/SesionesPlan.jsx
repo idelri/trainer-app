@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy, GripVertical } from 'lucide-react'
 
@@ -84,7 +84,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, 
   )
 }
 
-function Calendario({ sesiones, competiciones = [], controles = [], notas = [], bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota, onEliminar, onMoverSesion, clipboard, onCopiar, onPegar, onPegarOtroCliente }) {
+function Calendario({ sesiones, competiciones = [], controles = [], notas = [], bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota, onEliminar, onMoverSesion, clipboard, onCopiar, onPegar, onPegarOtroCliente, clipboardSemana, onCopiarSemana, onPegarSemana, onPegarSemanaOtroCliente }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
@@ -179,6 +179,12 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
             <button className="btn btn-ghost btn-sm" onClick={onPegarOtroCliente}>→ Otro cliente</button>
           </>
         )}
+        {clipboardSemana && (
+          <>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', background: 'var(--accent-light)', padding: '3px 8px', borderRadius: 6 }}>📅 Semana copiada ({clipboardSemana.items.length})</span>
+            <button className="btn btn-ghost btn-sm" onClick={onPegarSemanaOtroCliente}>→ Otro cliente</button>
+          </>
+        )}
         <div className="flex gap-1" style={{ marginLeft: 'auto' }}>
           {['mes', 'semana'].map(v => (
             <button key={v} className="btn btn-ghost btn-sm" style={vista === v ? { background: 'var(--bg2)', fontWeight: 600 } : {}} onClick={() => setVista(v)}>
@@ -224,6 +230,12 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
                         alert('Enlace de la semana copiado')
                       }
                     }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>🔗</button>
+                    <button title="Copiar semana" onClick={e => { e.stopPropagation(); onCopiarSemana(diasSem) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>📋</button>
+                    {clipboardSemana && (
+                      <button title="Pegar semana aquí" onClick={e => { e.stopPropagation(); onPegarSemana(diasSem[0]) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>📌</button>
+                    )}
                   </div>
                 </div>
               )}
@@ -328,6 +340,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [clipboard, setClipboard] = useState(null)
   const [modalPegarOtro, setModalPegarOtro] = useState(false)
   const [formPegarOtro, setFormPegarOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
+  const [clipboardSemana, setClipboardSemana] = useState(null)
+  const [modalPegarSemanaOtro, setModalPegarSemanaOtro] = useState(false)
+  const [formPegarSemanaOtro, setFormPegarSemanaOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
@@ -501,7 +516,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     await Promise.all(restantes.map(e => supabase.from('sesion_ejercicios').update({ orden: e.orden }).eq('id', e.id)))
   }
 
-  async function pegarSesion(s, fecha, clienteDestino = clienteId) {
+  async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true) {
     setSaving(true)
     const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
@@ -511,11 +526,11 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
       for (const e of ejs || []) await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
     }
     setSaving(false)
-    if (clienteDestino === clienteId) cargarSesiones()
+    if (recargar && clienteDestino === clienteId) cargarSesiones()
   }
 
-  async function pegarItem(item, fecha, clienteDestino = clienteId) {
-    if (item._tipo === 'sesion') return pegarSesion(item, fecha, clienteDestino)
+  async function pegarItem(item, fecha, clienteDestino = clienteId, recargar = true) {
+    if (item._tipo === 'sesion') return pegarSesion(item, fecha, clienteDestino, recargar)
     setSaving(true)
     if (item._tipo === 'competicion') {
       await supabase.from('competiciones').insert({ cliente_id: clienteDestino, nombre: item.nombre, fecha, tipo: item.tipo, objetivo: item.objetivo, notas: item.notas })
@@ -523,6 +538,30 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
       await supabase.from('controles').insert({ cliente_id: clienteDestino, nombre: item.nombre, fecha, tipo: item.tipo, notas: item.notas })
     } else if (item._tipo === 'nota') {
       await supabase.from('sesion_notas').insert({ cliente_id: clienteDestino, texto: item.texto, fecha })
+    }
+    setSaving(false)
+    if (recargar && clienteDestino === clienteId) cargarSesiones()
+  }
+
+  function copiarSemana(diasSem) {
+    const claves = diasSem.map(d => format(d, 'yyyy-MM-dd'))
+    const items = [
+      ...sesiones.filter(s => claves.includes(s.fecha)).map(s => ({ ...s, _tipo: 'sesion' })),
+      ...competiciones.filter(c => claves.includes(c.fecha)).map(c => ({ ...c, _tipo: 'competicion' })),
+      ...controles.filter(c => claves.includes(c.fecha)).map(c => ({ ...c, _tipo: 'control' })),
+      ...notas.filter(n => claves.includes(n.fecha)).map(n => ({ ...n, _tipo: 'nota' })),
+    ]
+    if (items.length === 0) { alert('No hay elementos esta semana para copiar'); return }
+    setClipboardSemana({ lunes: diasSem[0], items })
+  }
+
+  async function pegarSemana(lunesDestino, clienteDestino = clienteId) {
+    if (!clipboardSemana) return
+    const diffDias = Math.round((lunesDestino - clipboardSemana.lunes) / 86400000)
+    setSaving(true)
+    for (const item of clipboardSemana.items) {
+      const nuevaFecha = format(addDays(parseISO(item.fecha), diffDias), 'yyyy-MM-dd')
+      await pegarItem(item, nuevaFecha, clienteDestino, false)
     }
     setSaving(false)
     if (clienteDestino === clienteId) cargarSesiones()
@@ -570,6 +609,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             onCopiar={setClipboard}
             onPegar={pegarItem}
             onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') }); setModalPegarOtro(true) }}
+            clipboardSemana={clipboardSemana}
+            onCopiarSemana={copiarSemana}
+            onPegarSemana={pegarSemana}
+            onPegarSemanaOtroCliente={() => { setFormPegarSemanaOtro({ clienteDestino: '', fecha: format(clipboardSemana.lunes, 'yyyy-MM-dd') }); setModalPegarSemanaOtro(true) }}
           />
         </>
       )}
@@ -857,6 +900,40 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                 setModalPegarOtro(false)
                 const nombreDestino = clientes.find(c => c.id === formPegarOtro.clienteDestino)?.nombre || 'el cliente seleccionado'
                 alert(`Copiado en ${nombreDestino}`)
+              }}>{saving ? 'Pegando...' : 'Pegar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalPegarSemanaOtro && clipboardSemana && (
+        <div className="modal-backdrop" onClick={() => setModalPegarSemanaOtro(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Pegar semana en otro cliente</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPegarSemanaOtro(false)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>
+              📅 Semana con {clipboardSemana.items.length} elemento{clipboardSemana.items.length === 1 ? '' : 's'}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={formPegarSemanaOtro.clienteDestino} onChange={e => setFormPegarSemanaOtro(f => ({ ...f, clienteDestino: e.target.value }))} autoFocus>
+                <option value="">Selecciona un cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Lunes de la semana destino *</label>
+              <input className="form-input" type="date" value={formPegarSemanaOtro.fecha} onChange={e => setFormPegarSemanaOtro(f => ({ ...f, fecha: e.target.value }))} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPegarSemanaOtro(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !formPegarSemanaOtro.clienteDestino || !formPegarSemanaOtro.fecha} onClick={async () => {
+                await pegarSemana(parseISO(formPegarSemanaOtro.fecha), formPegarSemanaOtro.clienteDestino)
+                setModalPegarSemanaOtro(false)
+                const nombreDestino = clientes.find(c => c.id === formPegarSemanaOtro.clienteDestino)?.nombre || 'el cliente seleccionado'
+                alert(`Semana copiada en ${nombreDestino}`)
               }}>{saving ? 'Pegando...' : 'Pegar'}</button>
             </div>
           </div>
