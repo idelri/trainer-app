@@ -6,6 +6,7 @@ import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers } from 'lu
 import GraficaCarga from '../components/GraficaCarga'
 import PanelFuerzaSalud from '../components/PanelFuerzaSalud'
 import SesionesPlan from './SesionesPlan'
+import Seguimiento from './Seguimiento'
 
 const FASES = {
   general: { label: 'General', color: '#6b7280' },
@@ -535,9 +536,9 @@ export default function Planificacion({ clientePlanificacion }) {
         )}
         {planificacion && (
           <div className="flex gap-2">
-          {['timeline', 'macro', 'subbloque', 'micro', 'sesiones'].map(v => (
+          {['timeline', 'macro', 'subbloque', 'micro', 'sesiones', 'seguimiento'].map(v => (
               <button key={v} className="btn btn-ghost btn-sm" style={vista === v ? { background: 'var(--bg2)', fontWeight: 500 } : {}} onClick={() => setVista(v)}>
-                {v === 'timeline' ? 'Resumen' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : v === 'micro' ? 'Semana' : 'Sesiones'}
+                {v === 'timeline' ? 'Resumen' : v === 'macro' ? 'Bloque' : v === 'subbloque' ? 'Sub bloque' : v === 'micro' ? 'Semana' : v === 'sesiones' ? 'Sesiones' : 'Seguimiento'}
               </button>
             ))}
           </div>
@@ -564,6 +565,14 @@ export default function Planificacion({ clientePlanificacion }) {
               clienteId={clienteSeleccionado}
               bloquesPlan={bloques}
               subbloquesPlan={subbloques}
+            />
+          )}
+          {vista === 'seguimiento' && clienteSeleccionado && (
+            <Seguimiento
+              clienteId={clienteSeleccionado}
+              planificacionId={planificacion?.id}
+              bloques={bloques}
+              semanas={semanas}
             />
           )}
           {vista === 'timeline' && (
