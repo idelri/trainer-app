@@ -107,7 +107,7 @@ export default function CheckinSemanal() {
     setEnviando(true)
     const clienteId = semana.bloques?.planificaciones?.cliente_id
     const molestiaZonas = molestias && molestias !== 'No' ? zonas.filter(z => z.zona.trim()) : null
-    await supabase.from('checkin_semanal').insert({
+    const { error } = await supabase.from('checkin_semanal').insert({
       cliente_id: clienteId,
       semana_id: semana.id,
       energia,
@@ -122,6 +122,10 @@ export default function CheckinSemanal() {
       comentario_libre: comentario || null,
     })
     setEnviando(false)
+    if (error) {
+      alert('No se pudo enviar el check-in. Inténtalo de nuevo.')
+      return
+    }
     setEnviado(true)
   }
 
