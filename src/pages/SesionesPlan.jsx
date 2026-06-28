@@ -339,10 +339,13 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   }, [draggingEj, draggingBloque])
   const [clipboard, setClipboard] = useState(null)
   const [modalPegarOtro, setModalPegarOtro] = useState(false)
-  const [formPegarOtro, setFormPegarOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
+  const [formPegarOtro, setFormPegarOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd'), sinFecha: false })
   const [clipboardSemana, setClipboardSemana] = useState(null)
   const [modalPegarSemanaOtro, setModalPegarSemanaOtro] = useState(false)
   const [formPegarSemanaOtro, setFormPegarSemanaOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
+  const [clipboardLista, setClipboardLista] = useState(null)
+  const [modalPegarListaOtro, setModalPegarListaOtro] = useState(false)
+  const [clienteDestinoLista, setClienteDestinoLista] = useState('')
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
@@ -567,6 +570,22 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     if (clienteDestino === clienteId) cargarSesiones()
   }
 
+  function copiarListaSinFecha() {
+    const sinFecha = sesiones.filter(s => !s.fecha)
+    if (sinFecha.length === 0) return
+    setClipboardLista(sinFecha.map(s => ({ ...s, _tipo: 'sesion' })))
+  }
+
+  async function pegarListaSinFecha(clienteDestino = clienteId) {
+    if (!clipboardLista) return
+    setSaving(true)
+    for (const item of clipboardLista) {
+      await pegarSesion(item, null, clienteDestino, false)
+    }
+    setSaving(false)
+    if (clienteDestino === clienteId) cargarSesiones()
+  }
+
   return (
     <div>
       {!sesionAbierta && (
@@ -579,12 +598,26 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
 
           {sesiones.filter(s => !s.fecha).length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Sin fecha asignada — {sesiones.filter(s => !s.fecha).length}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sin fecha asignada — {sesiones.filter(s => !s.fecha).length}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={copiarListaSinFecha}>📋 Copiar todas</button>
+                  {clipboardLista && (
+                    <>
+                      <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--mono)', background: 'var(--accent-light)', padding: '3px 8px', borderRadius: 6 }}>📋 {clipboardLista.length} copiadas</span>
+                      <button className="btn btn-ghost btn-sm" onClick={() => pegarListaSinFecha()}>📌 Pegar aquí</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setClienteDestinoLista(''); setModalPegarListaOtro(true) }}>→ Otro cliente</button>
+                    </>
+                  )}
+                </div>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {sesiones.filter(s => !s.fecha).map(s => (
-                  <div key={s.id} onClick={() => setSesionAbierta(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12.5 }}>
-                    💪 {s.titulo}
-                    <span onClick={e => { e.stopPropagation(); eliminarSesion(s.id) }} style={{ opacity: 0.5, marginLeft: 4 }}>×</span>
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', fontSize: 12.5 }}>
+                    <span onClick={() => setSesionAbierta(s)} style={{ cursor: 'pointer' }}>💪 {s.titulo}</span>
+                    <span title="Copiar" onClick={() => setClipboard({ ...s, _tipo: 'sesion' })} style={{ opacity: 0.5, cursor: 'pointer' }}>📋</span>
+                    <span title="Duplicar aquí" onClick={() => pegarSesion(s, null, clienteId)} style={{ opacity: 0.5, cursor: 'pointer' }}>⧉</span>
+                    <span title="Eliminar" onClick={() => eliminarSesion(s.id)} style={{ opacity: 0.5, cursor: 'pointer' }}>×</span>
                   </div>
                 ))}
               </div>
@@ -608,7 +641,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             clipboard={clipboard}
             onCopiar={setClipboard}
             onPegar={pegarItem}
-            onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') }); setModalPegarOtro(true) }}
+            onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd'), sinFecha: false }); setModalPegarOtro(true) }}
             clipboardSemana={clipboardSemana}
             onCopiarSemana={copiarSemana}
             onPegarSemana={pegarSemana}
@@ -890,13 +923,19 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Fecha *</label>
-              <input className="form-input" type="date" value={formPegarOtro.fecha} onChange={e => setFormPegarOtro(f => ({ ...f, fecha: e.target.value }))} />
+              <label className="form-label">Fecha {clipboard._tipo === 'sesion' ? '' : '*'}</label>
+              <input className="form-input" type="date" value={formPegarOtro.fecha} disabled={formPegarOtro.sinFecha} onChange={e => setFormPegarOtro(f => ({ ...f, fecha: e.target.value }))} />
+              {clipboard._tipo === 'sesion' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--text3)' }}>
+                  <input type="checkbox" checked={formPegarOtro.sinFecha} onChange={e => setFormPegarOtro(f => ({ ...f, sinFecha: e.target.checked }))} />
+                  Sin fecha asignada
+                </label>
+              )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalPegarOtro(false)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={saving || !formPegarOtro.clienteDestino || !formPegarOtro.fecha} onClick={async () => {
-                await pegarItem(clipboard, formPegarOtro.fecha, formPegarOtro.clienteDestino)
+              <button className="btn btn-primary" disabled={saving || !formPegarOtro.clienteDestino || (!formPegarOtro.sinFecha && !formPegarOtro.fecha)} onClick={async () => {
+                await pegarItem(clipboard, formPegarOtro.sinFecha ? null : formPegarOtro.fecha, formPegarOtro.clienteDestino)
                 setModalPegarOtro(false)
                 const nombreDestino = clientes.find(c => c.id === formPegarOtro.clienteDestino)?.nombre || 'el cliente seleccionado'
                 alert(`Copiado en ${nombreDestino}`)
@@ -934,6 +973,36 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                 setModalPegarSemanaOtro(false)
                 const nombreDestino = clientes.find(c => c.id === formPegarSemanaOtro.clienteDestino)?.nombre || 'el cliente seleccionado'
                 alert(`Semana copiada en ${nombreDestino}`)
+              }}>{saving ? 'Pegando...' : 'Pegar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalPegarListaOtro && clipboardLista && (
+        <div className="modal-backdrop" onClick={() => setModalPegarListaOtro(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Pegar sesiones en otro cliente</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPegarListaOtro(false)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>
+              📋 {clipboardLista.length} sesión{clipboardLista.length === 1 ? '' : 'es'} sin fecha asignada
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={clienteDestinoLista} onChange={e => setClienteDestinoLista(e.target.value)} autoFocus>
+                <option value="">Selecciona un cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPegarListaOtro(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !clienteDestinoLista} onClick={async () => {
+                await pegarListaSinFecha(clienteDestinoLista)
+                setModalPegarListaOtro(false)
+                const nombreDestino = clientes.find(c => c.id === clienteDestinoLista)?.nombre || 'el cliente seleccionado'
+                alert(`Sesiones copiadas en ${nombreDestino}`)
               }}>{saving ? 'Pegando...' : 'Pegar'}</button>
             </div>
           </div>
