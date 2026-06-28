@@ -461,7 +461,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   }
 
   const ACCEPT_POR_TIPO = { imagen: 'image/jpeg,image/png,image/webp', gif: 'image/gif', video: 'video/mp4' }
-  const LIMITE_MB_POR_TIPO = { imagen: 10, gif: 100, video: 50 }
+  const LIMITE_MB_POR_TIPO = { imagen: 10, gif: 200, video: 50 }
 
   function abrirSelectorArchivo(bloqueId, id, tipo) {
     setArchivoTarget({ bloqueId, id, tipo })
