@@ -134,6 +134,12 @@ export default function VistaSemanalCliente() {
         if (s.tipo_sesion === 'flexible' || s.tipo_sesion === 'opcional') return !s.fecha || (s.fecha >= fechaInicioStr && s.fecha < fechaFinStr)
         return s.fecha >= fechaInicioStr && s.fecha < fechaFinStr
       })
+      if (filtradas.length > 0) {
+        const { data: feedbacks } = await supabase.from('sesion_feedback').select('sesion_id, data').in('sesion_id', filtradas.map(s => s.id))
+        const estadoPorSesion = {}
+        ;(feedbacks || []).forEach(f => { estadoPorSesion[f.sesion_id] = f.data?.completion?.status })
+        filtradas.forEach(s => { s._estado = estadoPorSesion[s.id] || null })
+      }
       setSesiones(filtradas)
 
       const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
@@ -146,7 +152,7 @@ export default function VistaSemanalCliente() {
     if (!semana) return
     setEnviando(true)
     const clienteId = bloque?.planificaciones?.cliente_id
-    await supabase.from('checkin_semanal').insert({
+    const { error } = await supabase.from('checkin_semanal').insert({
       cliente_id: clienteId,
       semana_id: semana.id,
       energia, descanso,
@@ -160,6 +166,10 @@ export default function VistaSemanalCliente() {
       comentario_libre: comentario || null,
     })
     setEnviando(false)
+    if (error) {
+      alert('No se pudo enviar el check-in. Inténtalo de nuevo.')
+      return
+    }
     setCheckinEnviado(true)
   }
 
@@ -388,8 +398,15 @@ export default function VistaSemanalCliente() {
   )
 }
 
+const ESTADO_COLOR = {
+  completed: { color: '#1baf7a', label: '✓ Completada' },
+  partial: { color: '#9b9b9b', label: '◐ Parcial' },
+  missed: { color: '#e34948', label: '✕ No realizada' },
+}
+
 function SesionCard({ sesion, bloque, flexible }) {
-  const color = bloque?.color || '#2d6a4f'
+  const estado = ESTADO_COLOR[sesion._estado] || null
+  const color = estado ? estado.color : (bloque?.color || '#2d6a4f')
   const fechaStr = sesion.fecha ? format(parseISO(sesion.fecha), 'EEEE dd MMM', { locale: es }) : null
 
   function abrirSesion() {
@@ -419,6 +436,7 @@ function SesionCard({ sesion, bloque, flexible }) {
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {sesion.duracion_min && <span style={{ fontSize: 11, color: '#9b9b9b' }}>{sesion.duracion_min} min</span>}
             <TipoChip tipo={sesion.tipo_sesion || 'programada'} />
+            {estado && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: estado.color + '20', color: estado.color, fontWeight: 500 }}>{estado.label}</span>}
           </div>
         </div>
         {sesion.token_publico && (

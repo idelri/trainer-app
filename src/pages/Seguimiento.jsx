@@ -60,9 +60,9 @@ function claseComparativa(texto) {
 }
 
 function claseEstadoSesion(status) {
-  if (status === 'completada') return { color: VERDE, bg: VERDE_BG, label: 'Completada' }
-  if (status === 'parcial') return { color: AZUL, bg: AZUL_BG, label: 'Parcial' }
-  if (status === 'no_realizada') return { color: ROJO, bg: ROJO_BG, label: 'No realizada' }
+  if (status === 'completed') return { color: VERDE, bg: VERDE_BG, label: 'Completada' }
+  if (status === 'partial') return { color: AZUL, bg: AZUL_BG, label: 'Parcial' }
+  if (status === 'missed') return { color: ROJO, bg: ROJO_BG, label: 'No realizada' }
   return { color: GRIS, bg: GRIS_BG, label: 'Sin feedback' }
 }
 
@@ -83,7 +83,7 @@ function resumenSesiones(semana) {
   const total = semana.sesiones.length
   const ok = semana.sesiones.filter(s => {
     const st = s.feedback?.data?.completion?.status
-    return st === 'completada' || st === 'parcial'
+    return st === 'completed' || st === 'partial'
   }).length
   return { ok, total }
 }
@@ -224,7 +224,7 @@ function FilaSesion({ sesion }) {
               <div style={{ fontSize: 12.5, color: 'var(--text3)', padding: '6px 0' }}>Esta sesión no tiene feedback enviado por el cliente.</div>
             ) : (
               <div style={{ padding: '6px 0 10px' }}>
-                <FilaDetalle label="Estado de finalización" valor={fb.completion?.status} />
+                <FilaDetalle label="Estado de finalización" valor={claseEstadoSesion(fb.completion?.status).label} />
                 {fb.completion?.reasons?.length > 0 && <FilaDetalle label="Motivos" valor={fb.completion.reasons.join(', ')} />}
                 <FilaDetalle label="Detalle parcial" valor={fb.completion?.partialDetails} />
                 <FilaDetalle label="¿Dolor?" valor={fb.pain?.hasPain} />
