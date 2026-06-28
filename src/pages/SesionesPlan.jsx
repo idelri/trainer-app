@@ -310,6 +310,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [draggingBloque, setDraggingBloque] = useState(null)
+  const fileInputRef = useRef(null)
+  const [archivoTarget, setArchivoTarget] = useState(null)
+  const [subiendoId, setSubiendoId] = useState(null)
 
   useEffect(() => {
     if (!draggingEj && !draggingBloque) return
@@ -455,6 +458,40 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   async function actualizarEjercicio(bloqueId, id, campo, valor) {
     await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
+  }
+
+  const ACCEPT_POR_TIPO = { imagen: 'image/jpeg,image/png,image/webp', gif: 'image/gif', video: 'video/mp4' }
+  const LIMITE_MB_POR_TIPO = { imagen: 10, gif: 100, video: 50 }
+
+  function abrirSelectorArchivo(bloqueId, id, tipo) {
+    setArchivoTarget({ bloqueId, id, tipo })
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = ACCEPT_POR_TIPO[tipo] || ''
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
+  }
+
+  async function handleArchivoSeleccionado(ev) {
+    const file = ev.target.files?.[0]
+    const target = archivoTarget
+    if (!file || !target) return
+    const limiteMb = LIMITE_MB_POR_TIPO[target.tipo] || 10
+    if (file.size > limiteMb * 1024 * 1024) { alert(`El archivo no puede superar ${limiteMb} MB`); return }
+    setSubiendoId(target.id)
+    try {
+      const nombreSanitizado = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')
+      const filename = `${Date.now()}-${nombreSanitizado}`
+      const { error } = await supabase.storage.from('media-ejercicios').upload(filename, file, { upsert: true })
+      if (error) throw error
+      const { data } = supabase.storage.from('media-ejercicios').getPublicUrl(filename)
+      await actualizarEjercicio(target.bloqueId, target.id, 'media_url', data.publicUrl)
+    } catch {
+      alert('Error al subir el archivo. Inténtalo de nuevo.')
+    } finally {
+      setSubiendoId(null)
+      setArchivoTarget(null)
+    }
   }
 
   async function eliminarEjercicio(bloqueId, id) {
@@ -647,6 +684,12 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                                   }
                                 }} />
                             </div>
+                            {e.media_tipo !== 'youtube' && (
+                              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '3px 7px', flexShrink: 0 }}
+                                disabled={subiendoId === e.id} onClick={() => abrirSelectorArchivo(b.id, e.id, e.media_tipo)}>
+                                {subiendoId === e.id ? 'Subiendo...' : '↑ Subir archivo'}
+                              </button>
+                            )}
                           </div>
                           <div style={{ marginTop: 6 }}>
                             <InlineInput value={e.notas} placeholder="Notas (opcional)..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }} onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
@@ -662,6 +705,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             ))}
             <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}><Plus size={13} /> Bloque</button>
           </div>
+          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleArchivoSeleccionado} />
         </div>
       )}
 
