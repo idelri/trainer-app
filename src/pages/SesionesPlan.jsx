@@ -344,6 +344,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [modalPegarSemanaOtro, setModalPegarSemanaOtro] = useState(false)
   const [formPegarSemanaOtro, setFormPegarSemanaOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
   const [clipboardLista, setClipboardLista] = useState(null)
+  const [draggingSinFecha, setDraggingSinFecha] = useState(null)
   const [modalPegarListaOtro, setModalPegarListaOtro] = useState(false)
   const [clienteDestinoLista, setClienteDestinoLista] = useState('')
   const [competiciones, setCompeticiones] = useState([])
@@ -359,7 +360,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
 
   async function cargarSesiones() {
-    const { data } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteId).order('fecha', { ascending: false })
+    const { data } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteId).order('fecha', { ascending: false }).order('orden', { ascending: true })
     setSesiones(data || [])
     const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteId).order('fecha')
     setCompeticiones(comps || [])
@@ -380,11 +381,20 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     } else { setEjercicios({}) }
   }
 
+  async function siguienteOrdenSinFecha(clienteDestino) {
+    if (clienteDestino === clienteId) {
+      const sinFecha = sesiones.filter(s => !s.fecha)
+      return sinFecha.length ? Math.max(...sinFecha.map(s => s.orden ?? 0)) + 1 : 0
+    }
+    const { data } = await supabase.from('sesiones').select('orden').eq('cliente_id', clienteDestino).is('fecha', null).order('orden', { ascending: false }).limit(1)
+    return data && data.length ? (data[0].orden ?? 0) + 1 : 0
+  }
+
   async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada' }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', ...(formSesion.sinFecha && !modalSesion?.id ? { orden: await siguienteOrdenSinFecha(clienteId) } : {}) }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
     } else {
@@ -519,9 +529,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     await Promise.all(restantes.map(e => supabase.from('sesion_ejercicios').update({ orden: e.orden }).eq('id', e.id)))
   }
 
-  async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true) {
+  async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true, ordenOverride = null) {
     setSaving(true)
-    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min }).select().single()
+    const orden = fecha ? null : (ordenOverride != null ? ordenOverride : await siguienteOrdenSinFecha(clienteDestino))
+    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, ...(orden != null ? { orden } : {}) }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
@@ -579,11 +590,29 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   async function pegarListaSinFecha(clienteDestino = clienteId) {
     if (!clipboardLista) return
     setSaving(true)
+    const base = await siguienteOrdenSinFecha(clienteDestino)
+    let i = 0
     for (const item of clipboardLista) {
-      await pegarSesion(item, null, clienteDestino, false)
+      await pegarSesion(item, null, clienteDestino, false, base + i)
+      i++
     }
     setSaving(false)
     if (clienteDestino === clienteId) cargarSesiones()
+  }
+
+  async function reordenarSinFecha(destinoId) {
+    if (!draggingSinFecha || draggingSinFecha === destinoId) return
+    const sinFecha = sesiones.filter(s => !s.fecha)
+    const resto = sesiones.filter(s => s.fecha)
+    const fromIdx = sinFecha.findIndex(s => s.id === draggingSinFecha)
+    const toIdx = sinFecha.findIndex(s => s.id === destinoId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const [moved] = sinFecha.splice(fromIdx, 1)
+    sinFecha.splice(toIdx, 0, moved)
+    const final = sinFecha.map((s, i) => ({ ...s, orden: i }))
+    setSesiones([...resto, ...final])
+    setDraggingSinFecha(null)
+    await Promise.all(final.map(s => supabase.from('sesiones').update({ orden: s.orden }).eq('id', s.id)))
   }
 
   return (
@@ -613,7 +642,14 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {sesiones.filter(s => !s.fecha).map(s => (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', fontSize: 12.5 }}>
+                  <div key={s.id}
+                    draggable
+                    onDragStart={ev => { ev.stopPropagation(); setDraggingSinFecha(s.id) }}
+                    onDragEnd={ev => { ev.stopPropagation(); setDraggingSinFecha(null) }}
+                    onDragOver={ev => { ev.preventDefault(); ev.stopPropagation() }}
+                    onDrop={ev => { ev.preventDefault(); ev.stopPropagation(); reordenarSinFecha(s.id) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', fontSize: 12.5, cursor: 'grab', opacity: draggingSinFecha === s.id ? 0.5 : 1 }}>
+                    <GripVertical size={12} style={{ color: 'var(--text3)', flexShrink: 0 }} />
                     <span onClick={() => setSesionAbierta(s)} style={{ cursor: 'pointer' }}>💪 {s.titulo}</span>
                     <span title="Copiar" onClick={() => setClipboard({ ...s, _tipo: 'sesion' })} style={{ opacity: 0.5, cursor: 'pointer' }}>📋</span>
                     <span title="Duplicar aquí" onClick={() => pegarSesion(s, null, clienteId)} style={{ opacity: 0.5, cursor: 'pointer' }}>⧉</span>

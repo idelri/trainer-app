@@ -129,6 +129,7 @@ export default function VistaSemanalCliente() {
         .eq('cliente_id', clienteId)
         .or(`fecha.gte.${fechaInicioStr},tipo_sesion.eq.flexible,tipo_sesion.eq.opcional`)
         .order('fecha', { ascending: true })
+        .order('orden', { ascending: true })
 
       const filtradas = (sesionesSemana || []).filter(s => {
         if (s.tipo_sesion === 'flexible' || s.tipo_sesion === 'opcional') return !s.fecha || (s.fecha >= fechaInicioStr && s.fecha < fechaFinStr)
