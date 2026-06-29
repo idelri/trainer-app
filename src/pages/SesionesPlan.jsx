@@ -5,7 +5,20 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy, GripVertical } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada' }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', tipo_actividad: 'fuerza' }
+
+const TIPOS_ACTIVIDAD = [
+  { value: 'fuerza', label: 'Fuerza', icono: '💪' },
+  { value: 'correr', label: 'Correr', icono: '🏃' },
+  { value: 'caminar', label: 'Caminar', icono: '🚶' },
+  { value: 'bicicleta', label: 'Bicicleta', icono: '🚴' },
+  { value: 'nadar', label: 'Nadar', icono: '🏊' },
+  { value: 'movilidad', label: 'Movilidad', icono: '🤸' },
+  { value: 'futbol', label: 'Fútbol', icono: '⚽' },
+  { value: 'padel', label: 'Pádel', icono: '🎾' },
+]
+const ICONO_ACTIVIDAD = Object.fromEntries(TIPOS_ACTIVIDAD.map(t => [t.value, t.icono]))
+function iconoSesion(s) { return ICONO_ACTIVIDAD[s?.tipo_actividad] || '💪' }
 
 function ytId(url) {
   if (!url) return null
@@ -265,7 +278,7 @@ function Calendario({ sesiones, competiciones = [], controles = [], notas = [], 
                           control: { background: '#eff6ff', color: '#3b82f6' },
                           nota: { background: '#fefce8', color: '#854d0e' },
                         }[item._tipo]
-                        const icono = { sesion: '💪', competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
+                        const icono = item._tipo === 'sesion' ? iconoSesion(item) : { competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
                         const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
                         return (
                           <div key={item.id}
@@ -394,7 +407,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', ...(formSesion.sinFecha && !modalSesion?.id ? { orden: await siguienteOrdenSinFecha(clienteId) } : {}) }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', tipo_actividad: formSesion.tipo_actividad || 'fuerza', ...(formSesion.sinFecha && !modalSesion?.id ? { orden: await siguienteOrdenSinFecha(clienteId) } : {}) }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
     } else {
@@ -532,7 +545,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true, ordenOverride = null) {
     setSaving(true)
     const orden = fecha ? null : (ordenOverride != null ? ordenOverride : await siguienteOrdenSinFecha(clienteDestino))
-    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, ...(orden != null ? { orden } : {}) }).select().single()
+    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, tipo_actividad: s.tipo_actividad || 'fuerza', ...(orden != null ? { orden } : {}) }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
@@ -650,7 +663,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                     onDrop={ev => { ev.preventDefault(); ev.stopPropagation(); reordenarSinFecha(s.id) }}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid var(--border)', fontSize: 12.5, cursor: 'grab', opacity: draggingSinFecha === s.id ? 0.5 : 1 }}>
                     <GripVertical size={12} style={{ color: 'var(--text3)', flexShrink: 0 }} />
-                    <span onClick={() => setSesionAbierta(s)} style={{ cursor: 'pointer' }}>💪 {s.titulo}</span>
+                    <span onClick={() => setSesionAbierta(s)} style={{ cursor: 'pointer' }}>{iconoSesion(s)} {s.titulo}</span>
                     <span title="Copiar" onClick={() => setClipboard({ ...s, _tipo: 'sesion' })} style={{ opacity: 0.5, cursor: 'pointer' }}>📋</span>
                     <span title="Duplicar aquí" onClick={() => pegarSesion(s, null, clienteId)} style={{ opacity: 0.5, cursor: 'pointer' }}>⧉</span>
                     <span title="Eliminar" onClick={() => eliminarSesion(s.id)} style={{ opacity: 0.5, cursor: 'pointer' }}>×</span>
@@ -690,7 +703,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlace(sesionAbierta)}>🔗 Compartir</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha, tipo_sesion: sesionAbierta.tipo_sesion || 'programada', tipo_actividad: sesionAbierta.tipo_actividad || 'fuerza' }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>
           </div>
 
@@ -847,6 +860,18 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                   <button key={val} onClick={() => setFormSesion(f => ({ ...f, tipo_sesion: val }))}
                     style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${(formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--border)'}`, background: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: (formSesion.tipo_sesion || 'programada') === val ? 600 : 400, color: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--text2)' }}>
                     {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo de actividad</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                {TIPOS_ACTIVIDAD.map(t => (
+                  <button key={t.value} onClick={() => setFormSesion(f => ({ ...f, tipo_actividad: t.value }))}
+                    style={{ padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${(formSesion.tipo_actividad || 'fuerza') === t.value ? 'var(--accent)' : 'var(--border)'}`, background: (formSesion.tipo_actividad || 'fuerza') === t.value ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: (formSesion.tipo_actividad || 'fuerza') === t.value ? 600 : 400, color: (formSesion.tipo_actividad || 'fuerza') === t.value ? 'var(--accent)' : 'var(--text2)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 16 }}>{t.icono}</span>
+                    {t.label}
                   </button>
                 ))}
               </div>
