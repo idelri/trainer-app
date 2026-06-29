@@ -16,6 +16,12 @@ const T = {
   warningLight: '#fffbeb',
 }
 
+const ICONO_ACTIVIDAD = {
+  fuerza: '💪', correr: '🏃', caminar: '🚶', bicicleta: '🚴',
+  nadar: '🏊', movilidad: '🤸', futbol: '⚽', padel: '🎾',
+}
+function iconoSesion(s) { return ICONO_ACTIVIDAD[s?.tipo_actividad] || '💪' }
+
 function ScaleButtons({ labels, selected, onSelect, color }) {
   return (
     <div style={{ display: 'flex', gap: 6 }}>
@@ -436,7 +442,7 @@ function SesionCard({ sesion, bloque, flexible }) {
       )}
       <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-          💪
+          {iconoSesion(sesion)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sesion.titulo}</p>
