@@ -215,8 +215,11 @@ export default function VistaSemanalCliente() {
               style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {bloque?.nombre}{subbloque ? ` · ${subbloque.nombre}` : ''}
+                  {bloque?.nombre}
                 </p>
+                {subbloque?.nombre && (
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '0 0 2px', fontWeight: 500 }}>{subbloque.nombre}</p>
+                )}
                 {subbloque?.notas && seccionAbierta !== 'bloque' && (
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Ver objetivos específicos ↓</p>
                 )}
@@ -227,12 +230,15 @@ export default function VistaSemanalCliente() {
           {seccionAbierta === 'bloque' && (
             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '0 0 10px 10px', padding: '12px 14px', marginTop: 1 }}>
               {bloque?.objetivo && (
-                <div style={{ marginBottom: subbloque?.notas ? 10 : 0 }}>
+                <div style={{ marginBottom: (subbloque?.notas || subbloque?.duracion_media_min) ? 10 : 0 }}>
                   <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Objetivo del bloque</p>
                   {bloque.objetivo.split('\n').filter(l => l.trim()).map((l, i) => (
                     <p key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '0 0 3px', lineHeight: 1.4 }}>· {l}</p>
                   ))}
                 </div>
+              )}
+              {subbloque?.duracion_media_min && (
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '0 0 10px' }}>⏱ Duración media de sesión: {subbloque.duracion_media_min} min</p>
               )}
               {subbloque?.notas && (
                 <div>
