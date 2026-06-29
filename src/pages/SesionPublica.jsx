@@ -118,13 +118,17 @@ export default function SesionPublica({ token }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
              {(ejercicios[b.id] || []).map((e, eIdx) => {
                 const yid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-                const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
+                const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : ((e.media_tipo === 'imagen' || e.media_tipo === 'gif') ? e.media_url : null)
+                const esVideoArchivo = e.media_tipo === 'video' && e.media_url
                 const videoLink = e.media_tipo === 'youtube' ? e.media_url : e.video_url
                 return (
                   <article key={e.id} style={{ position: 'relative', overflow: 'hidden', background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '14px 14px 14px 18px', boxShadow: '0 1px 2px rgba(20,23,28,0.05), 0 4px 12px rgba(20,23,28,0.03)' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, background: b.color || '#E29A2E' }} />
                     <div style={{ display: 'flex', gap: 13, alignItems: 'center' }}>
-                      {thumb && <img src={thumb} alt={e.nombre} style={{ width: 78, height: 78, flexShrink: 0, borderRadius: 11, objectFit: 'cover', border: `1px solid ${T.line}`, background: T.paper }} />}
+                      {esVideoArchivo && (
+                        <video src={e.media_url} controls muted preload="metadata" style={{ width: 110, height: 110, flexShrink: 0, borderRadius: 11, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
+                      )}
+                      {!esVideoArchivo && thumb && <img src={thumb} alt={e.nombre} style={{ width: 110, height: 110, flexShrink: 0, borderRadius: 11, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
                      <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>

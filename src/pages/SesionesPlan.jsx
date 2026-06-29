@@ -738,7 +738,8 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                 <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(ejercicios[b.id] || []).map((e, eIdx) => {
                     const id = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-                    const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
+                    const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : ((e.media_tipo === 'imagen' || e.media_tipo === 'gif') ? e.media_url : null)
+                    const esVideoArchivo = e.media_tipo === 'video' && e.media_url
                     return (
                      <div key={e.id}
                         draggable
@@ -773,9 +774,15 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                           if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                           setDraggingEj(null)
                         }}
-                        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
-                        <div style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {thumb ? <img src={thumb} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 9, color: 'var(--text3)' }}>sin media</span>}
+                        style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
+                        <div style={{ width: 130, height: 130, borderRadius: 8, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {esVideoArchivo ? (
+                            <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          ) : thumb ? (
+                            <img src={thumb} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ fontSize: 9, color: 'var(--text3)' }}>sin media</span>
+                          )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
