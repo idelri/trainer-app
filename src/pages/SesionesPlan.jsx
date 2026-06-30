@@ -333,6 +333,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
+  const [objetivoDraft, setObjetivoDraft] = useState('')
+  const [savingObjetivo, setSavingObjetivo] = useState(false)
+  const [objetivoGuardado, setObjetivoGuardado] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [draggingBloque, setDraggingBloque] = useState(null)
   const fileInputRef = useRef(null)
@@ -370,7 +373,16 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [modalNota, setModalNota] = useState(false)
   const [formNota, setFormNota] = useState({ texto: '', fecha: '' })
   useEffect(() => { if (clienteId) cargarSesiones() }, [clienteId])
-  useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
+  useEffect(() => {
+    if (!sesionAbierta) return
+    cargarDetalle(sesionAbierta.id)
+    setObjetivoDraft(sesionAbierta.objetivo || '')
+    setObjetivoGuardado(false)
+    // Refresca datos de la sesión desde DB para evitar estado obsoleto
+    supabase.from('sesiones').select('*').eq('id', sesionAbierta.id).single().then(({ data }) => {
+      if (data) { setSesionAbierta(data); setObjetivoDraft(data.objetivo || '') }
+    })
+  }, [sesionAbierta?.id])
 
   async function cargarSesiones() {
     const { data } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteId).order('fecha', { ascending: false }).order('orden', { ascending: true })
@@ -708,9 +720,35 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo general</div>
-            <InlineInput value={sesionAbierta.objetivo} placeholder="Ej: Seguir construyendo base de movilidad..." textarea fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })) }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objetivo general</div>
+              {objetivoDraft !== (sesionAbierta.objetivo || '') && (
+                <button
+                  onClick={async () => {
+                    setSavingObjetivo(true)
+                    await supabase.from('sesiones').update({ objetivo: objetivoDraft || null }).eq('id', sesionAbierta.id)
+                    setSesionAbierta(s => ({ ...s, objetivo: objetivoDraft }))
+                    setSesiones(list => list.map(s => s.id === sesionAbierta.id ? { ...s, objetivo: objetivoDraft } : s))
+                    setSavingObjetivo(false)
+                    setObjetivoGuardado(true)
+                    setTimeout(() => setObjetivoGuardado(false), 2000)
+                  }}
+                  disabled={savingObjetivo}
+                  style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}>
+                  {savingObjetivo ? 'Guardando...' : 'Guardar'}
+                </button>
+              )}
+              {objetivoGuardado && objetivoDraft === (sesionAbierta.objetivo || '') && (
+                <span style={{ fontSize: 11, color: '#2FAE76', fontWeight: 600 }}>✓ Guardado</span>
+              )}
+            </div>
+            <textarea
+              value={objetivoDraft}
+              onChange={e => setObjetivoDraft(e.target.value)}
+              placeholder="Ej: Seguir construyendo base de movilidad..."
+              rows={2}
+              style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontFamily: 'inherit', fontSize: 13, color: 'inherit', padding: 0, resize: 'vertical' }}
+            />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
