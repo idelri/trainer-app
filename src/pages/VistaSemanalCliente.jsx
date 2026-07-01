@@ -20,7 +20,10 @@ const ICONO_ACTIVIDAD = {
   fuerza: '💪', correr: '🏃', caminar: '🚶', bicicleta: '🚴',
   nadar: '🏊', movilidad: '🤸', futbol: '⚽', padel: '🎾',
 }
-function iconoSesion(s) { return ICONO_ACTIVIDAD[s?.tipo_actividad] || '💪' }
+function iconoSesion(s) {
+  const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
+  return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
+}
 
 function ScaleButtons({ labels, selected, onSelect, color }) {
   return (
