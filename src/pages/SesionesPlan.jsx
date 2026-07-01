@@ -1027,7 +1027,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                 <label className="form-label">Fecha</label>
                 <input className="form-input" type="date" value={formSesion.fecha} disabled={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, fecha: e.target.value }))} />
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--text3)' }}>
-                  <input type="checkbox" checked={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, sinFecha: e.target.checked, fecha: e.target.checked ? '' : f.fecha }))} />
+                  <input type="checkbox" checked={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, sinFecha: e.target.checked, fecha: e.target.checked ? '' : f.fecha, tipo_sesion: e.target.checked ? (f.tipo_sesion === 'programada' ? 'flexible' : f.tipo_sesion) : (f.tipo_sesion === 'flexible' ? 'programada' : f.tipo_sesion) }))} />
                   Sin fecha asignada
                 </label>
               </div>
@@ -1036,7 +1036,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             <div className="form-group">
               <label className="form-label">Tipo de sesión</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[['programada','📅 Programada'],['flexible','🔄 Flexible'],['opcional','⭐ Opcional']].map(([val, label]) => (
+                {(formSesion.sinFecha
+                  ? [['flexible','🔄 Flexible'],['opcional','⭐ Opcional']]
+                  : [['programada','📅 Programada'],['opcional','⭐ Opcional']]
+                ).map(([val, label]) => (
                   <button key={val} onClick={() => setFormSesion(f => ({ ...f, tipo_sesion: val }))}
                     style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${(formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--border)'}`, background: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontWeight: (formSesion.tipo_sesion || 'programada') === val ? 600 : 400, color: (formSesion.tipo_sesion || 'programada') === val ? 'var(--accent)' : 'var(--text2)' }}>
                     {label}

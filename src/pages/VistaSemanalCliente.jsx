@@ -159,6 +159,7 @@ export default function VistaSemanalCliente() {
         .from('sesiones')
         .select('*')
         .eq('cliente_id', clienteId)
+        .is('pack_id', null)
         .or(`fecha.gte.${fechaInicioStr},tipo_sesion.eq.flexible,tipo_sesion.eq.opcional`)
         .order('fecha', { ascending: true })
         .order('orden', { ascending: true })
