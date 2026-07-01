@@ -12,9 +12,31 @@ const ICONO_ACTIVIDAD = {
   fuerza: '💪', correr: '🏃', caminar: '🚶', bicicleta: '🚴',
   nadar: '🏊', movilidad: '🤸', futbol: '⚽', padel: '🎾',
 }
-function iconoSesion(s) {
-  const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
-  return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
+function getTipos(s) {
+  return s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
+}
+function iconoSesion(s) { return getTipos(s).map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ') }
+
+function IconosSesion({ sesion, color }) {
+  const tipos = getTipos(sesion)
+  const bg = (color || '#0369a1') + '22'
+  if (tipos.length === 1) {
+    return (
+      <div style={{ width: 42, height: 42, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>
+        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center' }}>
+      <div style={{ width: 34, height: 34, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, position: 'relative', zIndex: 2 }}>
+        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
+      </div>
+      <div style={{ width: 34, height: 34, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, marginLeft: -10, position: 'relative', zIndex: 1 }}>
+        {ICONO_ACTIVIDAD[tipos[1]] || '💪'}
+      </div>
+    </div>
+  )
 }
 
 export default function PackPublico({ token }) {
@@ -87,9 +109,7 @@ export default function PackPublico({ token }) {
           {sesiones.map(s => (
             <div key={s.id} style={{ background: T.card, borderRadius: 12, border: `1px solid ${T.border}`, marginBottom: 10, overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 42, height: 42, borderRadius: '50%', background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>
-                  {iconoSesion(s)}
-                </div>
+                <IconosSesion sesion={s} color={T.accent} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.titulo}</p>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>

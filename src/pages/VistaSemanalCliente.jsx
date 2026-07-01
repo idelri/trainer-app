@@ -20,9 +20,31 @@ const ICONO_ACTIVIDAD = {
   fuerza: '💪', correr: '🏃', caminar: '🚶', bicicleta: '🚴',
   nadar: '🏊', movilidad: '🤸', futbol: '⚽', padel: '🎾',
 }
-function iconoSesion(s) {
-  const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
-  return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
+function getTipos(s) {
+  return s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
+}
+function iconoSesion(s) { return getTipos(s).map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ') }
+
+function IconosSesion({ sesion, color }) {
+  const tipos = getTipos(sesion)
+  const bg = color + '22'
+  if (tipos.length === 1) {
+    return (
+      <div style={{ width: 40, height: 40, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 19 }}>
+        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center' }}>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, position: 'relative', zIndex: 2 }}>
+        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
+      </div>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, marginLeft: -10, position: 'relative', zIndex: 1 }}>
+        {ICONO_ACTIVIDAD[tipos[1]] || '💪'}
+      </div>
+    </div>
+  )
 }
 
 function ScaleButtons({ labels, selected, onSelect, color }) {
@@ -493,9 +515,7 @@ function SesionCard({ sesion, bloque, flexible }) {
         </div>
       )}
       <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-          {iconoSesion(sesion)}
-        </div>
+        <IconosSesion sesion={sesion} color={color} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sesion.titulo}</p>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
