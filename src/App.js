@@ -11,6 +11,7 @@ import SesionPublica from './pages/SesionPublica'
 import CheckinSemanal from './pages/CheckinSemanal'
 import Login from './pages/Login'
 import VistaSemanalCliente from './pages/VistaSemanalCliente'
+import PackPublico from './pages/PackPublico'
 import './index.css'
 
 const NAV = [
@@ -29,6 +30,7 @@ export default function App() {
   const [publicSesionToken, setPublicSesionToken] = useState(null)
   const [publicCheckinToken, setPublicCheckinToken] = useState(null)
   const [publicSemanaToken, setPublicSemanaToken] = useState(null)
+  const [publicPackToken, setPublicPackToken] = useState(null)
   useEffect(() => {
     // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
@@ -56,6 +58,12 @@ export default function App() {
       setAuthLoading(false)
       return
     }
+    const matchPack = path.match(/^\/pack\/([a-f0-9-]+)$/)
+    if (matchPack) {
+      setPublicPackToken(matchPack[1])
+      setAuthLoading(false)
+      return
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
@@ -74,6 +82,7 @@ export default function App() {
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
   if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
   if (publicSemanaToken) return <VistaSemanalCliente />
+  if (publicPackToken) return <PackPublico token={publicPackToken} />
   if (!session) return <Login />
 
  const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, planificacion: Planificacion }

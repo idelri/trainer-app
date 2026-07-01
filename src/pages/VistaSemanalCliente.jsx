@@ -81,6 +81,7 @@ export default function VistaSemanalCliente() {
   const [subbloque, setSubbloque] = useState(null)
   const [cliente, setCliente] = useState(null)
   const [sesiones, setSesiones] = useState([])
+  const [packsConSesiones, setPacksConSesiones] = useState([])
   const [loading, setLoading] = useState(true)
   const [seccionAbierta, setSeccionAbierta] = useState(null)
   const [checkinEnviado, setCheckinEnviado] = useState(false)
@@ -151,6 +152,26 @@ export default function VistaSemanalCliente() {
 
       const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
       if (existing) setYaRespondido(true)
+
+      // Packs flexibles que solapan con esta semana
+      const { data: packs } = await supabase
+        .from('packs_flexibles')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .lte('fecha_inicio', fechaFinStr)
+        .gte('fecha_fin', fechaInicioStr)
+      if (packs && packs.length > 0) {
+        const { data: packSesiones } = await supabase
+          .from('sesiones')
+          .select('*')
+          .in('pack_id', packs.map(p => p.id))
+        const sesionesPorPack = {}
+        ;(packSesiones || []).forEach(s => {
+          if (!sesionesPorPack[s.pack_id]) sesionesPorPack[s.pack_id] = []
+          sesionesPorPack[s.pack_id].push(s)
+        })
+        setPacksConSesiones(packs.map(p => ({ ...p, sesiones: sesionesPorPack[p.id] || [] })))
+      }
     }
     setLoading(false)
   }
@@ -295,11 +316,39 @@ export default function VistaSemanalCliente() {
           </div>
         )}
 
-        {sesiones.length === 0 && (
+        {sesiones.length === 0 && packsConSesiones.length === 0 && (
           <div style={{ margin: '0 12px 12px', background: T.card, borderRadius: 12, border: `1px solid ${T.border}`, padding: '20px 16px', textAlign: 'center' }}>
             <p style={{ fontSize: 13, color: T.text3, margin: 0 }}>No hay sesiones asignadas esta semana.</p>
           </div>
         )}
+
+        {/* Packs flexibles */}
+        {packsConSesiones.map(pack => (
+          <div key={pack.id} style={{ margin: '0 12px 16px' }}>
+            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 16px 10px', borderBottom: pack.descripcion || pack.sesiones.length > 0 ? '1px solid #bae6fd' : 'none' }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>📦 Plan flexible</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#0c4a6e', margin: '0 0 3px' }}>{pack.nombre}</p>
+                <p style={{ fontSize: 11, color: '#0369a1', margin: 0 }}>
+                  {format(new Date(pack.fecha_inicio + 'T12:00:00'), 'dd MMM', { locale: es })} – {format(new Date(pack.fecha_fin + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}
+                </p>
+              </div>
+              {pack.descripcion && (
+                <div style={{ padding: '10px 16px', borderBottom: pack.sesiones.length > 0 ? '1px solid #bae6fd' : 'none' }}>
+                  <p style={{ fontSize: 13, color: '#075985', margin: 0, lineHeight: 1.55 }}>{pack.descripcion}</p>
+                </div>
+              )}
+              {pack.sesiones.length > 0 && (
+                <div style={{ padding: '10px 12px 12px' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sesiones disponibles</p>
+                  {pack.sesiones.map(s => (
+                    <SesionCard key={s.id} sesion={s} bloque={bloque} flexible />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
 
         {/* Check-in semanal */}
         <div style={{ margin: '16px 12px 0' }}>
