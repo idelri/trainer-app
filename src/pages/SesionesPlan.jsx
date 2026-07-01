@@ -373,7 +373,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '' })
   const [modalNota, setModalNota] = useState(false)
   const [formNota, setFormNota] = useState({ texto: '', fecha: '' })
-  useEffect(() => { if (clienteId) cargarSesiones() }, [clienteId])
+  useEffect(() => { if (clienteId) { cargarSesiones(); setSesionAbierta(null) } }, [clienteId])
   useEffect(() => {
     if (!sesionAbierta) return
     cargarDetalle(sesionAbierta.id)
@@ -706,6 +706,13 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             </div>
           )}
 
+        {clipboardBloque && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', marginBottom: 10, background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 10, fontSize: 12.5 }}>
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>📋 Bloque copiado: "{clipboardBloque.bloque.nombre}" ({clipboardBloque.ejercicios.length} ejercicios)</span>
+            <span style={{ color: 'var(--text3)', flex: 1 }}>— Ábrelo en cualquier sesión para pegarlo</span>
+            <button onClick={() => setClipboardBloque(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1 }}>×</button>
+          </div>
+        )}
         <Calendario
             sesiones={sesiones}
             competiciones={competiciones}
