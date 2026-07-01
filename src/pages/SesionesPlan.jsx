@@ -612,10 +612,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     await Promise.all(restantes.map(e => supabase.from('sesion_ejercicios').update({ orden: e.orden }).eq('id', e.id)))
   }
 
-  async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true, ordenOverride = null) {
+  async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true, ordenOverride = null, packId = null) {
     setSaving(true)
     const orden = fecha ? null : (ordenOverride != null ? ordenOverride : await siguienteOrdenSinFecha(clienteDestino))
-    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, tipo_actividad: s.tipo_actividad || 'fuerza', ...(orden != null ? { orden } : {}) }).select().single()
+    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, tipo_actividad: s.tipo_actividad || 'fuerza', ...(orden != null ? { orden } : {}), ...(packId ? { pack_id: packId } : {}) }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
@@ -745,9 +745,17 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                             </div>
                           ))}
                         </div>
-                        <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ ...EMPTY_SESION }); setAddingToPackId(pack.id); setModalSesion('nueva') }}>
-                          <Plus size={12} /> Añadir sesión al pack
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ ...EMPTY_SESION }); setAddingToPackId(pack.id); setModalSesion('nueva') }}>
+                            <Plus size={12} /> Añadir sesión al pack
+                          </button>
+                          {clipboard?._tipo === 'sesion' && (
+                            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent)' }}
+                              onClick={() => pegarSesion(clipboard, null, clienteId, true, null, pack.id)}>
+                              📌 Pegar "{clipboard.titulo}"
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
