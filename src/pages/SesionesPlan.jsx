@@ -359,6 +359,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [clipboardSemana, setClipboardSemana] = useState(null)
   const [modalPegarSemanaOtro, setModalPegarSemanaOtro] = useState(false)
   const [formPegarSemanaOtro, setFormPegarSemanaOtro] = useState({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd') })
+  const [clipboardBloque, setClipboardBloque] = useState(null)
   const [clipboardLista, setClipboardLista] = useState(null)
   const [draggingSinFecha, setDraggingSinFecha] = useState(null)
   const [modalPegarListaOtro, setModalPegarListaOtro] = useState(false)
@@ -499,6 +500,26 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     setBloques(final)
     setDraggingBloque(null)
     await Promise.all(final.map(x => supabase.from('sesion_bloques').update({ orden: x.orden }).eq('id', x.id)))
+  }
+
+  function copiarBloque(b) {
+    setClipboardBloque({ bloque: b, ejercicios: ejercicios[b.id] || [] })
+  }
+
+  async function pegarBloque() {
+    if (!clipboardBloque || !sesionAbierta) return
+    const { bloque: b, ejercicios: ejs } = clipboardBloque
+    const orden = bloques.length ? Math.max(...bloques.map(x => x.orden ?? 0)) + 1 : 0
+    const { data: nuevo } = await supabase.from('sesion_bloques').insert({ sesion_id: sesionAbierta.id, nombre: b.nombre, color: b.color, nota: b.nota || '', orden }).select().single()
+    if (!nuevo) return
+    const nuevosEjs = []
+    for (let i = 0; i < ejs.length; i++) {
+      const e = ejs[i]
+      const { data: ne } = await supabase.from('sesion_ejercicios').insert({ bloque_id: nuevo.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: i }).select().single()
+      if (ne) nuevosEjs.push(ne)
+    }
+    setBloques(bs => [...bs, nuevo])
+    setEjercicios(ej => ({ ...ej, [nuevo.id]: nuevosEjs }))
   }
 
   async function añadirEjercicio(bloqueId) {
@@ -768,6 +789,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                   <div style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
                     <InlineInput value={b.nombre} placeholder={`Bloque ${idx + 1}`} fontSize={14} style={{ fontWeight: 600 }} onSave={v => actualizarBloque(b.id, 'nombre', v)} />
                   </div>
+                  <button className="btn btn-ghost btn-sm" title="Copiar bloque" onClick={() => copiarBloque(b)}><Copy size={12} /></button>
                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                 </div>
                 <div style={{ padding: '0 16px 10px', fontSize: 12.5, color: 'var(--text2)' }}>
@@ -873,7 +895,14 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                 </div>
               </div>
             ))}
-            <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}><Plus size={13} /> Bloque</button>
+            <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-start', flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost" onClick={añadirBloque}><Plus size={13} /> Bloque</button>
+              {clipboardBloque && (
+                <button className="btn btn-ghost" onClick={pegarBloque} style={{ color: 'var(--accent)' }}>
+                  📋 Pegar "{clipboardBloque.bloque.nombre}"
+                </button>
+              )}
+            </div>
           </div>
           <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleArchivoSeleccionado} />
         </div>
