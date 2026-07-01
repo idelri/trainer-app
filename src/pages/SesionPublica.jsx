@@ -10,6 +10,61 @@ const T = {
   accent: '#E0481F', accentD: '#C13A14', hero: '#181B21',
 }
 
+const RPE_LABELS = ['Nada de esfuerzo','Muy, muy suave','Muy suave','Suave','Moderada','Algo exigente','Exigente','Muy exigente','Muy dura','Extremadamente dura','Máximo esfuerzo']
+
+function FeedbackResumen({ data, onEditar }) {
+  const d = data || {}
+  const status = d.completion?.status
+  const reasons = d.completion?.reasons || []
+  const statusCfg = {
+    completed: { label: 'Sesión completada al 100%', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0', icon: '✅' },
+    partial:   { label: 'Sesión parcialmente completada', color: '#b45309', bg: '#fffbeb', border: '#fde68a', icon: '🔄' },
+    missed:    { label: 'Sesión no realizada', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: '❌' },
+  }
+  const cfg = statusCfg[status] || {}
+
+  function Row({ label, value }) {
+    if (!value && value !== 0) return null
+    return (
+      <div style={{ display: 'flex', gap: 10, padding: '9px 0', borderBottom: `1px solid ${T.line}` }}>
+        <span style={{ fontSize: 11.5, color: T.ink3, minWidth: 140, flexShrink: 0, paddingTop: 1 }}>{label}</span>
+        <span style={{ fontSize: 13, color: T.ink, lineHeight: 1.55 }}>{value}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {cfg.label && (
+        <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>{cfg.icon}</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
+        </div>
+      )}
+      <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 12, padding: '0 14px' }}>
+        {d.rpe?.value != null && <Row label="Esfuerzo percibido (RPE)" value={`${d.rpe.value} — ${RPE_LABELS[d.rpe.value]}`} />}
+        {d.duration?.minutes && <Row label="Duración real" value={`${d.duration.minutes} min`} />}
+        {reasons.length > 0 && <Row label={status === 'partial' ? 'Por qué no completó al 100%' : 'Por qué no la realizó'} value={reasons.join(', ')} />}
+        {d.completion?.partialDetails && <Row label="Detalle / parte no realizada" value={d.completion.partialDetails} />}
+        {d.pain?.mainPainDetails && <Row label="Molestia principal" value={d.pain.mainPainDetails} />}
+        {d.pain?.additionalPainLevel && <Row label="Molestia durante sesión" value={d.pain.additionalPainLevel} />}
+        {d.pain?.additionalPainDetails && <Row label="Zona / ejercicio" value={d.pain.additionalPainDetails} />}
+        {d.technical?.mainTechnicalDetails && <Row label="Dificultad técnica" value={d.technical.mainTechnicalDetails} />}
+        {d.technical?.additionalTechnicalDifficulty === true && <Row label="Ejercicio difícil" value={d.technical.additionalTechnicalDetails || 'Sí'} />}
+        {d.equipment?.details && <Row label="Material no disponible" value={d.equipment.details} />}
+        {d.understanding?.details && <Row label="Ejercicio no entendido" value={d.understanding.details} />}
+        {d.generalComments && <Row label="Observaciones generales" value={d.generalComments} />}
+      </div>
+      {onEditar && (
+        <button type="button" onClick={onEditar}
+          style={{ alignSelf: 'flex-start', fontSize: 12.5, fontWeight: 500, padding: '7px 14px', borderRadius: 8, border: `1px solid ${T.line}`, background: T.card, color: T.ink2, cursor: 'pointer' }}>
+          ✏️ Modificar respuesta
+        </button>
+      )}
+    </div>
+  )
+}
+
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -164,18 +219,14 @@ export default function SesionPublica({ token }) {
         {/* FEEDBACK POST-SESIÓN */}
         <div style={{ marginTop: 36 }}>
           {feedbackEnviado && !editandoFeedback ? (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '18px 16px' }}>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#15803d', textAlign: 'center' }}>✓ Feedback enviado</p>
-              {feedbackEnviado.editado ? (
-                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: '#166534', textAlign: 'center' }}>Ya has modificado este feedback. Si necesitas otro cambio, escríbeme por WhatsApp.</p>
-              ) : (
-                <>
-                  <p style={{ margin: '6px 0 12px', fontSize: 12.5, color: '#166534', textAlign: 'center' }}>¿Quieres modificar algo?</p>
-                  <button type="button" onClick={() => setEditandoFeedback(true)}
-                    style={{ display: 'block', margin: '0 auto', padding: '9px 18px', borderRadius: 10, border: '1px solid #15803d', background: '#fff', color: '#15803d', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                    Sí, quiero modificar mi respuesta
-                  </button>
-                </>
+            <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
+              <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
+              <FeedbackResumen
+                data={feedbackEnviado.data}
+                onEditar={feedbackEnviado.editado ? null : () => setEditandoFeedback(true)}
+              />
+              {feedbackEnviado.editado && (
+                <p style={{ margin: '12px 0 0', fontSize: 12, color: T.ink3, textAlign: 'center' }}>Ya has modificado este feedback. Si necesitas otro cambio, escríbeme por WhatsApp.</p>
               )}
             </div>
           ) : (
