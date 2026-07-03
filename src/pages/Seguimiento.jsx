@@ -274,7 +274,7 @@ function BarraZona({ label, color, obj, real }) {
   const pctReal = real != null ? Math.min(real, 100) : 0
   const pctObj  = Math.min(obj, 100)
   const diff    = real != null ? real - obj : null
-  const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 5 ? color : Math.abs(diff) <= 12 ? AMARILLO : ROJO
+  const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 10 ? color : Math.abs(diff) <= 20 ? AMARILLO : ROJO
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 10, color: 'var(--text3)', width: 36, flexShrink: 0, fontFamily: 'var(--mono)' }}>{label}</span>

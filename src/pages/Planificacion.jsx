@@ -1668,7 +1668,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                         <div style={{ borderTop: '0.5px solid var(--border)' }}>
 
                           {/* Cabecera de tabla de semanas */}
-                          <div style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 146px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 160px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
                             {(esResistencia
                               ? ['Sem', 'Semana', 'Objetivo', 'Carga', 'Km', 'Zonas (obj→real)', '', '']
                               : ['Sem', 'Semana', 'Objetivo', 'Carga', '']
@@ -1708,7 +1708,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                 {/* Fila de semana */}
                                 <div
                                   onClick={() => toggleSemana(semKey)}
-                                  style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 146px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                                  style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 160px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
                                   onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
                                   onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
 
@@ -1783,14 +1783,14 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                           if (!obj) return null
                                           const barW = real != null ? Math.min(real, 100) : 0
                                           const tickW = Math.min(obj, 100)
-                                          const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 5 ? col : Math.abs(real - obj) <= 12 ? '#f59e0b' : '#ef4444'
+                                          const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 10 ? col : Math.abs(real - obj) <= 20 ? '#f59e0b' : '#ef4444'
                                           return (
                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                               <div style={{ width: 44, height: 5, background: '#f3f4f6', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
                                                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${barW}%`, background: barCol, borderRadius: 3 }} />
-                                                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#9ca3af' }} />
+                                                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#6b7280' }} />
                                               </div>
-                                              <span style={{ fontSize: 8, fontFamily: 'monospace', color: barCol, width: 24 }}>{real != null ? `${real}%` : '—'}</span>
+                                              <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text)', width: 28, flexShrink: 0 }}>{real != null ? `${real}%` : '—'}</span>
                                             </div>
                                           )
                                         })}
