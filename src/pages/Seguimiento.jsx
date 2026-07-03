@@ -256,6 +256,75 @@ function FilaSesion({ sesion }) {
   )
 }
 
+// ───────────────────────── Barras planificado vs real ─────────────────────────
+function BarraZona({ label, color, obj, real }) {
+  if (obj == null) return null
+  const pctReal = real != null ? Math.min((real / 100) * 100, 120) : 0
+  const pctObj  = (obj / 100) * 100
+  const diff    = real != null ? real - obj : null
+  const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 5 ? color : Math.abs(diff) <= 12 ? AMARILLO : ROJO
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 10, color: 'var(--text3)', width: 36, flexShrink: 0, fontFamily: 'var(--mono)' }}>{label}</span>
+      <div style={{ flex: 1, height: 8, background: 'var(--bg2)', borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(pctReal, 100)}%`, background: barColor, borderRadius: 4, transition: 'width 0.3s' }} />
+        <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${pctObj}%`, width: 2, background: '#6b7280', opacity: 0.6 }} />
+      </div>
+      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: barColor, width: 52, flexShrink: 0, textAlign: 'right' }}>
+        {real ?? '—'}<span style={{ color: 'var(--text3)' }}>/{obj}%</span>
+      </span>
+    </div>
+  )
+}
+
+function BloqueCumplimiento({ semana }) {
+  const { kmMin, kmMax, kmReal, zona1_2Obj, zona3_4Obj, zona5Obj, zona1_2Real, zona3_4Real, zona5Real } = semana
+  const tienePlan = zona1_2Obj != null || kmMin != null
+  const tieneReal = kmReal != null || zona1_2Real != null
+  if (!tienePlan) return null
+
+  const kmMedio   = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
+  const kmPct     = kmMedio && kmReal != null ? Math.min(kmReal / kmMedio * 100, 130) : 0
+  const kmColor   = kmReal == null ? '#d1d5db' : kmMin != null && kmReal >= kmMin && kmReal <= (kmMax || kmMin * 1.1) ? VERDE : Math.abs(kmReal - kmMedio) / kmMedio < 0.15 ? AMARILLO : ROJO
+
+  return (
+    <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' }}>
+      <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+        Planificado vs Real
+      </div>
+
+      {kmMin != null && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 10, borderBottom: zona1_2Obj ? '1px solid var(--border)' : 'none' }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)', width: 36, flexShrink: 0, fontFamily: 'var(--mono)' }}>Km</span>
+          <div style={{ flex: 1, height: 8, background: 'var(--bg2)', borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+            {/* rango objetivo */}
+            <div style={{ position: 'absolute', top: 0, height: '100%', left: `${(kmMin / ((kmMax || kmMin) * 1.3)) * 100}%`, width: `${((kmMax || kmMin) - kmMin) / ((kmMax || kmMin) * 1.3) * 100}%`, background: '#2d6a4f30', borderRadius: 2 }} />
+            {kmReal != null && (
+              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(kmReal / ((kmMax || kmMin) * 1.3) * 100, 100)}%`, background: kmColor, borderRadius: 4, transition: 'width 0.3s' }} />
+            )}
+          </div>
+          <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: kmColor, width: 80, flexShrink: 0, textAlign: 'right' }}>
+            {kmReal ?? <span style={{ color: 'var(--text3)' }}>—</span>}
+            <span style={{ color: 'var(--text3)' }}> / {kmMin}{kmMax && kmMax !== kmMin ? `–${kmMax}` : ''} km</span>
+          </span>
+        </div>
+      )}
+
+      {zona1_2Obj != null && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <BarraZona label="Z1-Z2" color={AZUL}    obj={zona1_2Obj} real={zona1_2Real} />
+          <BarraZona label="Z3-Z4" color={AMARILLO} obj={zona3_4Obj} real={zona3_4Real} />
+          <BarraZona label="Z5"    color={ROJO}     obj={zona5Obj}   real={zona5Real} />
+        </div>
+      )}
+
+      {!tieneReal && (
+        <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 6 }}>Sin datos reales registrados esta semana.</div>
+      )}
+    </div>
+  )
+}
+
 // ───────────────────────── Cabecera de semana ─────────────────────────
 function CabeceraSemana({ semana, abierta, onToggle }) {
   const c = semana.checkin
@@ -288,7 +357,7 @@ function CabeceraSemana({ semana, abierta, onToggle }) {
 }
 
 // ───────────────────────── Sub-vista: Tabla ─────────────────────────
-function SubvistaTabla({ semanasPorMes, semanasEnriquecidas }) {
+function SubvistaTabla({ semanasPorMes, semanasEnriquecidas, clienteData }) {
   const [filtroMes, setFiltroMes] = useState('')
   const [filtroSemana, setFiltroSemana] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todo')
@@ -350,6 +419,7 @@ function SubvistaTabla({ semanasPorMes, semanasEnriquecidas }) {
                     <CabeceraSemana semana={semana} abierta={semAbierta} onToggle={() => setSemanasAbiertas(s => ({ ...s, [semana.id]: !semAbierta }))} />
                     {semAbierta && (
                       <div style={{ padding: '14px 16px 16px 36px' }}>
+                        <BloqueCumplimiento semana={semana} />
                         <BloqueCheckin checkin={semana.checkin} />
                         {semana.sesiones.length === 0 ? (
                           <div style={{ fontSize: 12.5, color: 'var(--text3)' }}>Sin sesiones esta semana.</div>
@@ -632,7 +702,7 @@ function SubvistaDashboard({ semanasEnriquecidas }) {
 }
 
 // ───────────────────────── Componente principal ─────────────────────────
-export default function Seguimiento({ clienteId, planificacionId, bloques, semanas }) {
+export default function Seguimiento({ clienteId, planificacionId, bloques, semanas, subbloques, clienteData }) {
   const [subvista, setSubvista] = useState('tabla')
   const [checkins, setCheckins] = useState([])
   const [sesionesCliente, setSesionesCliente] = useState([])
@@ -672,6 +742,7 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
         const sesionesSemana = sesionesCliente
           .filter(se => se.fecha && isWithinInterval(parseISO(se.fecha), { start: inicio, end: fin }))
           .map(se => ({ ...se, feedback: feedbacks[se.id] || null }))
+        const subPlan = (subbloques?.[b.id] || []).find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
         lista.push({
           id: s.id,
           bloqueId: b.id,
@@ -680,11 +751,21 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
           inicio, fin,
           checkin: checkinPorSemana[s.id] || null,
           sesiones: sesionesSemana,
+          kmReal:      s.km_real      ?? null,
+          kmObjetivo:  s.km_objetivo  ?? null,
+          kmMin:       subPlan?.km_min ?? null,
+          kmMax:       subPlan?.km_max ?? null,
+          zona1_2Obj:  subPlan?.zona1_2  ?? null,
+          zona3_4Obj:  subPlan?.zona3_4  ?? null,
+          zona5Obj:    subPlan?.zona5    ?? null,
+          zona1_2Real: s.zona1_2_real   ?? null,
+          zona3_4Real: s.zona3_4_real   ?? null,
+          zona5Real:   s.zona5_real     ?? null,
         })
       })
     })
     return lista
-  }, [bloques, semanas, checkins, sesionesCliente, feedbacks])
+  }, [bloques, semanas, subbloques, checkins, sesionesCliente, feedbacks])
 
   const semanasPorMes = useMemo(() => {
     const map = {}
@@ -709,7 +790,7 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
       {loading && <div className="empty"><p>Cargando...</p></div>}
 
       {!loading && subvista === 'tabla' && (
-        <SubvistaTabla semanasPorMes={semanasPorMes} semanasEnriquecidas={semanasEnriquecidas} />
+        <SubvistaTabla semanasPorMes={semanasPorMes} semanasEnriquecidas={semanasEnriquecidas} clienteData={clienteData} />
       )}
       {!loading && subvista === 'dashboard' && (
         <SubvistaDashboard semanasEnriquecidas={semanasEnriquecidas} />

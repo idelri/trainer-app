@@ -1136,7 +1136,7 @@ export default function Planificacion({ clientePlanificacion }) {
             </div>
           )}
           {vista === 'seguimiento' && (
-            <Seguimiento clienteId={clienteSeleccionado} planificacionId={planificacion?.id} bloques={bloques} semanas={semanas} />
+            <Seguimiento clienteId={clienteSeleccionado} planificacionId={planificacion?.id} bloques={bloques} semanas={semanas} subbloques={subbloques} clienteData={clienteData} />
           )}
           {vista === 'lista' && (
             <VistaLista bloques={bloques} subbloques={subbloques} semanas={semanas} sesiones={sesiones} clienteData={clienteData} openModal={openModal} setVista={setVista} eliminarItem={eliminarItem} cargarPlanificacion={cargarPlanificacion} />
@@ -1668,8 +1668,11 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                         <div style={{ borderTop: '0.5px solid var(--border)' }}>
 
                           {/* Cabecera de tabla de semanas */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '52px 110px 1fr 76px 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
-                            {['Sem', 'Semana', 'Objetivo', 'Carga', esResistencia ? 'Km real' : '', ''].map((h, i) => (
+                          <div style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 146px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                            {(esResistencia
+                              ? ['Sem', 'Semana', 'Objetivo', 'Carga', 'Km', 'Zonas (obj→real)', '', '']
+                              : ['Sem', 'Semana', 'Objetivo', 'Carga', '']
+                            ).map((h, i) => (
                               <span key={i} style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
                             ))}
                           </div>
@@ -1691,12 +1694,21 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                               return f >= fIniSem && f < fFinSem
                             })
 
+                            const kmReal = semData?.km_real ?? null
+                            const kmMin  = sub?.km_min ?? null
+                            const kmMax  = sub?.km_max ?? null
+                            const kmMed  = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
+                            const kmOK   = kmMed && kmReal != null ? (kmMin != null && kmReal >= kmMin && kmReal <= (kmMax || kmMin * 1.1)) : null
+                            const kmColor = kmReal == null ? 'var(--text3)' : kmOK ? '#16a34a' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#ca8a04' : '#dc2626'
+                            const estadoBg = kmReal == null ? 'var(--bg2)' : kmOK ? '#bbf7d0' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#fef9c3' : '#fca5a5'
+                            const estadoColor = kmReal == null ? 'var(--text3)' : kmOK ? '#166534' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#713f12' : '#7f1d1d'
+
                             return (
                               <div key={semKey}>
                                 {/* Fila de semana */}
                                 <div
                                   onClick={() => toggleSemana(semKey)}
-                                  style={{ display: 'grid', gridTemplateColumns: '52px 110px 1fr 76px 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                                  style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 146px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
                                   onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
                                   onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
 
@@ -1734,7 +1746,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                     {carga.label}
                                   </span>
 
-                                  {esResistencia ? (
+                                  {esResistencia && (
                                     editMode ? (
                                       <input type="number" min="0"
                                         value={getInlineValue('semana', semData?.id || semKey, 'km_real', semData?.km_real || '')}
@@ -1748,11 +1760,45 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                         style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', width: 64, fontFamily: 'var(--mono)' }}
                                       />
                                     ) : (
-                                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--mono)' }}>
-                                        {semData?.km_real ? `${semData.km_real} km` : '—'}
-                                      </span>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: kmColor, fontFamily: 'var(--mono)' }}>
+                                          {kmReal != null ? `${kmReal} km` : '—'}
+                                        </span>
+                                        {kmMin != null && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>obj {kmMin}{kmMax && kmMax !== kmMin ? `–${kmMax}` : ''}</span>}
+                                      </div>
                                     )
-                                  ) : <span />}
+                                  )}
+
+                                  {esResistencia && (() => {
+                                    const z12o = sub?.zona1_2, z34o = sub?.zona3_4, z5o = sub?.zona5
+                                    const z12r = semData?.zona1_2_real, z34r = semData?.zona3_4_real, z5r = semData?.zona5_real
+                                    if (!z12o) return <span style={{ fontSize: 10, color: 'var(--text3)' }}>—</span>
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }} onClick={e => e.stopPropagation()}>
+                                        {[[z12o, z12r, '#3b82f6'], [z34o, z34r, '#f59e0b'], [z5o, z5r, '#ef4444']].map(([obj, real, col], i) => {
+                                          if (!obj) return null
+                                          const barW = real != null ? Math.min(real, 100) : 0
+                                          const tickW = Math.min(obj, 100)
+                                          const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 5 ? col : Math.abs(real - obj) <= 12 ? '#f59e0b' : '#ef4444'
+                                          return (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                              <div style={{ width: 44, height: 5, background: '#f3f4f6', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
+                                                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${barW}%`, background: barCol, borderRadius: 3 }} />
+                                                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#9ca3af' }} />
+                                              </div>
+                                              <span style={{ fontSize: 8, fontFamily: 'monospace', color: barCol, width: 20 }}>{real ?? '—'}</span>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    )
+                                  })()}
+
+                                  {esResistencia && (
+                                    <div style={{ width: 22, height: 22, borderRadius: 5, background: estadoBg, color: estadoColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }} title={kmReal == null ? 'Sin datos' : kmOK ? 'En rango' : 'Fuera de rango'}>
+                                      {kmReal == null ? '—' : kmOK ? '✓' : '!'}
+                                    </div>
+                                  )}
 
                                   <button
                                     style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
