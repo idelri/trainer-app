@@ -1158,7 +1158,7 @@ export default function Planificacion({ clientePlanificacion }) {
               {/* Zoom */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                 <span style={{ fontSize: 11, color: 'var(--text3)' }}>Zoom:</span>
-                <button onClick={() => setZoomTL(z => Math.max(22, z - 11))}
+                <button onClick={() => setZoomTL(z => Math.max(11, z - 11))}
                   style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 16, lineHeight: 1, fontWeight: 700 }}>−</button>
                 <button onClick={() => setZoomTL(44)}
                   style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg2)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--mono)', minWidth: 48 }}>{Math.round(zoomTL / 44 * 100)}%</button>
