@@ -431,7 +431,8 @@ export default function Planificacion({ clientePlanificacion }) {
     alert(`Enlace copiado:\n${window.location.origin}/plan/${planificacion.token_publico}`)
   }
 
-  const esSalud = planificacion?.tipo === 'salud'
+  const esSalud       = planificacion?.tipo === 'salud'
+  const esResistencia = !esSalud && clienteData?.perfil_planificacion !== 'fuerza_salud'
 
   // ─────────────────────────────────────────────────────────────────────────
   // HELPERS DE MODAL: TÍTULOS Y FORMULARIO
