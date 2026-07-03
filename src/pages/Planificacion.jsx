@@ -183,20 +183,26 @@ export default function Planificacion({ clientePlanificacion }) {
   function getInitialForm(tipo, item) {
     switch (tipo) {
       case 'plan_nuevo':
-        return { cliente_id: clienteSeleccionado || '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '' }
+        return { cliente_id: clienteSeleccionado || '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '', tipo: 'deportiva' }
       case 'plan_editar':
         return { nombre: planificacion?.nombre || '', fecha_inicio: planificacion?.fecha_inicio || '', fecha_fin: planificacion?.fecha_fin || '', notas: planificacion?.notas || '' }
       case 'bloque':
         return {
-          nombre:       item?.nombre       || '',
-          color:        item?.color        || '#2d6a4f',
-          fecha_inicio: item?.fecha_inicio || (
+          nombre:             item?.nombre             || '',
+          color:              item?.color              || '#2d6a4f',
+          fecha_inicio:       item?.fecha_inicio       || (
             bloques.length > 0
               ? format(addWeeks(parseISO(bloques[bloques.length - 1].fecha_inicio), bloques[bloques.length - 1].semanas), 'yyyy-MM-dd')
               : planificacion?.fecha_inicio || ''
           ),
-          semanas:  item?.semanas  || 4,
-          objetivo: item?.objetivo || '',
+          semanas:            item?.semanas            || 4,
+          objetivo:           item?.objetivo           || '',
+          sesiones_min:       item?.sesiones_min       || '',
+          sesiones_max:       item?.sesiones_max       || '',
+          duracion_media_min: item?.duracion_media_min || '',
+          exigencia:          item?.exigencia          || '',
+          enfoque_prioridad:  item?.enfoque_prioridad  || {},
+          enfoque:            item?.enfoque            || [],
         }
       case 'subbloque':
         return {
@@ -278,7 +284,7 @@ export default function Planificacion({ clientePlanificacion }) {
 
         case 'plan_nuevo': {
           if (!formData.cliente_id || !formData.nombre || !formData.fecha_inicio || !formData.fecha_fin) break
-          await supabase.from('planificaciones').insert({ cliente_id: formData.cliente_id, nombre: formData.nombre, fecha_inicio: formData.fecha_inicio, fecha_fin: formData.fecha_fin, notas: formData.notas || null })
+          await supabase.from('planificaciones').insert({ cliente_id: formData.cliente_id, nombre: formData.nombre, fecha_inicio: formData.fecha_inicio, fecha_fin: formData.fecha_fin, notas: formData.notas || null, tipo: formData.tipo || 'deportiva' })
           closeModal()
           setClienteSeleccionado(formData.cliente_id)
           break
@@ -293,7 +299,17 @@ export default function Planificacion({ clientePlanificacion }) {
 
         case 'bloque': {
           if (!formData.nombre || !formData.fecha_inicio) break
-          const datos = { planificacion_id: planificacion.id, nombre: formData.nombre, color: formData.color || '#2d6a4f', fecha_inicio: formData.fecha_inicio, semanas: parseInt(formData.semanas) || 4, objetivo: formData.objetivo || null, orden: modalItem?.orden ?? bloques.length }
+          const esSaludGuardar = planificacion?.tipo === 'salud'
+          const datos = { planificacion_id: planificacion.id, nombre: formData.nombre, color: formData.color || '#2d6a4f', fecha_inicio: formData.fecha_inicio, semanas: parseInt(formData.semanas) || 4, objetivo: formData.objetivo || null, orden: modalItem?.orden ?? bloques.length,
+            ...(esSaludGuardar ? {
+              sesiones_min:       formData.sesiones_min       ? parseInt(formData.sesiones_min)       : null,
+              sesiones_max:       formData.sesiones_max       ? parseInt(formData.sesiones_max)       : null,
+              duracion_media_min: formData.duracion_media_min ? parseInt(formData.duracion_media_min) : null,
+              exigencia:          formData.exigencia          || null,
+              enfoque_prioridad:  Object.keys(formData.enfoque_prioridad || {}).length > 0 ? formData.enfoque_prioridad : null,
+              enfoque:            formData.enfoque?.length    > 0 ? formData.enfoque : null,
+            } : {}),
+          }
           if (modalItem?.id) await supabase.from('bloques').update(datos).eq('id', modalItem.id)
           else await supabase.from('bloques').insert(datos)
           closeModal(); cargarPlanificacion()
@@ -448,7 +464,8 @@ export default function Planificacion({ clientePlanificacion }) {
   }
 
   function renderFormulario() {
-    const perfil = clienteData?.perfil_planificacion
+    const perfil   = clienteData?.perfil_planificacion
+    const esSalud  = planificacion?.tipo === 'salud'
 
     switch (modalTipo) {
 
@@ -464,6 +481,26 @@ export default function Planificacion({ clientePlanificacion }) {
                   <option value="">Selecciona...</option>
                   {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
+              </div>
+            )}
+            {modalTipo === 'plan_nuevo' && (
+              <div className="form-group">
+                <label className="form-label">Tipo de planificación *</label>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  {[
+                    { val: 'deportiva', label: 'Deportiva / Competición', desc: 'Bloques · Sub-bloques · Semanas · Sesiones con zonas' },
+                    { val: 'salud',     label: 'Salud / Progresión',      desc: 'Bloques · Semanas · Sin sub-bloques' },
+                  ].map(({ val, label, desc }) => {
+                    const active = (formData.tipo || 'deportiva') === val
+                    return (
+                      <button key={val} onClick={() => fd('tipo', val)}
+                        style={{ flex: 1, padding: '12px 10px', borderRadius: 10, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', textAlign: 'left', transition: 'border 0.15s' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text)', marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.4 }}>{desc}</div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
             <div className="form-group">
@@ -518,6 +555,80 @@ export default function Planificacion({ clientePlanificacion }) {
               <label className="form-label">Objetivo</label>
               <textarea className="form-textarea" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} placeholder="Ej: Desarrollar base aeróbica" />
             </div>
+            {esSalud && (() => {
+              const prioridadB   = formData.enfoque_prioridad || {}
+              const totalPuntosB = Object.values(prioridadB).reduce((s, v) => s + v, 0)
+              return (
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Sesiones/sem mín</label>
+                      <input className="form-input" type="number" min="1" max="7" value={formData.sesiones_min || ''} onChange={e => fd('sesiones_min', e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Sesiones/sem máx</label>
+                      <input className="form-input" type="number" min="1" max="7" value={formData.sesiones_max || ''} onChange={e => fd('sesiones_max', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Duración media (min)</label>
+                    <input className="form-input" type="number" min="1" value={formData.duracion_media_min || ''} onChange={e => fd('duracion_media_min', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Exigencia</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[['Baja', '#10b981'], ['Moderada', '#f59e0b'], ['Alta', '#ef4444']].map(([op, col]) => {
+                        const active = formData.exigencia === op
+                        return (
+                          <button key={op} onClick={() => fd('exigencia', active ? '' : op)}
+                            style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${active ? col : 'var(--border)'}`, background: active ? col + '20' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? col : 'var(--text2)' }}>
+                            {op}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Enfoque / Contenidos</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                      {ENFOQUES.map(op => {
+                        const puntos = prioridadB[op] || 0
+                        const pct    = totalPuntosB > 0 ? Math.round((puntos / totalPuntosB) * 100) : 0
+                        return (
+                          <div key={op} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: puntos > 0 ? 'var(--text)' : 'var(--text3)', fontWeight: puntos > 0 ? 500 : 400, minWidth: 170, flexShrink: 0 }}>{op}</span>
+                            <div style={{ display: 'flex', gap: 3 }}>
+                              {[0, 1, 2, 3, 4, 5].map(n => (
+                                <button key={n} onClick={() => {
+                                  const np = { ...(formData.enfoque_prioridad || {}), [op]: n }
+                                  if (n === 0) delete np[op]
+                                  setFormData(f => ({ ...f, enfoque_prioridad: np, enfoque: Object.entries(np).filter(([, v]) => v > 0).map(([k]) => k) }))
+                                }} style={{ width: 24, height: 24, borderRadius: 6, border: `1.5px solid ${puntos >= n && n > 0 ? 'var(--accent)' : 'var(--border)'}`, background: puntos >= n && n > 0 ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 10, fontWeight: 600, color: puntos >= n && n > 0 ? 'var(--accent)' : 'var(--text3)' }}>
+                                  {n === 0 ? '✕' : n}
+                                </button>
+                              ))}
+                            </div>
+                            {puntos > 0 && (
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ flex: 1, height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 2 }} />
+                                </div>
+                                <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 600, minWidth: 30 }}>{pct}%</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {totalPuntosB > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
+                          {Object.entries(prioridadB).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${Math.round((v / totalPuntosB) * 100)}%`).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
                 <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar bloque</button>
@@ -715,7 +826,7 @@ export default function Planificacion({ clientePlanificacion }) {
               <textarea className="form-textarea" value={formData.nota_cliente || ''} onChange={e => fd('nota_cliente', e.target.value)} placeholder="Mensaje que verá el cliente en su vista semanal..." style={{ minHeight: 70 }} />
             </div>
 
-            {perfil !== 'fuerza_salud' && (
+            {!esSalud && perfil !== 'fuerza_salud' && (
               <>
                 <div className="form-row">
                   <div className="form-group">
@@ -1139,7 +1250,7 @@ export default function Planificacion({ clientePlanificacion }) {
             <Seguimiento clienteId={clienteSeleccionado} planificacionId={planificacion?.id} bloques={bloques} semanas={semanas} subbloques={subbloques} clienteData={clienteData} />
           )}
           {vista === 'lista' && (
-            <VistaLista bloques={bloques} subbloques={subbloques} semanas={semanas} sesiones={sesiones} clienteData={clienteData} openModal={openModal} setVista={setVista} eliminarItem={eliminarItem} cargarPlanificacion={cargarPlanificacion} />
+            <VistaLista bloques={bloques} subbloques={subbloques} semanas={semanas} sesiones={sesiones} clienteData={clienteData} esSalud={esSalud} openModal={openModal} setVista={setVista} eliminarItem={eliminarItem} cargarPlanificacion={cargarPlanificacion} />
           )}
 
           {/* ══ TIMELINE ══════════════════════════════════════════════════ */}
@@ -1219,7 +1330,7 @@ export default function Planificacion({ clientePlanificacion }) {
                   )}
 
                   {/* FILA 2 — SUB BLOQUES */}
-                  {filtros.sub && (
+                  {filtros.sub && !esSalud && (
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Sub bloques</div>
                       <div style={{ position: 'relative', height: 30 }}>
@@ -1511,7 +1622,7 @@ export default function Planificacion({ clientePlanificacion }) {
 
 // ─── VISTA LISTA ─────────────────────────────────────────────────────────────
 
-function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openModal, setVista, eliminarItem, cargarPlanificacion }) {
+function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSalud, openModal, setVista, eliminarItem, cargarPlanificacion }) {
   const [editMode,         setEditMode]         = useState(false)
   const [bloqueAbierto,    setBloqueAbierto]    = useState(new Set())
   const [subBloqueAbierto, setSubBloqueAbierto] = useState(new Set())
@@ -1542,7 +1653,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
     cargarPlanificacion()
   }
 
-  const esResistencia = clienteData?.perfil_planificacion !== 'fuerza_salud'
+  const esResistencia = !esSalud && clienteData?.perfil_planificacion !== 'fuerza_salud'
 
   if (bloques.length === 0) {
     return (
@@ -1598,7 +1709,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
 
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <button className="btn btn-ghost btn-sm" onClick={() => openModal('bloque', b)}>Editar</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => openModal('subbloque', { bloque_id: b.id, semana_inicio: 1, semana_fin: 1 })}>+ Sub bloque</button>
+                {!esSalud && <button className="btn btn-ghost btn-sm" onClick={() => openModal('subbloque', { bloque_id: b.id, semana_inicio: 1, semana_fin: 1 })}>+ Sub bloque</button>}
                 <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={() => eliminarItem('bloque', b.id)}><X size={13} /></button>
               </div>
             </div>
@@ -1607,13 +1718,78 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
             {bAb && (
               <div style={{ borderTop: '0.5px solid var(--border)' }}>
 
-                {subsDelBloque.length === 0 && (
+                {/* SALUD: semanas directamente bajo el bloque */}
+                {esSalud && (() => {
+                  const allNums = Array.from({ length: b.semanas }, (_, i) => i + 1)
+                  return (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '44px 96px 1fr 58px 36px', padding: '6px 16px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                        {['Sem', 'Semana', 'Objetivo', 'Carga', ''].map((h, i) => (
+                          <span key={i} style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
+                        ))}
+                      </div>
+                      {allNums.map(numSem => {
+                        const semKey  = `${b.id}-${numSem}`
+                        const semData = semsDelBloque.find(s => s.numero === numSem) || null
+                        const fIniSem = calcFechaInicioSemana(b, numSem)
+                        const fFinSem = calcFechaFinSemana(b, numSem)
+                        const fechaStr = `${format(fIniSem, 'd', { locale: es })}–${format(addDays(fIniSem, 6), 'd MMM', { locale: es })}`
+                        const carga   = semData?.carga ? CARGAS[semData.carga] : CARGAS.media
+                        const hoy     = new Date()
+                        const esActual = hoy >= fIniSem && hoy < fFinSem
+                        const semAb   = semanaAbierta.has(semKey)
+                        const sesionesSem = sesiones.filter(s => {
+                          if (!s.fecha) return false
+                          const f = parseISO(s.fecha)
+                          return f >= fIniSem && f < fFinSem
+                        })
+                        return (
+                          <div key={semKey}>
+                            <div onClick={() => toggleSemana(semKey)}
+                              style={{ display: 'grid', gridTemplateColumns: '44px 96px 1fr 58px 36px', padding: '8px 16px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                              onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
+                              onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--mono)', color: esActual ? 'var(--accent)' : 'var(--text2)' }}>S{numSem}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaStr}</span>
+                              {!editMode ? (
+                                <span style={{ fontSize: 12, color: semData?.objetivo ? 'var(--text)' : 'var(--text3)', fontStyle: semData?.objetivo ? 'normal' : 'italic' }}>{semData?.objetivo || 'Sin objetivo'}</span>
+                              ) : (
+                                <input
+                                  value={getInlineValue('semana', semData?.id || semKey, 'objetivo', semData?.objetivo || '')}
+                                  onChange={e => { e.stopPropagation(); handleInlineChange('semana', semData?.id || semKey, 'objetivo', e.target.value) }}
+                                  onBlur={async e => { e.stopPropagation(); const val = e.target.value; if (semData?.id) { await supabase.from('semanas').update({ objetivo: val || null }).eq('id', semData.id) } else { await supabase.from('semanas').insert({ bloque_id: b.id, numero: numSem, objetivo: val || null, carga: 'media' }) }; cargarPlanificacion() }}
+                                  onClick={e => e.stopPropagation()}
+                                  placeholder="Añadir objetivo..."
+                                  style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', width: '100%' }}
+                                />
+                              )}
+                              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: carga.color + '20', color: carga.color, width: 'fit-content' }}>{carga.label}</span>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 6px' }} onClick={e => { e.stopPropagation(); openModal('semana', { bloque_id: b.id, semanaData: semData, numeroSemana: numSem }) }}><Pencil size={11} /></button>
+                            </div>
+                            {semAb && sesionesSem.length > 0 && (
+                              <div style={{ padding: '8px 16px 8px 24px', background: 'var(--bg2)', borderBottom: '0.5px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {sesionesSem.map(s => (
+                                  <button key={s.id} className="btn btn-ghost btn-sm" onClick={() => { openModal('sesion', s); setVista('calendario') }}
+                                    style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
+                                    {s.titulo || 'Sesión'}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </>
+                  )
+                })()}
+
+                {!esSalud && subsDelBloque.length === 0 && (
                   <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
                     Sin sub bloques — añade el primero con "+ Sub bloque".
                   </div>
                 )}
 
-                {subsDelBloque.map((sub, subidx) => {
+                {!esSalud && subsDelBloque.map((sub, subidx) => {
                   const sAb     = subBloqueAbierto.has(sub.id)
                   const fIniSub = calcFechaInicioSemana(b, sub.semana_inicio)
                   const fFinSub = calcFechaFinSemana(b, sub.semana_fin)
