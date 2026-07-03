@@ -1140,19 +1140,21 @@ export default function Planificacion({ clientePlanificacion }) {
           {/* ══ TIMELINE ══════════════════════════════════════════════════ */}
           {vista === 'timeline' && totalSemanas > 0 && (
             <div>
-              {/* Pills de filtro */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-                {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Control']].map(([key, label]) => (
-                  <button key={key} onClick={() => setFiltros(f => ({ ...f, [key]: !f[key] }))}
-                    style={{ padding: '4px 13px', borderRadius: 20, border: `1.5px solid ${filtros[key] ? 'var(--accent)' : 'var(--border)'}`, background: filtros[key] ? 'var(--accent-light)' : 'var(--bg)', color: filtros[key] ? 'var(--accent)' : 'var(--text3)', fontSize: 12, fontWeight: filtros[key] ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
-                    {label}
-                  </button>
-                ))}
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {/* Pills de filtro + Zoom */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Control']].map(([key, label]) => (
+                    <button key={key} onClick={() => setFiltros(f => ({ ...f, [key]: !f[key] }))}
+                      style={{ padding: '4px 13px', borderRadius: 20, border: `1.5px solid ${filtros[key] ? 'var(--accent)' : 'var(--border)'}`, background: filtros[key] ? 'var(--accent-light)' : 'var(--bg)', color: filtros[key] ? 'var(--accent)' : 'var(--text3)', fontSize: 12, fontWeight: filtros[key] ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Zoom</span>
-                  <button onClick={() => setZoomTL(z => Math.max(22, z - 11))} title="Alejar" style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>−</button>
-                  <button onClick={() => setZoomTL(44)} title="Restablecer" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: zoomTL === 44 ? 'var(--bg2)' : 'var(--bg)', cursor: 'pointer', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{Math.round(zoomTL / 44 * 100)}%</button>
-                  <button onClick={() => setZoomTL(z => Math.min(110, z + 11))} title="Acercar" style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>+</button>
+                  <button onClick={() => setZoomTL(z => Math.max(22, z - 11))} title="Alejar" style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>−</button>
+                  <button onClick={() => setZoomTL(44)} title="Restablecer" style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: zoomTL === 44 ? 'var(--bg2)' : 'var(--bg)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', minWidth: 40 }}>{Math.round(zoomTL / 44 * 100)}%</button>
+                  <button onClick={() => setZoomTL(z => Math.min(110, z + 11))} title="Acercar" style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>+</button>
                 </div>
               </div>
 
