@@ -185,7 +185,7 @@ export default function Planificacion({ clientePlanificacion }) {
       case 'plan_nuevo':
         return { cliente_id: clienteSeleccionado || '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '', tipo: 'deportiva' }
       case 'plan_editar':
-        return { nombre: planificacion?.nombre || '', fecha_inicio: planificacion?.fecha_inicio || '', fecha_fin: planificacion?.fecha_fin || '', notas: planificacion?.notas || '' }
+        return { nombre: planificacion?.nombre || '', fecha_inicio: planificacion?.fecha_inicio || '', fecha_fin: planificacion?.fecha_fin || '', notas: planificacion?.notas || '', tipo: planificacion?.tipo || 'deportiva' }
       case 'bloque':
         return {
           nombre:             item?.nombre             || '',
@@ -292,7 +292,7 @@ export default function Planificacion({ clientePlanificacion }) {
 
         case 'plan_editar': {
           if (!formData.nombre || !formData.fecha_inicio || !formData.fecha_fin) break
-          await supabase.from('planificaciones').update({ nombre: formData.nombre, fecha_inicio: formData.fecha_inicio, fecha_fin: formData.fecha_fin, notas: formData.notas || null }).eq('id', planificacion.id)
+          await supabase.from('planificaciones').update({ nombre: formData.nombre, fecha_inicio: formData.fecha_inicio, fecha_fin: formData.fecha_fin, notas: formData.notas || null, tipo: formData.tipo || 'deportiva' }).eq('id', planificacion.id)
           closeModal(); cargarPlanificacion()
           break
         }
@@ -484,9 +484,9 @@ export default function Planificacion({ clientePlanificacion }) {
                 </select>
               </div>
             )}
-            {modalTipo === 'plan_nuevo' && (
+            {(modalTipo === 'plan_nuevo' || modalTipo === 'plan_editar') && (
               <div className="form-group">
-                <label className="form-label">Tipo de planificación *</label>
+                <label className="form-label">Tipo de planificación</label>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   {[
                     { val: 'deportiva', label: 'Deportiva / Competición', desc: 'Bloques · Sub-bloques · Semanas · Sesiones con zonas' },
