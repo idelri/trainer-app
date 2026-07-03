@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { format, addWeeks, addDays, parseISO, differenceInWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers, Pencil, Lock } from 'lucide-react'
-import SesionesPlan from './SesionesPlan'
+import CalendarioSesiones from '../components/CalendarioSesiones'
 import Seguimiento from './Seguimiento'
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -64,6 +64,8 @@ export default function Planificacion({ clientePlanificacion }) {
   const [sesiones,            setSesiones]            = useState([])
   const [competiciones,       setCompeticiones]       = useState([])
   const [controles,           setControles]           = useState([])
+  const [notas,               setNotas]               = useState([])
+  const [clipboardSesion,     setClipboardSesion]     = useState(null)
 
   // ── UI ──
   const [vista,      setVista]      = useState('timeline')
@@ -144,6 +146,8 @@ export default function Planificacion({ clientePlanificacion }) {
     setCompeticiones(comps || [])
     const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setControles(ctrls || [])
+    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
+    setNotas(nts || [])
     setLoading(false)
   }
 
@@ -1045,7 +1049,49 @@ export default function Planificacion({ clientePlanificacion }) {
       {!loading && planificacion && (
         <>
           {vista === 'calendario' && (
-            <SesionesPlan clienteId={clienteSeleccionado} bloquesPlan={bloques} subbloquesPlan={subbloques} clientes={clientes} />
+            <div>
+              {sesiones.filter(s => !s.fecha).length > 0 && (
+                <div style={{ marginBottom: 20, padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 10 }}>Sesiones sin fecha asignada</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {sesiones.filter(s => !s.fecha).map(s => (
+                      <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'pointer' }}
+                        onClick={() => openModal('sesion', s)}>
+                        💪 {s.titulo}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <CalendarioSesiones
+                sesiones={sesiones}
+                competiciones={competiciones}
+                controles={controles}
+                notas={notas}
+                bloquesPlan={bloques}
+                subbloquesPlan={subbloques}
+                onAbrirSesion={s => openModal('sesion', s)}
+                onNuevaSesion={fecha => openModal('sesion', { fecha })}
+                onNuevaCompeticion={fecha => openModal('comp', { fecha })}
+                onNuevaValoracion={fecha => openModal('control', { fecha })}
+                onNuevaNota={fecha => openModal('nota', { fecha })}
+                onEliminar={item => eliminarItem(item._tipo === 'sesion' ? 'sesion' : item._tipo === 'competicion' ? 'comp' : item._tipo === 'control' ? 'control' : 'nota', item.id)}
+                onMoverSesion={async (item, fechaDestino) => {
+                  const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
+                  const campo = item._tipo === 'nota' ? 'fecha' : 'fecha'
+                  await supabase.from(tabla).update({ [campo]: fechaDestino }).eq('id', item.id)
+                  cargarPlanificacion()
+                }}
+                clipboard={clipboardSesion}
+                onCopiar={setClipboardSesion}
+                onPegar={async (item, fecha) => {
+                  const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
+                  const { id, created_at, token_publico, ...resto } = item
+                  await supabase.from(tabla).insert({ ...resto, cliente_id: clienteSeleccionado, fecha })
+                  cargarPlanificacion()
+                }}
+              />
+            </div>
           )}
           {vista === 'seguimiento' && (
             <Seguimiento clienteId={clienteSeleccionado} planificacionId={planificacion?.id} bloques={bloques} semanas={semanas} />
