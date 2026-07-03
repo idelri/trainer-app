@@ -1079,41 +1079,44 @@ export default function Planificacion({ clientePlanificacion }) {
         const b = modalItem
         if (!b) return null
         const subs = (subbloques[b.id] || []).slice().sort((a, x) => a.semana_inicio - x.semana_inicio)
-        const fIni = format(parseISO(b.fecha_inicio), "d 'de' MMMM yyyy", { locale: es })
-        const fFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "d 'de' MMMM yyyy", { locale: es })
+        const fIni = format(parseISO(b.fecha_inicio), "d MMM yyyy", { locale: es })
+        const fFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "d MMM yyyy", { locale: es })
         const COLOR = b.color || '#2d6a4f'
-        const DL = ({ label, children }) => children ? (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{children}</div>
+
+        const Campo = ({ label, valor }) => valor ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+            <span style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>{label}</span>
+            <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{valor}</span>
           </div>
         ) : null
+
         return (
-          <div style={{ padding: '0 20px 8px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {/* Info general del bloque */}
-            <div style={{ padding: '12px 16px', background: COLOR + '12', borderRadius: 10, marginBottom: 16, borderLeft: `3px solid ${COLOR}` }}>
-              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: 4 }}>{fIni} – {fFin} · {b.semanas} semanas</div>
-              {b.objetivo && <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{b.objetivo}</div>}
+          <div style={{ padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+            {/* ── BLOQUE ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: COLOR + '15', borderRadius: 10, marginBottom: 16 }}>
+              <div style={{ width: 4, height: 40, borderRadius: 2, background: COLOR, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 2 }}>{b.nombre}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fIni} – {fFin} · {b.semanas} semanas</div>
+              </div>
             </div>
 
-            {/* Campos salud en bloque */}
-            {esSalud && (b.sesiones_min || b.sesiones_max || b.duracion_media_min || b.exigencia || b.enfoque_prioridad) && (
-              <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(b.sesiones_min || b.sesiones_max) && (
-                  <DL label="Frecuencia semanal">{b.sesiones_min && b.sesiones_max ? `${b.sesiones_min}–${b.sesiones_max} sesiones/sem` : `${b.sesiones_min || b.sesiones_max} sesiones/sem`}</DL>
-                )}
-                {b.duracion_media_min && <DL label="Duración media">{b.duracion_media_min} min</DL>}
-                {b.exigencia && <DL label="Exigencia">{b.exigencia}</DL>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+              <Campo label="Objetivo" valor={b.objetivo} />
+              {esSalud && <>
+                <Campo label="Frecuencia semanal" valor={(b.sesiones_min || b.sesiones_max) ? `${b.sesiones_min ?? '?'}–${b.sesiones_max ?? '?'} sesiones/sem` : null} />
+                <Campo label="Duración media" valor={b.duracion_media_min ? `${b.duracion_media_min} min` : null} />
+                <Campo label="Exigencia" valor={b.exigencia} />
                 {b.enfoque_prioridad && Object.keys(b.enfoque_prioridad).length > 0 && (() => {
                   const total = Object.values(b.enfoque_prioridad).reduce((s, v) => s + v, 0)
-                  const items = Object.entries(b.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1])
                   return (
-                    <div>
+                    <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Enfoque / contenidos</div>
-                      {items.map(([k, v]) => {
+                      {Object.entries(b.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
                         const pct = Math.round(v / total * 100)
                         return (
-                          <div key={k} style={{ marginBottom: 6 }}>
+                          <div key={k} style={{ marginBottom: 7 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                               <span style={{ fontSize: 12, color: 'var(--text)' }}>{k}</span>
                               <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: COLOR, fontWeight: 600 }}>{pct}%</span>
@@ -1127,57 +1130,100 @@ export default function Planificacion({ clientePlanificacion }) {
                     </div>
                   )
                 })()}
-              </div>
-            )}
+              </>}
+            </div>
 
-            {/* Sub-bloques */}
+            {/* ── SUB-BLOQUES ── */}
             {!esSalud && subs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {subs.map((sub, si) => {
-                  const fIS = format(calcFechaInicioSemana(b, sub.semana_inicio), 'd MMM', { locale: es })
-                  const fFS = format(calcFechaFinSemana(b, sub.semana_fin), 'd MMM yyyy', { locale: es })
-                  const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
-                  return (
-                    <div key={sub.id} style={{ padding: '12px 14px', background: 'var(--bg2)', borderRadius: 8, borderLeft: `2px solid ${COLOR}88` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{si + 1} · {sub.nombre}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fIS} – {fFS}</span>
-                      </div>
-                      {sub.notas && <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 8 }}>{sub.notas}</div>}
-                      {esResistencia && (sub.km_min || sub.km_max || sub.zona1_2 || sub.zona3_4 || sub.zona5) && (
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                          {(sub.km_min || sub.km_max) && <div style={{ fontSize: 11, color: 'var(--text3)' }}>Volumen: <strong style={{ color: 'var(--text)' }}>{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</strong></div>}
-                          {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
-                            <div style={{ fontSize: 11, color: 'var(--text3)', display: 'flex', gap: 8 }}>
-                              <span>Z1-Z2 <strong style={{ color: '#10b981' }}>{sub.zona1_2}%</strong></span>
-                              <span>Z3-Z4 <strong style={{ color: '#f59e0b' }}>{sub.zona3_4}%</strong></span>
-                              <span>Z5 <strong style={{ color: '#ef4444' }}>{sub.zona5}%</strong></span>
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ height: 1, flex: 1, background: 'var(--border)' }} />
+                  <span style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Sub-bloques ({subs.length})</span>
+                  <div style={{ height: 1, flex: 1, background: 'var(--border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {subs.map((sub, si) => {
+                    const fIS = format(calcFechaInicioSemana(b, sub.semana_inicio), 'd MMM', { locale: es })
+                    const fFS = format(calcFechaFinSemana(b, sub.semana_fin), 'd MMM yyyy', { locale: es })
+                    const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
+                    return (
+                      <div key={sub.id} style={{ border: '0.5px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                        {/* Cabecera sub-bloque */}
+                        <div style={{ padding: '8px 12px', background: COLOR + '10', borderBottom: '0.5px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 3, height: 28, borderRadius: 2, background: COLOR + 'aa', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{si + 1} · {sub.nombre}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fIS} – {fFS}</div>
+                          </div>
+                        </div>
+                        {/* Contenido sub-bloque */}
+                        <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {sub.notas && (
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 3 }}>Objetivo / contenidos</div>
+                              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{sub.notas}</div>
+                            </div>
+                          )}
+                          {esResistencia && (sub.km_min || sub.km_max) && (
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 3 }}>Volumen</div>
+                              <div style={{ fontSize: 12, color: 'var(--text)' }}>{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</div>
+                            </div>
+                          )}
+                          {esResistencia && (sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                            <div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 6 }}>Zonas</div>
+                              <div style={{ display: 'flex', gap: 10 }}>
+                                {[{ l: 'Z1-Z2', v: sub.zona1_2, c: '#10b981' }, { l: 'Z3-Z4', v: sub.zona3_4, c: '#f59e0b' }, { l: 'Z5+', v: sub.zona5, c: '#ef4444' }].map(z => (
+                                  <div key={z.l} style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                      <span style={{ fontSize: 11, fontWeight: 600, color: z.c }}>{z.l}</span>
+                                      <span style={{ fontSize: 11, fontFamily: 'var(--mono)' }}>{z.v || 0}%</span>
+                                    </div>
+                                    <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${z.v || 0}%`, background: z.c, borderRadius: 2 }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {!esResistencia && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia) && (
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                              {(sub.sesiones_min || sub.sesiones_max) && (
+                                <div>
+                                  <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 2 }}>Sesiones</div>
+                                  <div style={{ fontSize: 12, color: 'var(--text)' }}>{sub.sesiones_min}–{sub.sesiones_max}/sem</div>
+                                </div>
+                              )}
+                              {sub.duracion_media_min && (
+                                <div>
+                                  <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 2 }}>Duración</div>
+                                  <div style={{ fontSize: 12, color: 'var(--text)' }}>{sub.duracion_media_min} min</div>
+                                </div>
+                              )}
+                              {sub.exigencia && (
+                                <div>
+                                  <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 2 }}>Exigencia</div>
+                                  <div style={{ fontSize: 12, color: 'var(--text)' }}>{sub.exigencia}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {!esResistencia && totalPrior > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                              {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
+                                const pct = Math.round(v / totalPrior * 100)
+                                return <span key={k} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 8, background: COLOR + '20', color: COLOR, fontWeight: 500 }}>{k} {pct}%</span>
+                              })}
                             </div>
                           )}
                         </div>
-                      )}
-                      {!esResistencia && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia) && (
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, color: 'var(--text3)' }}>
-                          {(sub.sesiones_min || sub.sesiones_max) && <span>Sesiones: <strong style={{ color: 'var(--text)' }}>{sub.sesiones_min}–{sub.sesiones_max}/sem</strong></span>}
-                          {sub.duracion_media_min && <span>Duración: <strong style={{ color: 'var(--text)' }}>{sub.duracion_media_min} min</strong></span>}
-                          {sub.exigencia && <span>Exigencia: <strong style={{ color: 'var(--text)' }}>{sub.exigencia}</strong></span>}
-                        </div>
-                      )}
-                      {!esResistencia && sub.enfoque_prioridad && Object.keys(sub.enfoque_prioridad).length > 0 && (() => {
-                        const total = Object.values(sub.enfoque_prioridad).reduce((s, v) => s + v, 0)
-                        return (
-                          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
-                              const pct = Math.round(v / total * 100)
-                              return <span key={k} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 8, background: COLOR + '20', color: COLOR, fontWeight: 500 }}>{k} {pct}%</span>
-                            })}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                  )
-                })}
-              </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
             {!esSalud && subs.length === 0 && <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin sub-bloques añadidos.</div>}
           </div>
@@ -1190,74 +1236,84 @@ export default function Planificacion({ clientePlanificacion }) {
         if (!sub) return null
         const b = bloques.find(x => x.id === sub.bloque_id)
         const COLOR = b?.color || '#2d6a4f'
-        const fIS = b ? format(calcFechaInicioSemana(b, sub.semana_inicio), "d 'de' MMMM yyyy", { locale: es }) : ''
-        const fFS = b ? format(calcFechaFinSemana(b, sub.semana_fin), "d 'de' MMMM yyyy", { locale: es }) : ''
+        const fIS = b ? format(calcFechaInicioSemana(b, sub.semana_inicio), "d MMM yyyy", { locale: es }) : ''
+        const fFS = b ? format(calcFechaFinSemana(b, sub.semana_fin), "d MMM yyyy", { locale: es }) : ''
         const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
+
+        const F = ({ label, children }) => (
+          <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{children}</div>
+          </div>
+        )
         return (
-          <div style={{ padding: '0 20px 8px' }}>
-            <div style={{ padding: '12px 16px', background: COLOR + '12', borderRadius: 10, marginBottom: 16, borderLeft: `3px solid ${COLOR}` }}>
-              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: sub.notas ? 4 : 0 }}>{fIS} – {fFS}</div>
-              {sub.notas && <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{sub.notas}</div>}
+          <div style={{ padding: '0 20px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Cabecera */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: COLOR + '15', borderRadius: 10 }}>
+              <div style={{ width: 3, height: 36, borderRadius: 2, background: COLOR, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 2 }}>{sub.nombre}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fIS} – {fFS}</div>
+              </div>
             </div>
-            {esResistencia && (sub.km_min || sub.km_max || sub.zona1_2 || sub.zona3_4 || sub.zona5) && (
-              <div style={{ marginBottom: 16 }}>
-                {(sub.km_min || sub.km_max) && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Volumen objetivo</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</div>
-                  </div>
-                )}
-                {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
-                  <div>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Distribución de zonas</div>
-                    {[{ key: 'zona1_2', label: 'Z1-Z2', color: '#10b981' }, { key: 'zona3_4', label: 'Z3-Z4', color: '#f59e0b' }, { key: 'zona5', label: 'Z5+', color: '#ef4444' }].map(z => (
-                      <div key={z.key} style={{ marginBottom: 6 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: z.color }}>{z.label}</span>
-                          <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{sub[z.key] || 0}%</span>
-                        </div>
-                        <div style={{ height: 5, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${sub[z.key] || 0}%`, background: z.color, borderRadius: 3 }} />
-                        </div>
+
+            {/* Objetivo / contenidos */}
+            {sub.notas && <F label="Objetivo / contenidos">{sub.notas}</F>}
+
+            {/* Resistencia: volumen */}
+            {esResistencia && (sub.km_min || sub.km_max) && (
+              <F label="Volumen objetivo">{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</F>
+            )}
+
+            {/* Resistencia: zonas */}
+            {esResistencia && (sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+              <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 10 }}>Distribución de zonas</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[{ key: 'zona1_2', label: 'Z1-Z2', color: '#10b981' }, { key: 'zona3_4', label: 'Z3-Z4', color: '#f59e0b' }, { key: 'zona5', label: 'Z5+', color: '#ef4444' }].map(z => (
+                    <div key={z.key}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: z.color }}>{z.label}</span>
+                        <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{sub[z.key] || 0}%</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${sub[z.key] || 0}%`, background: z.color, borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            {!esResistencia && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {(sub.sesiones_min || sub.sesiones_max) && (
-                  <div>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Frecuencia semanal</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.sesiones_min}–{sub.sesiones_max} sesiones/sem{sub.duracion_media_min ? ` · ${sub.duracion_media_min} min de media` : ''}</div>
-                  </div>
-                )}
-                {sub.exigencia && (
-                  <div>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Exigencia</div>
-                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.exigencia}</div>
-                  </div>
-                )}
-                {totalPrior > 0 && (
-                  <div>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Enfoque / contenidos</div>
-                    {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
-                      const pct = Math.round(v / totalPrior * 100)
-                      return (
-                        <div key={k} style={{ marginBottom: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text)' }}>{k}</span>
-                            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: COLOR, fontWeight: 600 }}>{pct}%</span>
-                          </div>
-                          <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: COLOR, borderRadius: 2 }} />
-                          </div>
+
+            {/* Fuerza/salud */}
+            {!esResistencia && (sub.sesiones_min || sub.sesiones_max) && (
+              <F label="Frecuencia semanal">{sub.sesiones_min ?? '?'}–{sub.sesiones_max ?? '?'} sesiones/sem</F>
+            )}
+            {!esResistencia && sub.duracion_media_min && (
+              <F label="Duración media">{sub.duracion_media_min} min</F>
+            )}
+            {!esResistencia && sub.exigencia && (
+              <F label="Exigencia">{sub.exigencia}</F>
+            )}
+            {!esResistencia && totalPrior > 0 && (
+              <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 10 }}>Enfoque / contenidos</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
+                    const pct = Math.round(v / totalPrior * 100)
+                    return (
+                      <div key={k}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text)' }}>{k}</span>
+                          <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: COLOR, fontWeight: 600 }}>{pct}%</span>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: COLOR, borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
