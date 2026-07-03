@@ -1079,6 +1079,16 @@ export default function Planificacion({ clientePlanificacion }) {
         const b = modalItem
         if (!b) return null
         const subs = (subbloques[b.id] || []).slice().sort((a, x) => a.semana_inicio - x.semana_inicio)
+        const TextoLista = ({ texto }) => {
+          if (!texto) return null
+          const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+          if (lineas.length <= 1) return <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{texto}</span>
+          return (
+            <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {lineas.map((l, i) => <li key={i} style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>{l}</li>)}
+            </ul>
+          )
+        }
         const fIni = format(parseISO(b.fecha_inicio), "d MMM yyyy", { locale: es })
         const fFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "d MMM yyyy", { locale: es })
         const COLOR = b.color || '#2d6a4f'
@@ -1103,7 +1113,12 @@ export default function Planificacion({ clientePlanificacion }) {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-              <Campo label="Objetivo" valor={b.objetivo} />
+              {b.objetivo && (
+                <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 6 }}>Objetivo</div>
+                  <TextoLista texto={b.objetivo} />
+                </div>
+              )}
               {esSalud && <>
                 <Campo label="Frecuencia semanal" valor={(b.sesiones_min || b.sesiones_max) ? `${b.sesiones_min ?? '?'}–${b.sesiones_max ?? '?'} sesiones/sem` : null} />
                 <Campo label="Duración media" valor={b.duracion_media_min ? `${b.duracion_media_min} min` : null} />
@@ -1160,8 +1175,8 @@ export default function Planificacion({ clientePlanificacion }) {
                         <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                           {sub.notas && (
                             <div>
-                              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 3 }}>Objetivo / contenidos</div>
-                              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>{sub.notas}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 6 }}>Objetivo / contenidos</div>
+                              <TextoLista texto={sub.notas} />
                             </div>
                           )}
                           {esResistencia && (sub.km_min || sub.km_max) && (
@@ -1239,6 +1254,16 @@ export default function Planificacion({ clientePlanificacion }) {
         const fIS = b ? format(calcFechaInicioSemana(b, sub.semana_inicio), "d MMM yyyy", { locale: es }) : ''
         const fFS = b ? format(calcFechaFinSemana(b, sub.semana_fin), "d MMM yyyy", { locale: es }) : ''
         const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
+        const TextoListaSub = ({ texto }) => {
+          if (!texto) return null
+          const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+          if (lineas.length <= 1) return <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{texto}</span>
+          return (
+            <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {lineas.map((l, i) => <li key={i} style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>{l}</li>)}
+            </ul>
+          )
+        }
 
         const F = ({ label, children }) => (
           <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
@@ -1258,7 +1283,12 @@ export default function Planificacion({ clientePlanificacion }) {
             </div>
 
             {/* Objetivo / contenidos */}
-            {sub.notas && <F label="Objetivo / contenidos">{sub.notas}</F>}
+            {sub.notas && (
+              <div style={{ paddingBottom: 12, borderBottom: '0.5px solid var(--border)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 6 }}>Objetivo / contenidos</div>
+                <TextoListaSub texto={sub.notas} />
+              </div>
+            )}
 
             {/* Resistencia: volumen */}
             {esResistencia && (sub.km_min || sub.km_max) && (
@@ -2177,14 +2207,12 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                               return f >= fIniSem && f < fFinSem
                             })
 
-                            const kmReal = semData?.km_real ?? null
-                            const kmMin  = sub?.km_min ?? null
-                            const kmMax  = sub?.km_max ?? null
-                            const kmMed  = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
-                            const kmDiff2  = kmMed != null && kmReal != null ? Math.abs(kmReal - kmMed) : null
-                            const kmOK     = kmDiff2 != null && kmDiff2 <= 8
-                            const kmColor  = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#16a34a' : kmDiff2 <= 12 ? '#ca8a04' : '#dc2626'
-                            const estadoBg = kmReal == null ? 'var(--bg2)' : kmDiff2 == null ? 'var(--bg2)' : kmDiff2 <= 8 ? '#bbf7d0' : kmDiff2 <= 12 ? '#fef9c3' : '#fca5a5'
+                            const kmReal     = semData?.km_real     ?? null
+                            const kmObjetivo = semData?.km_objetivo  ?? null
+                            const kmDiff2    = kmObjetivo != null && kmReal != null ? Math.abs(kmReal - kmObjetivo) : null
+                            const kmOK       = kmDiff2 != null && kmDiff2 <= 8
+                            const kmColor    = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#16a34a' : kmDiff2 <= 12 ? '#ca8a04' : '#dc2626'
+                            const estadoBg   = kmReal == null ? 'var(--bg2)' : kmDiff2 == null ? 'var(--bg2)' : kmDiff2 <= 8 ? '#bbf7d0' : kmDiff2 <= 12 ? '#fef9c3' : '#fca5a5'
                             const estadoColor = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#166534' : kmDiff2 <= 12 ? '#713f12' : '#7f1d1d'
 
                             return (
@@ -2248,7 +2276,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                         <span style={{ fontSize: 11, fontWeight: 600, color: kmColor, fontFamily: 'var(--mono)' }}>
                                           {kmReal != null ? `${kmReal} km` : '—'}
                                         </span>
-                                        {kmMin != null && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>obj {kmMin}{kmMax && kmMax !== kmMin ? `–${kmMax}` : ''}</span>}
+                                        {kmObjetivo != null && <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>obj {kmObjetivo}</span>}
                                       </div>
                                     )
                                   )}
