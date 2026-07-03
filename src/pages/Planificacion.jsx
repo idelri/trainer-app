@@ -393,7 +393,16 @@ export default function Planificacion({ clientePlanificacion }) {
       plan_editar: 'Editar planificación',
       bloque:      esEditar ? 'Editar bloque'              : 'Nuevo bloque',
       subbloque:   esEditar ? 'Editar sub bloque'          : 'Nuevo sub bloque',
-      semana:      `Semana ${modalItem?.numero || ''}`,
+      semana:      (() => {
+        const b   = modalItem?.bloque
+        const num = modalItem?.numero
+        if (b && num) {
+          const fi = format(calcFechaInicioSemana(b, num), 'dd MMM', { locale: es })
+          const ff = format(calcFechaFinSemana(b, num), 'dd MMM', { locale: es })
+          return `Semana ${num} · ${fi} – ${ff}`
+        }
+        return `Semana ${num || ''}`
+      })(),
       sesion:      esEditar ? 'Editar sesión'              : 'Nueva sesión',
       comp:        esEditar ? 'Editar competición'         : 'Nueva competición',
       control:     esEditar ? 'Editar control / valoración' : 'Nuevo control / valoración',
@@ -506,10 +515,22 @@ export default function Planificacion({ clientePlanificacion }) {
               <div className="form-group">
                 <label className="form-label">Semana inicio *</label>
                 <input className="form-input" type="number" min="1" value={formData.semana_inicio || 1} onChange={e => fd('semana_inicio', e.target.value)} />
+                {(() => {
+                  const b = bloques.find(x => x.id === formData.bloque_id)
+                  if (!b || !formData.semana_inicio) return null
+                  const f = calcFechaInicioSemana(b, parseInt(formData.semana_inicio))
+                  return <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 3, display: 'block' }}>{format(f, 'dd MMM yyyy', { locale: es })}</span>
+                })()}
               </div>
               <div className="form-group">
                 <label className="form-label">Semana fin *</label>
                 <input className="form-input" type="number" min="1" value={formData.semana_fin || 1} onChange={e => fd('semana_fin', e.target.value)} />
+                {(() => {
+                  const b = bloques.find(x => x.id === formData.bloque_id)
+                  if (!b || !formData.semana_fin) return null
+                  const f = calcFechaFinSemana(b, parseInt(formData.semana_fin))
+                  return <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 3, display: 'block' }}>{format(f, 'dd MMM yyyy', { locale: es })}</span>
+                })()}
               </div>
             </div>
             <div className="form-group">
@@ -1087,7 +1108,7 @@ export default function Planificacion({ clientePlanificacion }) {
                               onMouseEnter={e => setTooltip({ visible: true, tipo: 'bloque', item: b, bidx, numSubs: (subbloques[b.id] || []).length, x: e.clientX, y: e.clientY })}
                               onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
                               <div style={{ fontSize: 11, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>B{bidx + 1} {b.nombre}</div>
-                              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--mono)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>S{semIni}–S{semFin} · {fIni}–{fFin}</div>
+                              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--mono)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fIni} – {fFin}</div>
                             </div>
                           )
                         })}
@@ -1112,7 +1133,7 @@ export default function Planificacion({ clientePlanificacion }) {
                                 onClick={() => openModal('subbloque', { ...sub, bloque_id: b.id })}
                                 onMouseEnter={e => setTooltip({ visible: true, tipo: 'subbloque', item: sub, bloque: b, bidx, subidx, x: e.clientX, y: e.clientY })}
                                 onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                                <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>SB{bidx + 1}.{subidx + 1} · {sub.nombre}</div>
+                                <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.nombre}</div>
                               </div>
                             )
                           })
@@ -1175,8 +1196,8 @@ export default function Planificacion({ clientePlanificacion }) {
                               onClick={() => openModal('semana', { bloque: b, numero: numLocal, semanaData: semData })}
                               onMouseEnter={e => setTooltip({ visible: true, tipo: 'semana', item: semData, bloque: b, numGlobal, numLocal, x: e.clientX, y: e.clientY })}
                               onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', fontWeight: esActual ? 700 : 500, color: esActual ? 'var(--accent)' : (bidx % 2 === 0 ? 'var(--text2)' : 'var(--text3)') }}>S{numGlobal}</div>
-                              <div style={{ fontSize: 7, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{format(fi, 'd/M')}</div>
+                              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', fontWeight: esActual ? 700 : 500, color: esActual ? 'var(--accent)' : (bidx % 2 === 0 ? 'var(--text2)' : 'var(--text3)') }}>{format(fi, 'd/M')}</div>
+                              <div style={{ fontSize: 7, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>S{numGlobal}</div>
                               {carga && <div style={{ width: 6, height: 3, background: carga.color, borderRadius: 2, margin: '2px auto 0' }} />}
                             </div>
                           )
@@ -1245,7 +1266,7 @@ export default function Planificacion({ clientePlanificacion }) {
             const fFin  = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "dd 'de' MMMM yyyy", { locale: es })
             return (<>
               <div style={{ fontWeight: 700, color: b.color || 'var(--accent)', marginBottom: 6 }}>B{(tooltip.bidx ?? 0) + 1} {b.nombre}</div>
-              <div style={{ color: 'var(--text2)', marginBottom: 3 }}>{fIni} → {fFin}</div>
+              <div style={{ color: 'var(--text2)', marginBottom: 3, fontFamily: 'var(--mono)', fontSize: 11 }}>{fIni} – {fFin}</div>
               <div style={{ color: 'var(--text3)', marginBottom: 3 }}>{b.semanas} sem · {nSubs} sub bloque{nSubs !== 1 ? 's' : ''}</div>
               {b.objetivo && <div style={{ color: 'var(--text2)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontStyle: 'italic' }}>{b.objetivo.slice(0, 120)}{b.objetivo.length > 120 ? '…' : ''}</div>}
             </>)
@@ -1257,7 +1278,7 @@ export default function Planificacion({ clientePlanificacion }) {
             const fFin = b ? format(calcFechaFinSemana(b, sub.semana_fin), 'dd MMM yyyy', { locale: es }) : ''
             return (<>
               <div style={{ fontWeight: 700, color: b?.color || 'var(--accent)', marginBottom: 6 }}>SB{(tooltip.bidx ?? 0) + 1}.{(tooltip.subidx ?? 0) + 1} {sub.nombre}</div>
-              <div style={{ color: 'var(--text2)', marginBottom: 3 }}>S{sub.semana_inicio}–S{sub.semana_fin} · {fIni}–{fFin}</div>
+              <div style={{ color: 'var(--text2)', marginBottom: 3, fontFamily: 'var(--mono)', fontSize: 11 }}>{fIni} – {fFin}</div>
               {(sub.km_min || sub.km_max) && <div style={{ color: 'var(--text3)' }}>Volumen: {sub.km_min}{sub.km_max ? `–${sub.km_max}` : '+'} km/sem</div>}
               {sub.exigencia && <div style={{ color: 'var(--text3)' }}>Exigencia: {sub.exigencia}</div>}
               {sub.notas && <div style={{ color: 'var(--text2)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontStyle: 'italic' }}>{sub.notas.slice(0, 100)}{sub.notas.length > 100 ? '…' : ''}</div>}
@@ -1450,7 +1471,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                         {sAbierto ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
                         <span style={{ fontWeight: 600, fontSize: 13 }}>{bidx + 1}.{subidx + 1} {sub.nombre}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>S{sub.semana_inicio}–S{sub.semana_fin} · {format(fIniSub, 'dd MMM', { locale: es })}–{format(fFinSub, 'dd MMM', { locale: es })}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(fIniSub, 'dd MMM', { locale: es })} – {format(fFinSub, 'dd MMM', { locale: es })}</span>
                         {sub.km_min && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: '#eff6ff', color: '#3b82f6', fontWeight: 500 }}>{sub.km_min}{sub.km_max ? `–${sub.km_max}` : '+'} km</span>}
                         {sub.exigencia && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: sub.exigencia === 'Baja' ? '#d1fae5' : sub.exigencia === 'Moderada' ? '#fef3c7' : '#fee2e2', color: sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444', fontWeight: 500 }}>{sub.exigencia}</span>}
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
