@@ -166,8 +166,13 @@ export default function Planificacion({ clientePlanificacion }) {
     setControles(ctrls || [])
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setNotas(nts || [])
-    const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at').in('sesion_id', (sess || []).map(s => s.id))
-    setFeedbacks(fbs || [])
+    const { data: allSess } = await supabase.from('sesiones').select('id').eq('cliente_id', clienteSeleccionado)
+    if (allSess && allSess.length > 0) {
+      const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at').in('sesion_id', allSess.map(s => s.id))
+      setFeedbacks(fbs || [])
+    } else {
+      setFeedbacks([])
+    }
     setLoading(false)
   }
 
