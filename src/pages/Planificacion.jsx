@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, addWeeks, parseISO, differenceInWeeks } from 'date-fns'
+import { format, addWeeks, addDays, parseISO, differenceInWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers, Pencil, Lock } from 'lucide-react'
 import SesionesPlan from './SesionesPlan'
 import Seguimiento from './Seguimiento'
 
@@ -361,7 +361,9 @@ export default function Planificacion({ clientePlanificacion }) {
     }
   }
 
-  async function eliminarItem() {
+  async function eliminarItem(tipoArg, idArg) {
+    const tipo = tipoArg || modalTipo
+    const id   = idArg   || modalItem?.id
     const mensajes = {
       bloque:    '¿Eliminar este bloque? Se eliminarán también sus sub bloques y semanas.',
       subbloque: '¿Eliminar este sub bloque?',
@@ -370,10 +372,11 @@ export default function Planificacion({ clientePlanificacion }) {
       control:   '¿Eliminar este control?',
       nota:      '¿Eliminar esta nota?',
     }
-    if (!window.confirm(mensajes[modalTipo] || '¿Eliminar?')) return
+    if (!window.confirm(mensajes[tipo] || '¿Eliminar?')) return
     const tablas = { bloque: 'bloques', subbloque: 'subbloques', sesion: 'sesiones', comp: 'competiciones', control: 'controles', nota: 'sesion_notas' }
-    await supabase.from(tablas[modalTipo]).delete().eq('id', modalItem.id)
-    closeModal(); cargarPlanificacion()
+    await supabase.from(tablas[tipo]).delete().eq('id', id)
+    if (!tipoArg) closeModal()
+    cargarPlanificacion()
   }
 
   function copiarEnlace() {
@@ -1048,7 +1051,7 @@ export default function Planificacion({ clientePlanificacion }) {
             <Seguimiento clienteId={clienteSeleccionado} planificacionId={planificacion?.id} bloques={bloques} semanas={semanas} />
           )}
           {vista === 'lista' && (
-            <VistaLista bloques={bloques} subbloques={subbloques} semanas={semanas} sesiones={sesiones} clienteData={clienteData} openModal={openModal} setVista={setVista} />
+            <VistaLista bloques={bloques} subbloques={subbloques} semanas={semanas} sesiones={sesiones} clienteData={clienteData} openModal={openModal} setVista={setVista} eliminarItem={eliminarItem} cargarPlanificacion={cargarPlanificacion} />
           )}
 
           {/* ══ TIMELINE ══════════════════════════════════════════════════ */}
@@ -1406,11 +1409,38 @@ export default function Planificacion({ clientePlanificacion }) {
 
 // ─── VISTA LISTA ─────────────────────────────────────────────────────────────
 
-function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openModal, setVista }) {
-  const [bloqueAbierto, setBloqueAbierto] = useState(null)
-  const [subAbierto,    setSubAbierto]    = useState(null)
-  const [semAbierta,    setSemAbierta]    = useState(null)
-  const [modoEdicion,   setModoEdicion]   = useState(false)
+function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openModal, setVista, eliminarItem, cargarPlanificacion }) {
+  const [editMode,         setEditMode]         = useState(false)
+  const [bloqueAbierto,    setBloqueAbierto]    = useState(new Set())
+  const [subBloqueAbierto, setSubBloqueAbierto] = useState(new Set())
+  const [semanaAbierta,    setSemanaAbierta]    = useState(new Set())
+  const [inlineEdits,      setInlineEdits]      = useState({})
+
+  function toggleBloque(id) {
+    setBloqueAbierto(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleSubBloque(id) {
+    setSubBloqueAbierto(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function toggleSemana(key) {
+    setSemanaAbierta(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s })
+  }
+
+  function handleInlineChange(tipo, id, campo, valor) {
+    setInlineEdits(prev => ({ ...prev, [`${tipo}-${id}-${campo}`]: valor }))
+  }
+  function getInlineValue(tipo, id, campo, fallback) {
+    const key = `${tipo}-${id}-${campo}`
+    return inlineEdits[key] !== undefined ? inlineEdits[key] : (fallback ?? '')
+  }
+  async function handleInlineBlur(tipo, id, campo, valor) {
+    if (tipo === 'bloque')    await supabase.from('bloques').update({ [campo]: valor || null }).eq('id', id)
+    if (tipo === 'subbloque') await supabase.from('subbloques').update({ [campo]: valor || null }).eq('id', id)
+    if (tipo === 'semana')    await supabase.from('semanas').update({ [campo]: valor || null }).eq('id', id)
+    cargarPlanificacion()
+  }
+
+  const esResistencia = clienteData?.perfil_planificacion !== 'fuerza_salud'
 
   if (bloques.length === 0) {
     return (
@@ -1423,132 +1453,255 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button className={`btn btn-sm ${modoEdicion ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setModoEdicion(!modoEdicion)}>
-          {modoEdicion ? '🔒 Bloquear edición' : '✏️ Modo edición'}
+      {/* Barra superior */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button
+          onClick={() => { setEditMode(!editMode); setInlineEdits({}) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${editMode ? 'var(--accent)' : 'var(--border)'}`, background: editMode ? 'var(--accent-light)' : 'var(--bg)', color: editMode ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontSize: 12, fontWeight: editMode ? 600 : 400, transition: 'all 0.15s' }}>
+          {editMode ? <><Lock size={13} /> Bloquear edición</> : <><Pencil size={13} /> Modo edición</>}
         </button>
       </div>
 
+      {/* ACORDEÓN */}
       {bloques.map((b, bidx) => {
-        const subsDelBloque = subbloques[b.id] || []
-        const semsDelBloque = semanas[b.id]   || []
-        const bAbierto      = bloqueAbierto === b.id
-        const fFin          = addWeeks(parseISO(b.fecha_inicio), b.semanas)
-        const semsConSub    = new Set(subsDelBloque.flatMap(sub => Array.from({ length: sub.semana_fin - sub.semana_inicio + 1 }, (_, i) => sub.semana_inicio + i)))
-        const semsHuerfanas = Array.from({ length: b.semanas }, (_, i) => i + 1).filter(n => !semsConSub.has(n))
+        const subsDelBloque = (subbloques[b.id] || []).slice().sort((a, x) => a.semana_inicio - x.semana_inicio)
+        const semsDelBloque = semanas[b.id] || []
+        const bAb = bloqueAbierto.has(b.id)
+        const fFin = addWeeks(parseISO(b.fecha_inicio), b.semanas)
 
         return (
-          <div key={b.id} className="card" style={{ padding: 0, borderLeft: `4px solid ${b.color || '#2d6a4f'}`, marginBottom: 10, overflow: 'hidden' }}>
+          <div key={b.id} style={{ border: '0.5px solid var(--border)', borderRadius: 12, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}`, marginBottom: 8 }}>
 
-            {/* NIVEL 1: BLOQUE */}
-            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: bAbierto ? 'var(--bg2)' : 'var(--bg)' }}
-              onClick={() => setBloqueAbierto(bAbierto ? null : b.id)}>
-              {bAbierto ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              <span style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>B{bidx + 1} — {b.nombre}</span>
-              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                {b.semanas} sem · {format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })}–{format(fFin, 'dd MMM yyyy', { locale: es })}
-              </span>
-              <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+            {/* ── NIVEL 1: BLOQUE ────────────────────────────────────── */}
+            <div onClick={() => toggleBloque(b.id)}
+              style={{ padding: '10px 16px', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              {bAb ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+
+              {!editMode ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{b.nombre}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                    {b.semanas} sem · {format(parseISO(b.fecha_inicio), 'd MMM yyyy', { locale: es })} – {format(fFin, 'd MMM yyyy', { locale: es })}
+                  </span>
+                </div>
+              ) : (
+                <input
+                  value={getInlineValue('bloque', b.id, 'nombre', b.nombre)}
+                  onChange={e => { e.stopPropagation(); handleInlineChange('bloque', b.id, 'nombre', e.target.value) }}
+                  onBlur={e => handleInlineBlur('bloque', b.id, 'nombre', e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                  style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', minWidth: 0 }}
+                />
+              )}
+
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <button className="btn btn-ghost btn-sm" onClick={() => openModal('bloque', b)}>Editar</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => openModal('subbloque', { bloque_id: b.id })}>+ Sub bloque</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => openModal('subbloque', { bloque_id: b.id, semana_inicio: 1, semana_fin: 1 })}>+ Sub bloque</button>
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={() => eliminarItem('bloque', b.id)}><X size={13} /></button>
               </div>
             </div>
 
-            {bAbierto && (
-              <div style={{ borderTop: '1px solid var(--border)' }}>
+            {/* ── CONTENIDO DEL BLOQUE ───────────────────────────────── */}
+            {bAb && (
+              <div style={{ borderTop: '0.5px solid var(--border)' }}>
 
-                {/* NIVEL 2: SUB BLOQUES */}
+                {subsDelBloque.length === 0 && (
+                  <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 13, fontStyle: 'italic' }}>
+                    Sin sub bloques — añade el primero con "+ Sub bloque".
+                  </div>
+                )}
+
                 {subsDelBloque.map((sub, subidx) => {
-                  const sAbierto   = subAbierto === sub.id
-                  const fIniSub    = calcFechaInicioSemana(b, sub.semana_inicio)
-                  const fFinSub    = calcFechaFinSemana(b, sub.semana_fin)
+                  const sAb     = subBloqueAbierto.has(sub.id)
+                  const fIniSub = calcFechaInicioSemana(b, sub.semana_inicio)
+                  const fFinSub = calcFechaFinSemana(b, sub.semana_fin)
                   const semsDelSub = Array.from({ length: sub.semana_fin - sub.semana_inicio + 1 }, (_, i) => sub.semana_inicio + i)
 
                   return (
-                    <div key={sub.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <div style={{ padding: '9px 16px 9px 36px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', background: 'var(--bg2)' }}
-                        onClick={() => setSubAbierto(sAbierto ? null : sub.id)}>
-                        {sAbierto ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
-                        <span style={{ fontWeight: 600, fontSize: 13 }}>{bidx + 1}.{subidx + 1} {sub.nombre}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{format(fIniSub, 'dd MMM', { locale: es })} – {format(fFinSub, 'dd MMM', { locale: es })}</span>
-                        {sub.km_min && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: '#eff6ff', color: '#3b82f6', fontWeight: 500 }}>{sub.km_min}{sub.km_max ? `–${sub.km_max}` : '+'} km</span>}
-                        {sub.exigencia && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: sub.exigencia === 'Baja' ? '#d1fae5' : sub.exigencia === 'Moderada' ? '#fef3c7' : '#fee2e2', color: sub.exigencia === 'Baja' ? '#10b981' : sub.exigencia === 'Moderada' ? '#f59e0b' : '#ef4444', fontWeight: 500 }}>{sub.exigencia}</span>}
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+                    <div key={sub.id} style={{ borderBottom: '0.5px solid var(--border)' }}>
+
+                      {/* ── NIVEL 2: SUB BLOQUE ──────────────────────── */}
+                      <div onClick={() => toggleSubBloque(sub.id)}
+                        style={{ padding: '9px 16px 9px 28px', background: 'var(--bg2)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                        {sAb ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
+
+                        {!editMode ? (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+                            <span style={{ fontSize: 12, fontWeight: 500 }}>{bidx + 1}.{subidx + 1} · {sub.nombre}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                              {format(fIniSub, 'd MMM', { locale: es })} – {format(fFinSub, 'd MMM', { locale: es })}
+                            </span>
+                            {esResistencia && (sub.km_min || sub.km_max) && (
+                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8, background: 'var(--bg)', color: 'var(--text2)' }}>
+                                {sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem
+                              </span>
+                            )}
+                            {!esResistencia && sub.exigencia && (
+                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8,
+                                background: sub.exigencia === 'Baja' ? '#10b98120' : sub.exigencia === 'Moderada' ? '#f59e0b20' : '#ef444420',
+                                color:      sub.exigencia === 'Baja' ? '#10b981'   : sub.exigencia === 'Moderada' ? '#f59e0b'   : '#ef4444' }}>
+                                {sub.exigencia}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <input
+                            value={getInlineValue('subbloque', sub.id, 'nombre', sub.nombre)}
+                            onChange={e => { e.stopPropagation(); handleInlineChange('subbloque', sub.id, 'nombre', e.target.value) }}
+                            onBlur={e => handleInlineBlur('subbloque', sub.id, 'nombre', e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            style={{ flex: 1, fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', minWidth: 0 }}
+                          />
+                        )}
+
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                           <button className="btn btn-ghost btn-sm" onClick={() => openModal('subbloque', { ...sub, bloque_id: b.id })}>Editar</button>
+                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={() => eliminarItem('subbloque', sub.id)}><X size={12} /></button>
                         </div>
                       </div>
 
-                      {sAbierto && (
-                        <div>
-                          {/* NIVEL 3: SEMANAS */}
+                      {/* ── CONTENIDO DEL SUB BLOQUE ─────────────────── */}
+                      {sAb && (
+                        <div style={{ borderTop: '0.5px solid var(--border)' }}>
+
+                          {/* Cabecera de tabla de semanas */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '52px 110px 1fr 76px 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                            {['Sem', 'Semana', 'Objetivo', 'Carga', esResistencia ? 'Km real' : '', ''].map((h, i) => (
+                              <span key={i} style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
+                            ))}
+                          </div>
+
+                          {/* ── NIVEL 3: SEMANAS ───────────────────────── */}
                           {semsDelSub.map(numSem => {
-                            const sem      = semsDelBloque.find(s => s.numero === numSem) || null
-                            const fIniSem  = calcFechaInicioSemana(b, numSem)
-                            const fFinSem  = calcFechaFinSemana(b, numSem)
-                            const carga    = sem?.carga ? CARGAS[sem.carga] : null
-                            const semKey   = `${b.id}_${numSem}`
-                            const smAb     = semAbierta === semKey
-                            const hoy      = new Date()
+                            const semKey  = `${b.id}-${numSem}`
+                            const semData = semsDelBloque.find(s => s.numero === numSem) || null
+                            const fIniSem = calcFechaInicioSemana(b, numSem)
+                            const fFinSem = calcFechaFinSemana(b, numSem)
+                            const fechaStr = `${format(fIniSem, 'd', { locale: es })}–${format(addDays(fIniSem, 6), 'd MMM', { locale: es })}`
+                            const carga   = semData?.carga ? CARGAS[semData.carga] : CARGAS.media
+                            const hoy     = new Date()
                             const esActual = hoy >= fIniSem && hoy < fFinSem
-                            const sesionesSem = sesiones.filter(s => { if (!s.fecha) return false; const f = parseISO(s.fecha); return f >= fIniSem && f < fFinSem })
+                            const semAb   = semanaAbierta.has(semKey)
+                            const sesionesSem = sesiones.filter(s => {
+                              if (!s.fecha) return false
+                              const f = parseISO(s.fecha)
+                              return f >= fIniSem && f < fFinSem
+                            })
 
                             return (
-                              <div key={numSem} style={{ borderBottom: '1px solid var(--border)', background: esActual ? 'var(--accent-light)' : modoEdicion ? '#fafdf8' : 'transparent' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px 7px 60px', cursor: 'pointer' }}
-                                  onClick={() => setSemAbierta(smAb ? null : semKey)}>
-                                  {smAb ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: esActual ? 'var(--accent)' : carga ? carga.color : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: (esActual || carga) ? 'white' : 'var(--text3)', fontFamily: 'var(--mono)' }}>S{numSem}</span>
-                                  </div>
-                                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 52 }}>{format(fIniSem, 'dd MMM', { locale: es })}</span>
-                                  {modoEdicion ? (
-                                    <input className="form-input" style={{ flex: 1, fontSize: 12, padding: '4px 8px', background: '#f0fdf4' }}
-                                      defaultValue={sem?.objetivo || ''} key={sem?.objetivo}
-                                      onClick={e => e.stopPropagation()}
-                                      onBlur={async e => {
-                                        const val = e.target.value
-                                        if (sem) await supabase.from('semanas').update({ objetivo: val || null }).eq('id', sem.id)
-                                        else await supabase.from('semanas').insert({ bloque_id: b.id, numero: numSem, objetivo: val || null, carga: 'media', zona1_2_real: 0, zona3_4_real: 0, zona5_real: 0 })
-                                      }} />
-                                  ) : (
-                                    <span style={{ flex: 1, fontSize: 12, color: sem?.objetivo ? 'var(--text)' : 'var(--text3)', fontStyle: sem?.objetivo ? 'normal' : 'italic' }}>
-                                      {sem?.objetivo || 'Sin objetivo'}
+                              <div key={semKey}>
+                                {/* Fila de semana */}
+                                <div
+                                  onClick={() => toggleSemana(semKey)}
+                                  style={{ display: 'grid', gridTemplateColumns: '52px 110px 1fr 76px 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                                  onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
+                                  onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
+
+                                  <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--mono)', color: esActual ? 'var(--accent)' : 'var(--text2)' }}>
+                                    S{numSem}
+                                  </span>
+
+                                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fechaStr}</span>
+
+                                  {!editMode ? (
+                                    <span style={{ fontSize: 12, color: semData?.objetivo ? 'var(--text)' : 'var(--text3)', fontStyle: semData?.objetivo ? 'normal' : 'italic' }}>
+                                      {semData?.objetivo || 'Sin objetivo'}
                                     </span>
+                                  ) : (
+                                    <input
+                                      value={getInlineValue('semana', semData?.id || semKey, 'objetivo', semData?.objetivo || '')}
+                                      onChange={e => { e.stopPropagation(); handleInlineChange('semana', semData?.id || semKey, 'objetivo', e.target.value) }}
+                                      onBlur={async e => {
+                                        e.stopPropagation()
+                                        const val = e.target.value
+                                        if (semData?.id) {
+                                          await supabase.from('semanas').update({ objetivo: val || null }).eq('id', semData.id)
+                                        } else {
+                                          await supabase.from('semanas').insert({ bloque_id: b.id, numero: numSem, objetivo: val || null, carga: 'media' })
+                                        }
+                                        cargarPlanificacion()
+                                      }}
+                                      onClick={e => e.stopPropagation()}
+                                      placeholder="Añadir objetivo..."
+                                      style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', width: '100%' }}
+                                    />
                                   )}
-                                  {carga && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: carga.color + '20', color: carga.color, fontWeight: 600, flexShrink: 0 }}>{carga.label}</span>}
-                                  {sem?.km_objetivo && <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: '#3b82f6', flexShrink: 0 }}>{sem.km_objetivo} km</span>}
-                                  <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                                    <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '2px 8px' }}
-                                      onClick={() => openModal('semana', { bloque: b, numero: numSem, semanaData: sem })}>
-                                      Editar
-                                    </button>
-                                  </div>
+
+                                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: carga.color + '20', color: carga.color, width: 'fit-content' }}>
+                                    {carga.label}
+                                  </span>
+
+                                  {esResistencia ? (
+                                    editMode ? (
+                                      <input type="number" min="0"
+                                        value={getInlineValue('semana', semData?.id || semKey, 'km_real', semData?.km_real || '')}
+                                        onChange={e => { e.stopPropagation(); handleInlineChange('semana', semData?.id || semKey, 'km_real', e.target.value) }}
+                                        onBlur={async e => {
+                                          e.stopPropagation()
+                                          if (semData?.id) await supabase.from('semanas').update({ km_real: e.target.value ? parseInt(e.target.value) : null }).eq('id', semData.id)
+                                          cargarPlanificacion()
+                                        }}
+                                        onClick={e => e.stopPropagation()}
+                                        style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', width: 64, fontFamily: 'var(--mono)' }}
+                                      />
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--mono)' }}>
+                                        {semData?.km_real ? `${semData.km_real} km` : '—'}
+                                      </span>
+                                    )
+                                  ) : <span />}
+
+                                  <button
+                                    style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
+                                    onClick={e => { e.stopPropagation(); openModal('semana', { bloque: b, numero: numSem, semanaData: semData }) }}
+                                    title="Editar semana">✎</button>
                                 </div>
 
-                                {/* NIVEL 4: SESIONES */}
-                                {smAb && (
-                                  <div style={{ padding: '6px 16px 10px 80px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
-                                    {sesionesSem.length === 0 ? (
-                                      <p style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', margin: '4px 0 8px' }}>Sin sesiones esta semana</p>
-                                    ) : (
-                                      <div style={{ marginBottom: 8 }}>
-                                        {sesionesSem.map(s => {
-                                          const tipoBadge = s.tipo_sesion === 'flexible' ? { background: '#fef3c7', color: '#92400e', border: '1px dashed #f59e0b' } : s.tipo_sesion === 'opcional' ? { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' } : { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }
-                                          return (
-                                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                                              <span style={{ fontSize: 14, flexShrink: 0 }}>{iconoSesion(s)}</span>
-                                              <span style={{ fontSize: 12, fontWeight: 500, flex: 1 }}>{s.titulo}</span>
-                                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{s.fecha ? format(parseISO(s.fecha), 'dd MMM', { locale: es }) : 'Sin día'}</span>
-                                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, flexShrink: 0, ...tipoBadge }}>{s.tipo_sesion || 'programada'}</span>
-                                              {s.duracion_min && <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', flexShrink: 0 }}>{s.duracion_min} min</span>}
-                                            </div>
-                                          )
-                                        })}
-                                      </div>
+                                {/* ── NIVEL 4: SESIONES ────────────────── */}
+                                {semAb && (
+                                  <div style={{ padding: '10px 16px 12px 60px', borderBottom: '0.5px solid var(--border)', background: 'var(--bg)' }}>
+
+                                    {/* Cabecera sesiones */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '20px 1fr 96px 96px 64px 36px', padding: '4px 0 8px', borderBottom: '0.5px solid var(--border)', gap: 8, marginBottom: 4 }}>
+                                      {['', 'Sesión', 'Día', 'Tipo', 'Dur.', ''].map((h, i) => (
+                                        <span key={i} style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
+                                      ))}
+                                    </div>
+
+                                    {sesionesSem.length === 0 && (
+                                      <p style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', margin: '6px 0 10px' }}>Sin sesiones esta semana.</p>
                                     )}
-                                    <button className="btn btn-ghost btn-sm" onClick={() => setVista('calendario')}>
-                                      <Plus size={12} /> Gestionar sesiones
+
+                                    {sesionesSem.map(s => {
+                                      const tipoBg    = s.tipo_sesion === 'flexible' ? '#eeedfe' : s.tipo_sesion === 'opcional' ? '#f1efe8' : '#e6f1fb'
+                                      const tipoColor = s.tipo_sesion === 'flexible' ? '#4a3aa7' : s.tipo_sesion === 'opcional' ? '#52514e' : '#185fa5'
+                                      const tipoLabel = s.tipo_sesion === 'flexible' ? 'Flexible' : s.tipo_sesion === 'opcional' ? 'Opcional' : 'Programada'
+                                      return (
+                                        <div key={s.id}
+                                          onClick={() => openModal('sesion', s)}
+                                          onMouseOver={e => e.currentTarget.style.background = 'var(--bg2)'}
+                                          onMouseOut={e => e.currentTarget.style.background = ''}
+                                          style={{ display: 'grid', gridTemplateColumns: '20px 1fr 96px 96px 64px 36px', padding: '7px 0', borderBottom: '0.5px solid var(--border)', gap: 8, alignItems: 'center', cursor: 'pointer', borderRadius: 4 }}>
+                                          <span style={{ fontSize: 14 }}>{iconoSesion(s)}</span>
+                                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
+                                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                                            {s.fecha ? format(parseISO(s.fecha), 'EEE d MMM', { locale: es }) : 'Sin día'}
+                                          </span>
+                                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, width: 'fit-content', background: tipoBg, color: tipoColor, border: s.tipo_sesion === 'flexible' ? `0.5px dashed ${tipoColor}66` : undefined }}>
+                                            {tipoLabel}
+                                          </span>
+                                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{s.duracion_min ? `${s.duracion_min} min` : '—'}</span>
+                                          <button
+                                            style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                                            onClick={e => { e.stopPropagation(); openModal('sesion', s) }}>✎</button>
+                                        </div>
+                                      )
+                                    })}
+
+                                    <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }}
+                                      onClick={() => openModal('sesion', { fecha: format(fIniSem, 'yyyy-MM-dd'), tipo_sesion: 'programada' })}>
+                                      <Plus size={12} /> Añadir sesión
                                     </button>
                                   </div>
                                 )}
@@ -1560,30 +1713,6 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                     </div>
                   )
                 })}
-
-                {/* Semanas sin sub bloque */}
-                {semsHuerfanas.length > 0 && (
-                  <div style={{ padding: '8px 16px 8px 36px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, fontFamily: 'var(--mono)', marginBottom: 6 }}>Sin sub bloque</div>
-                    {semsHuerfanas.map(numSem => {
-                      const sem      = semsDelBloque.find(s => s.numero === numSem) || null
-                      const fIniSem  = calcFechaInicioSemana(b, numSem)
-                      const carga    = sem?.carga ? CARGAS[sem.carga] : null
-                      const hoy      = new Date()
-                      const esActual = hoy >= fIniSem && hoy < calcFechaFinSemana(b, numSem)
-                      return (
-                        <div key={numSem} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0 5px 24px', borderBottom: '1px solid var(--border)', background: esActual ? 'var(--accent-light)' : 'transparent' }}>
-                          <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: esActual ? 'var(--accent)' : 'var(--text3)', fontWeight: 600, minWidth: 28 }}>S{numSem}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 50 }}>{format(fIniSem, 'dd MMM', { locale: es })}</span>
-                          <span style={{ flex: 1, fontSize: 12, color: sem?.objetivo ? 'var(--text)' : 'var(--text3)', fontStyle: sem?.objetivo ? 'normal' : 'italic' }}>{sem?.objetivo || '—'}</span>
-                          {carga && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color }}>{carga.label}</span>}
-                          <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => openModal('semana', { bloque: b, numero: numSem, semanaData: sem })}>Editar</button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
               </div>
             )}
           </div>
