@@ -65,10 +65,12 @@ export default function Planificacion({ clientePlanificacion }) {
   const [competiciones,       setCompeticiones]       = useState([])
   const [controles,           setControles]           = useState([])
   const [notas,               setNotas]               = useState([])
+  const [feedbacks,           setFeedbacks]           = useState([])
   const [clipboardSesion,     setClipboardSesion]     = useState(null)
 
   // ── UI ──
   const [vista,      setVista]      = useState('timeline')
+  const [zoomTL,     setZoomTL]     = useState(44)   // px por semana en el timeline
   const [loading,    setLoading]    = useState(false)
   const [saving,     setSaving]     = useState(false)
   const [filtros,    setFiltros]    = useState({ bloques: true, sub: true, semanas: true, sesiones: true, eventos: false })
@@ -83,6 +85,22 @@ export default function Planificacion({ clientePlanificacion }) {
   // ── Modal copiar (flujo especial) ──
   const [modalCopiar, setModalCopiar] = useState(false)
   const [formCopiar,  setFormCopiar]  = useState({ cliente_id: '', fecha_inicio: '', nombre: '' })
+
+  // ── Estado visual de sesión ──
+  function estadoSesion(s) {
+    if (s.estado && s.estado !== 'pendiente') return s.estado
+    const tieneFeedback = feedbacks.some(f => f.sesion_id === s.id)
+    if (tieneFeedback) return 'completada'
+    if (s.fecha && new Date(s.fecha) < new Date(new Date().toDateString())) return 'perdida'
+    return 'pendiente'
+  }
+  function iconoEstado(s) {
+    const e = estadoSesion(s)
+    if (e === 'completada') return { icono: '✓', bg: '#dcfce7', border: '#16a34a', color: '#166534' }
+    if (e === 'parcial')    return { icono: '〜', bg: '#fef9c3', border: '#ca8a04', color: '#713f12' }
+    if (e === 'perdida')    return { icono: '✗', bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d' }
+    return null
+  }
 
   // ── Effects ──
   useEffect(() => { cargarClientes() }, [])
@@ -148,6 +166,8 @@ export default function Planificacion({ clientePlanificacion }) {
     setControles(ctrls || [])
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setNotas(nts || [])
+    const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at').in('sesion_id', (sess || []).map(s => s.id))
+    setFeedbacks(fbs || [])
     setLoading(false)
   }
 
@@ -214,6 +234,7 @@ export default function Planificacion({ clientePlanificacion }) {
           fecha:        item?.fecha        || '',
           sinFecha:     !item?.fecha,
           tipo_sesion:  item?.tipo_sesion  || 'programada',
+          estado:       item?.estado       || 'pendiente',
           objetivo:     item?.objetivo     || '',
           duracion_min: item?.duracion_min || '',
         }
@@ -324,7 +345,7 @@ export default function Planificacion({ clientePlanificacion }) {
 
         case 'sesion': {
           if (!formData.titulo) break
-          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null }
+          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null }
           if (modalItem?.id) await supabase.from('sesiones').update(datos).eq('id', modalItem.id)
           else await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -800,6 +821,22 @@ export default function Planificacion({ clientePlanificacion }) {
                 })}
               </div>
             </div>
+            {modalItem?.id && (
+              <div className="form-group">
+                <label className="form-label">Estado</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['perdida','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
+                    const active = (formData.estado || 'pendiente') === val
+                    return (
+                      <button key={val} onClick={() => fd('estado', val)}
+                        style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? border : 'var(--border)'}`, background: active ? bg : 'var(--bg)', color: active ? color : 'var(--text3)', fontSize: 11, fontWeight: active ? 700 : 400, cursor: 'pointer' }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Objetivo</label>
               <textarea className="form-textarea" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} rows={2} />
@@ -1104,13 +1141,19 @@ export default function Planificacion({ clientePlanificacion }) {
           {vista === 'timeline' && totalSemanas > 0 && (
             <div>
               {/* Pills de filtro */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
                 {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Control']].map(([key, label]) => (
                   <button key={key} onClick={() => setFiltros(f => ({ ...f, [key]: !f[key] }))}
                     style={{ padding: '4px 13px', borderRadius: 20, border: `1.5px solid ${filtros[key] ? 'var(--accent)' : 'var(--border)'}`, background: filtros[key] ? 'var(--accent-light)' : 'var(--bg)', color: filtros[key] ? 'var(--accent)' : 'var(--text3)', fontSize: 12, fontWeight: filtros[key] ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
                     {label}
                   </button>
                 ))}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Zoom</span>
+                  <button onClick={() => setZoomTL(z => Math.max(22, z - 11))} title="Alejar" style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>−</button>
+                  <button onClick={() => setZoomTL(44)} title="Restablecer" style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: zoomTL === 44 ? 'var(--bg2)' : 'var(--bg)', cursor: 'pointer', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{Math.round(zoomTL / 44 * 100)}%</button>
+                  <button onClick={() => setZoomTL(z => Math.min(110, z + 11))} title="Acercar" style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>+</button>
+                </div>
               </div>
 
               {/* Barra de progreso */}
@@ -1138,7 +1181,7 @@ export default function Planificacion({ clientePlanificacion }) {
               })()}
 
               <div className="card" style={{ overflowX: 'auto', padding: '16px 14px' }}>
-                <div style={{ minWidth: Math.max(totalSemanas * 44, 400), position: 'relative' }}>
+                <div style={{ minWidth: Math.max(totalSemanas * zoomTL, 400), position: 'relative' }}>
 
                   {/* FILA 1 — BLOQUES */}
                   {filtros.bloques && (
@@ -1265,16 +1308,19 @@ export default function Planificacion({ clientePlanificacion }) {
                           return (
                             <div key={`${b.id}-${numLocal}-ses`}
                               style={{ flex: 1, minWidth: 28, borderRight: '1px solid var(--border)', padding: '2px', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                              {sesionesSem.slice(0, 3).map(s => (
-                                <div key={s.id}
-                                  onClick={() => openModal('sesion', s)}
-                                  onMouseEnter={e => setTooltip({ visible: true, tipo: 'sesion', item: s, x: e.clientX, y: e.clientY })}
-                                  onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
-                                  style={{ width: 18, height: 18, borderRadius: '50%', background: (b.color || '#2d6a4f') + '22', border: s.tipo_sesion === 'flexible' ? `1.5px dashed ${b.color || '#2d6a4f'}` : `1.5px solid ${b.color || '#2d6a4f'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, cursor: 'pointer' }}
-                                  title={s.titulo}>
-                                  {iconoSesion(s)}
-                                </div>
-                              ))}
+                              {sesionesSem.slice(0, 3).map(s => {
+                                const est = iconoEstado(s)
+                                return (
+                                  <div key={s.id}
+                                    onClick={() => openModal('sesion', s)}
+                                    onMouseEnter={e => setTooltip({ visible: true, tipo: 'sesion', item: s, x: e.clientX, y: e.clientY })}
+                                    onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
+                                    style={{ width: 18, height: 18, borderRadius: '50%', background: est ? est.bg : (b.color || '#2d6a4f') + '22', border: est ? `1.5px solid ${est.border}` : s.tipo_sesion === 'flexible' ? `1.5px dashed ${b.color || '#2d6a4f'}` : `1.5px solid ${b.color || '#2d6a4f'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, cursor: 'pointer', color: est?.color }}
+                                    title={s.titulo}>
+                                    {est ? est.icono : iconoSesion(s)}
+                                  </div>
+                                )
+                              })}
                               {sesionesSem.length > 3 && <div style={{ fontSize: 7, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>+{sesionesSem.length - 3}</div>}
                             </div>
                           )
@@ -1729,7 +1775,9 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                           onMouseOver={e => e.currentTarget.style.background = 'var(--bg2)'}
                                           onMouseOut={e => e.currentTarget.style.background = ''}
                                           style={{ display: 'grid', gridTemplateColumns: '20px 1fr 96px 96px 64px 36px', padding: '7px 0', borderBottom: '0.5px solid var(--border)', gap: 8, alignItems: 'center', cursor: 'pointer', borderRadius: 4 }}>
-                                          <span style={{ fontSize: 14 }}>{iconoSesion(s)}</span>
+                                          <span style={{ fontSize: 14 }} title={s.estado || ''}>
+                                            {s.estado === 'completada' ? '✅' : s.estado === 'parcial' ? '〜' : s.estado === 'perdida' ? '❌' : iconoSesion(s)}
+                                          </span>
                                           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
                                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>
                                             {s.fecha ? format(parseISO(s.fecha), 'EEE d MMM', { locale: es }) : 'Sin día'}
