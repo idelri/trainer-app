@@ -431,6 +431,8 @@ export default function Planificacion({ clientePlanificacion }) {
     alert(`Enlace copiado:\n${window.location.origin}/plan/${planificacion.token_publico}`)
   }
 
+  const esSalud = planificacion?.tipo === 'salud'
+
   // ─────────────────────────────────────────────────────────────────────────
   // HELPERS DE MODAL: TÍTULOS Y FORMULARIO
   // ─────────────────────────────────────────────────────────────────────────
@@ -464,8 +466,7 @@ export default function Planificacion({ clientePlanificacion }) {
   }
 
   function renderFormulario() {
-    const perfil   = clienteData?.perfil_planificacion
-    const esSalud  = planificacion?.tipo === 'salud'
+    const perfil = clienteData?.perfil_planificacion
 
     switch (modalTipo) {
 
