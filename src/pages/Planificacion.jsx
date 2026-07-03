@@ -2310,11 +2310,6 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                     )
                                   })()}
 
-                                  {esResistencia && (
-                                    <div style={{ width: 22, height: 22, borderRadius: 5, background: estadoBg, color: estadoColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }} title={kmReal == null ? 'Sin datos' : kmOK ? 'En rango' : 'Fuera de rango'}>
-                                      {kmReal == null ? '—' : kmOK ? '✓' : '!'}
-                                    </div>
-                                  )}
 
                                   <button
                                     style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
