@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Clientes from './pages/Clientes'
 import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
+import Sesiones from './pages/Sesiones'
 import PlanPublica from './pages/PlanPublica'
 import SesionPublica from './pages/SesionPublica'
 import CheckinSemanal from './pages/CheckinSemanal'
@@ -19,12 +20,14 @@ const NAV = [
   { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
   { id: 'pagos',     label: 'Pagos',     icon: EuroIcon },
   { id: 'planificacion', label: 'Plan.', icon: CalendarIcon },
+  { id: 'sesiones',  label: 'Sesiones', icon: CheckIcon },
 ]
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [page, setPage] = useState('dashboard')
   const [clientePlanificacion, setClientePlanificacion] = useState(null)
+  const [sesionesContext, setSesionesContext] = useState({ clienteId: null, sesionId: null })
   const [authLoading, setAuthLoading] = useState(true)
   const [publicToken, setPublicToken] = useState(null)
   const [publicSesionToken, setPublicSesionToken] = useState(null)
@@ -85,10 +88,7 @@ export default function App() {
   if (publicPackToken) return <PackPublico token={publicPackToken} />
   if (!session) return <Login />
 
- const PAGES = { dashboard: Dashboard, clientes: Clientes, pagos: Pagos, planificacion: Planificacion }
-  const Page = PAGES[page]
-
-  return (
+ return (
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -114,7 +114,11 @@ export default function App() {
         </div>
       </aside>
       <main className="main">
-      <Page setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />
+        {page === 'dashboard'      && <Dashboard setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
+        {page === 'clientes'       && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
+        {page === 'pagos'          && <Pagos setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
+        {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} />}
+        {page === 'sesiones'       && <Sesiones clienteInicial={sesionesContext.clienteId} sesionInicialId={sesionesContext.sesionId} />}
       </main>
     </div>
   )

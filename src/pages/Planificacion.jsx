@@ -52,7 +52,7 @@ const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 
-export default function Planificacion({ clientePlanificacion }) {
+export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext }) {
   // ── Datos ──
   const [clientes,            setClientes]            = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -978,8 +978,13 @@ export default function Planificacion({ clientePlanificacion }) {
               <label className="form-label">Duración (min)</label>
               <input className="form-input" type="number" min="1" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} style={{ maxWidth: 120 }} />
             </div>
-            {(modalItem?.token_publico || modalItem?.id) && (
-              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {modalItem?.id && (
+              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button className="btn btn-primary btn-sm" onClick={() => {
+                  if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: modalItem.id })
+                  if (setPage) setPage('sesiones')
+                  closeModal()
+                }}>✏️ Editar bloques y ejercicios</button>
                 {modalItem?.token_publico && (
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     const url = `${window.location.origin}/sesion/${modalItem.token_publico}`
@@ -987,9 +992,7 @@ export default function Planificacion({ clientePlanificacion }) {
                     alert(`Enlace copiado:\n${url}`)
                   }}>🔗 Compartir sesión</button>
                 )}
-                {modalItem?.id && (
-                  <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar sesión</button>
-                )}
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={eliminarItem}>Eliminar</button>
               </div>
             )}
           </div>

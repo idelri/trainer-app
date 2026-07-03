@@ -338,12 +338,13 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones() {
+export default function Sesiones({ clienteInicial, sesionInicialId }) {
   const [clientes, setClientes] = useState([])
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
   const [loading, setLoading] = useState(false)
   const [sesionAbierta, setSesionAbierta] = useState(null)
+  const sesionInicialCargada = useRef(false)
   const [bloques, setBloques] = useState([])
   const [ejercicios, setEjercicios] = useState({})
 
@@ -391,7 +392,13 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setNotas(nots || [])
     setCompeticionesCal(comps || [])
     setControlesCal(ctrls || [])
-    setSesionAbierta(null)
+    if (sesionInicialId && !sesionInicialCargada.current) {
+      sesionInicialCargada.current = true
+      const sesInicial = (ses || []).find(s => s.id === sesionInicialId)
+      setSesionAbierta(sesInicial || null)
+    } else {
+      setSesionAbierta(null)
+    }
 
     if (plan) {
       const { data: bls } = await supabase.from('bloques').select('*').eq('planificacion_id', plan.id).order('orden')
