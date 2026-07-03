@@ -274,7 +274,7 @@ function BarraZona({ label, color, obj, real }) {
   const pctReal = real != null ? Math.min(real, 100) : 0
   const pctObj  = Math.min(obj, 100)
   const diff    = real != null ? real - obj : null
-  const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 10 ? color : Math.abs(diff) <= 20 ? AMARILLO : ROJO
+  const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 10 ? VERDE : Math.abs(diff) <= 20 ? AMARILLO : ROJO
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 10, color: 'var(--text3)', width: 36, flexShrink: 0, fontFamily: 'var(--mono)' }}>{label}</span>
@@ -300,7 +300,8 @@ function BloqueCumplimiento({ semana }) {
 
   const kmMedio   = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
   const kmPct     = kmMedio && kmReal != null ? Math.min(kmReal / kmMedio * 100, 130) : 0
-  const kmColor   = kmReal == null ? '#d1d5db' : kmMin != null && kmReal >= kmMin && kmReal <= (kmMax || kmMin * 1.1) ? VERDE : Math.abs(kmReal - kmMedio) / kmMedio < 0.15 ? AMARILLO : ROJO
+  const kmDiff    = kmMedio != null && kmReal != null ? Math.abs(kmReal - kmMedio) : null
+  const kmColor   = kmReal == null ? '#d1d5db' : kmDiff == null ? '#d1d5db' : kmDiff <= 8 ? VERDE : kmDiff <= 12 ? AMARILLO : ROJO
 
   return (
     <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' }}>

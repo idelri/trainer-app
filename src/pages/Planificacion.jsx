@@ -1698,10 +1698,10 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                             const kmMin  = sub?.km_min ?? null
                             const kmMax  = sub?.km_max ?? null
                             const kmMed  = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
-                            const kmOK   = kmMed && kmReal != null ? (kmMin != null && kmReal >= kmMin && kmReal <= (kmMax || kmMin * 1.1)) : null
-                            const kmColor = kmReal == null ? 'var(--text3)' : kmOK ? '#16a34a' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#ca8a04' : '#dc2626'
-                            const estadoBg = kmReal == null ? 'var(--bg2)' : kmOK ? '#bbf7d0' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#fef9c3' : '#fca5a5'
-                            const estadoColor = kmReal == null ? 'var(--text3)' : kmOK ? '#166534' : Math.abs(kmReal - (kmMed || kmReal)) / (kmMed || 1) < 0.15 ? '#713f12' : '#7f1d1d'
+                            const kmDiff2  = kmMed != null && kmReal != null ? Math.abs(kmReal - kmMed) : null
+                            const kmColor  = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#16a34a' : kmDiff2 <= 12 ? '#ca8a04' : '#dc2626'
+                            const estadoBg = kmReal == null ? 'var(--bg2)' : kmDiff2 == null ? 'var(--bg2)' : kmDiff2 <= 8 ? '#bbf7d0' : kmDiff2 <= 12 ? '#fef9c3' : '#fca5a5'
+                            const estadoColor = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#166534' : kmDiff2 <= 12 ? '#713f12' : '#7f1d1d'
 
                             return (
                               <div key={semKey}>
@@ -1783,7 +1783,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                           if (!obj) return null
                                           const barW = real != null ? Math.min(real, 100) : 0
                                           const tickW = Math.min(obj, 100)
-                                          const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 10 ? col : Math.abs(real - obj) <= 20 ? '#f59e0b' : '#ef4444'
+                                          const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 10 ? '#16a34a' : Math.abs(real - obj) <= 20 ? '#f59e0b' : '#ef4444'
                                           return (
                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                               <div style={{ width: 44, height: 5, background: '#f3f4f6', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
