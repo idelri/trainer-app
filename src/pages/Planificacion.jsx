@@ -2302,7 +2302,8 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${barW}%`, background: barCol, borderRadius: 3 }} />
                                                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#6b7280' }} />
                                               </div>
-                                              <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text)', width: 28, flexShrink: 0 }}>{real != null ? `${real}%` : '—'}</span>
+                                              <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text)', flexShrink: 0 }}>{real != null ? `${real}%` : '—'}</span>
+                                              <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text3)', flexShrink: 0 }}>{obj != null ? `(${obj}%)` : ''}</span>
                                             </div>
                                           )
                                         })}
