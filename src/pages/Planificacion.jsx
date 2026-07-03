@@ -1771,7 +1771,11 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
 
                                   {esResistencia && (() => {
                                     const z12o = sub?.zona1_2, z34o = sub?.zona3_4, z5o = sub?.zona5
-                                    const z12r = semData?.zona1_2_real, z34r = semData?.zona3_4_real, z5r = semData?.zona5_real
+                                    const totalMin = (semData?.zona1_2_real ?? 0) + (semData?.zona3_4_real ?? 0) + (semData?.zona5_real ?? 0)
+                                    const toPct = min => totalMin > 0 ? Math.round(min / totalMin * 100) : null
+                                    const z12r = semData?.zona1_2_real != null ? toPct(semData.zona1_2_real) : null
+                                    const z34r = semData?.zona3_4_real != null ? toPct(semData.zona3_4_real) : null
+                                    const z5r  = semData?.zona5_real   != null ? toPct(semData.zona5_real)   : null
                                     if (!z12o) return <span style={{ fontSize: 10, color: 'var(--text3)' }}>—</span>
                                     return (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }} onClick={e => e.stopPropagation()}>
@@ -1786,7 +1790,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, openM
                                                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${barW}%`, background: barCol, borderRadius: 3 }} />
                                                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#9ca3af' }} />
                                               </div>
-                                              <span style={{ fontSize: 8, fontFamily: 'monospace', color: barCol, width: 20 }}>{real ?? '—'}</span>
+                                              <span style={{ fontSize: 8, fontFamily: 'monospace', color: barCol, width: 24 }}>{real != null ? `${real}%` : '—'}</span>
                                             </div>
                                           )
                                         })}

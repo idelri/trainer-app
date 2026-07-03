@@ -256,11 +256,23 @@ function FilaSesion({ sesion }) {
   )
 }
 
+// Convierte minutos reales de zona a porcentaje
+function minZonasPct(z12, z34, z5) {
+  const total = (z12 ?? 0) + (z34 ?? 0) + (z5 ?? 0)
+  if (total === 0) return { z12: null, z34: null, z5: null }
+  return {
+    z12: Math.round((z12 ?? 0) / total * 100),
+    z34: Math.round((z34 ?? 0) / total * 100),
+    z5:  Math.round((z5  ?? 0) / total * 100),
+  }
+}
+
 // ───────────────────────── Barras planificado vs real ─────────────────────────
 function BarraZona({ label, color, obj, real }) {
   if (obj == null) return null
-  const pctReal = real != null ? Math.min((real / 100) * 100, 120) : 0
-  const pctObj  = (obj / 100) * 100
+  // real y obj son ambos porcentajes (0-100)
+  const pctReal = real != null ? Math.min(real, 100) : 0
+  const pctObj  = Math.min(obj, 100)
   const diff    = real != null ? real - obj : null
   const barColor = real == null ? '#d1d5db' : Math.abs(diff) <= 5 ? color : Math.abs(diff) <= 12 ? AMARILLO : ROJO
   return (
@@ -282,6 +294,9 @@ function BloqueCumplimiento({ semana }) {
   const tienePlan = zona1_2Obj != null || kmMin != null
   const tieneReal = kmReal != null || zona1_2Real != null
   if (!tienePlan) return null
+
+  // Convertir minutos reales a porcentajes para comparar con objetivos
+  const pct = minZonasPct(zona1_2Real, zona3_4Real, zona5Real)
 
   const kmMedio   = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
   const kmPct     = kmMedio && kmReal != null ? Math.min(kmReal / kmMedio * 100, 130) : 0
@@ -312,9 +327,9 @@ function BloqueCumplimiento({ semana }) {
 
       {zona1_2Obj != null && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <BarraZona label="Z1-Z2" color={AZUL}    obj={zona1_2Obj} real={zona1_2Real} />
-          <BarraZona label="Z3-Z4" color={AMARILLO} obj={zona3_4Obj} real={zona3_4Real} />
-          <BarraZona label="Z5"    color={ROJO}     obj={zona5Obj}   real={zona5Real} />
+          <BarraZona label="Z1-Z2" color={AZUL}    obj={zona1_2Obj} real={pct.z12} />
+          <BarraZona label="Z3-Z4" color={AMARILLO} obj={zona3_4Obj} real={pct.z34} />
+          <BarraZona label="Z5"    color={ROJO}     obj={zona5Obj}   real={pct.z5}  />
         </div>
       )}
 
