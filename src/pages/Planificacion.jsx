@@ -1478,14 +1478,32 @@ export default function Planificacion({ clientePlanificacion }) {
         <div style={{ position: 'fixed', top: tooltip.y + 14, left: Math.min(tooltip.x + 14, window.innerWidth - 300), background: 'var(--bg, #fff)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)', zIndex: 1000, minWidth: 200, maxWidth: 280, pointerEvents: 'none', fontSize: 12, lineHeight: 1.5 }}>
           {tooltip.tipo === 'bloque' && tooltip.item && (() => {
             const b     = tooltip.item
-            const nSubs = tooltip.numSubs || (subbloques[b.id] || []).length
+            const subs  = (subbloques[b.id] || []).slice().sort((a, x) => a.semana_inicio - x.semana_inicio)
             const fIni  = format(parseISO(b.fecha_inicio), "dd 'de' MMMM yyyy", { locale: es })
             const fFin  = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "dd 'de' MMMM yyyy", { locale: es })
             return (<>
               <div style={{ fontWeight: 700, color: b.color || 'var(--accent)', marginBottom: 6 }}>B{(tooltip.bidx ?? 0) + 1} {b.nombre}</div>
               <div style={{ color: 'var(--text2)', marginBottom: 3, fontFamily: 'var(--mono)', fontSize: 11 }}>{fIni} – {fFin}</div>
-              <div style={{ color: 'var(--text3)', marginBottom: 3 }}>{b.semanas} sem · {nSubs} sub bloque{nSubs !== 1 ? 's' : ''}</div>
+              <div style={{ color: 'var(--text3)', marginBottom: 3 }}>{b.semanas} sem · {subs.length} sub bloque{subs.length !== 1 ? 's' : ''}</div>
               {b.objetivo && <div style={{ color: 'var(--text2)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', fontStyle: 'italic' }}>{b.objetivo.slice(0, 120)}{b.objetivo.length > 120 ? '…' : ''}</div>}
+              {subs.length > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {subs.map((sub, si) => {
+                    const fS = b ? format(calcFechaInicioSemana(b, sub.semana_inicio), 'd MMM', { locale: es }) : ''
+                    const fE = b ? format(calcFechaFinSemana(b, sub.semana_fin), 'd MMM', { locale: es }) : ''
+                    return (
+                      <div key={sub.id}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>
+                          <span style={{ color: b.color || 'var(--accent)', marginRight: 4 }}>▸</span>
+                          {(tooltip.bidx ?? 0) + 1}.{si + 1} {sub.nombre}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginLeft: 12 }}>{fS} – {fE}</div>
+                        {sub.notas && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', marginLeft: 12, marginTop: 1 }}>{sub.notas.slice(0, 80)}{sub.notas.length > 80 ? '…' : ''}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </>)
           })()}
           {tooltip.tipo === 'subbloque' && tooltip.item && (() => {
@@ -1505,12 +1523,28 @@ export default function Planificacion({ clientePlanificacion }) {
             const sem   = tooltip.item
             const b     = tooltip.bloque
             const carga = sem?.carga ? CARGAS[sem.carga] : null
-            const fIni  = b ? format(calcFechaInicioSemana(b, tooltip.numLocal), 'dd MMM', { locale: es }) : ''
+            const fIni  = b ? calcFechaInicioSemana(b, tooltip.numLocal) : null
+            const fFin  = fIni ? addDays(fIni, 6) : null
+            const sesionesSem = fIni && fFin ? sesiones.filter(s => {
+              if (!s.fecha) return false
+              const f = parseISO(s.fecha)
+              return f >= fIni && f <= fFin
+            }) : []
             return (<>
-              <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>S{tooltip.numGlobal} · {fIni}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>S{tooltip.numGlobal} · {fIni ? format(fIni, 'dd MMM', { locale: es }) : ''}</div>
               {sem?.objetivo ? <div style={{ color: 'var(--text2)', marginBottom: 4 }}>{sem.objetivo}</div> : <div style={{ color: 'var(--text3)', fontStyle: 'italic', marginBottom: 4 }}>Sin objetivo</div>}
               {carga && <div style={{ marginBottom: 4 }}><span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, background: carga.color + '20', color: carga.color, fontWeight: 600 }}>{carga.label}</span></div>}
-              {sem?.km_objetivo && <div style={{ color: 'var(--text3)' }}>Obj: {sem.km_objetivo} km{sem?.km_real ? ` · Real: ${sem.km_real} km` : ''}</div>}
+              {sem?.km_objetivo && <div style={{ color: 'var(--text3)', marginBottom: 4 }}>Obj: {sem.km_objetivo} km{sem?.km_real ? ` · Real: ${sem.km_real} km` : ''}</div>}
+              {sesionesSem.length > 0 && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {sesionesSem.map(s => (
+                    <div key={s.id}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)' }}>{iconoSesion(s)} {s.titulo}</div>
+                      {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', marginLeft: 16, marginTop: 1 }}>{s.objetivo.slice(0, 70)}{s.objetivo.length > 70 ? '…' : ''}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </>)
           })()}
           {tooltip.tipo === 'sesion' && tooltip.item && (() => {
@@ -1692,11 +1726,14 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
               {bAb ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
 
               {!editMode ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{b.nombre}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                    {b.semanas} sem · {format(parseISO(b.fecha_inicio), 'd MMM yyyy', { locale: es })} – {format(fFin, 'd MMM yyyy', { locale: es })}
-                  </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{b.nombre}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                      {b.semanas} sem · {format(parseISO(b.fecha_inicio), 'd MMM yyyy', { locale: es })} – {format(fFin, 'd MMM yyyy', { locale: es })}
+                    </span>
+                  </div>
+                  {b.objetivo && <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.objetivo}</div>}
                 </div>
               ) : (
                 <input
@@ -1806,23 +1843,26 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: b.color || '#2d6a4f', flexShrink: 0 }} />
 
                         {!editMode ? (
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-                            <span style={{ fontSize: 12, fontWeight: 500 }}>{bidx + 1}.{subidx + 1} · {sub.nombre}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                              {format(fIniSub, 'd MMM', { locale: es })} – {format(fFinSub, 'd MMM', { locale: es })}
-                            </span>
-                            {esResistencia && (sub.km_min || sub.km_max) && (
-                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8, background: 'var(--bg)', color: 'var(--text2)' }}>
-                                {sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 12, fontWeight: 500 }}>{bidx + 1}.{subidx + 1} · {sub.nombre}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                                {format(fIniSub, 'd MMM', { locale: es })} – {format(fFinSub, 'd MMM', { locale: es })}
                               </span>
-                            )}
-                            {!esResistencia && sub.exigencia && (
-                              <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8,
-                                background: sub.exigencia === 'Baja' ? '#10b98120' : sub.exigencia === 'Moderada' ? '#f59e0b20' : '#ef444420',
-                                color:      sub.exigencia === 'Baja' ? '#10b981'   : sub.exigencia === 'Moderada' ? '#f59e0b'   : '#ef4444' }}>
-                                {sub.exigencia}
-                              </span>
-                            )}
+                              {esResistencia && (sub.km_min || sub.km_max) && (
+                                <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8, background: 'var(--bg)', color: 'var(--text2)' }}>
+                                  {sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem
+                                </span>
+                              )}
+                              {!esResistencia && sub.exigencia && (
+                                <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 8,
+                                  background: sub.exigencia === 'Baja' ? '#10b98120' : sub.exigencia === 'Moderada' ? '#f59e0b20' : '#ef444420',
+                                  color:      sub.exigencia === 'Baja' ? '#10b981'   : sub.exigencia === 'Moderada' ? '#f59e0b'   : '#ef4444' }}>
+                                  {sub.exigencia}
+                                </span>
+                              )}
+                            </div>
+                            {sub.notas && <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.notas}</div>}
                           </div>
                         ) : (
                           <input
@@ -2016,7 +2056,10 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                           <span style={{ fontSize: 14 }} title={s.estado || ''}>
                                             {s.estado === 'completada' ? '✅' : s.estado === 'parcial' ? '〜' : s.estado === 'perdida' ? '❌' : iconoSesion(s)}
                                           </span>
-                                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
+                                          <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
+                                            {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{s.objetivo}</div>}
+                                          </div>
                                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>
                                             {s.fecha ? format(parseISO(s.fecha), 'EEE d MMM', { locale: es }) : 'Sin día'}
                                           </span>
