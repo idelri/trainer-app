@@ -458,6 +458,8 @@ export default function Planificacion({ clientePlanificacion }) {
       comp:        esEditar ? 'Editar competición'         : 'Nueva competición',
       control:     esEditar ? 'Editar control / valoración' : 'Nuevo control / valoración',
       nota:        esEditar ? 'Editar nota'                : 'Nueva nota',
+      ver_bloque:    'Detalle del bloque',
+      ver_subbloque: 'Detalle del sub-bloque',
     }[modalTipo] || ''
   }
 
@@ -1071,6 +1073,196 @@ export default function Planificacion({ clientePlanificacion }) {
           </div>
         )
 
+      // ── VER DETALLE BLOQUE ────────────────────────────────────────────────
+      case 'ver_bloque': {
+        const b = modalItem
+        if (!b) return null
+        const subs = (subbloques[b.id] || []).slice().sort((a, x) => a.semana_inicio - x.semana_inicio)
+        const fIni = format(parseISO(b.fecha_inicio), "d 'de' MMMM yyyy", { locale: es })
+        const fFin = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), "d 'de' MMMM yyyy", { locale: es })
+        const COLOR = b.color || '#2d6a4f'
+        const DL = ({ label, children }) => children ? (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{children}</div>
+          </div>
+        ) : null
+        return (
+          <div style={{ padding: '0 20px 8px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {/* Info general del bloque */}
+            <div style={{ padding: '12px 16px', background: COLOR + '12', borderRadius: 10, marginBottom: 16, borderLeft: `3px solid ${COLOR}` }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: 4 }}>{fIni} – {fFin} · {b.semanas} semanas</div>
+              {b.objetivo && <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{b.objetivo}</div>}
+            </div>
+
+            {/* Campos salud en bloque */}
+            {esSalud && (b.sesiones_min || b.sesiones_max || b.duracion_media_min || b.exigencia || b.enfoque_prioridad) && (
+              <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(b.sesiones_min || b.sesiones_max) && (
+                  <DL label="Frecuencia semanal">{b.sesiones_min && b.sesiones_max ? `${b.sesiones_min}–${b.sesiones_max} sesiones/sem` : `${b.sesiones_min || b.sesiones_max} sesiones/sem`}</DL>
+                )}
+                {b.duracion_media_min && <DL label="Duración media">{b.duracion_media_min} min</DL>}
+                {b.exigencia && <DL label="Exigencia">{b.exigencia}</DL>}
+                {b.enfoque_prioridad && Object.keys(b.enfoque_prioridad).length > 0 && (() => {
+                  const total = Object.values(b.enfoque_prioridad).reduce((s, v) => s + v, 0)
+                  const items = Object.entries(b.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1])
+                  return (
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Enfoque / contenidos</div>
+                      {items.map(([k, v]) => {
+                        const pct = Math.round(v / total * 100)
+                        return (
+                          <div key={k} style={{ marginBottom: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text)' }}>{k}</span>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: COLOR, fontWeight: 600 }}>{pct}%</span>
+                            </div>
+                            <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: COLOR, borderRadius: 2 }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
+            {/* Sub-bloques */}
+            {!esSalud && subs.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {subs.map((sub, si) => {
+                  const fIS = format(calcFechaInicioSemana(b, sub.semana_inicio), 'd MMM', { locale: es })
+                  const fFS = format(calcFechaFinSemana(b, sub.semana_fin), 'd MMM yyyy', { locale: es })
+                  const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
+                  return (
+                    <div key={sub.id} style={{ padding: '12px 14px', background: 'var(--bg2)', borderRadius: 8, borderLeft: `2px solid ${COLOR}88` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{si + 1} · {sub.nombre}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{fIS} – {fFS}</span>
+                      </div>
+                      {sub.notas && <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 8 }}>{sub.notas}</div>}
+                      {esResistencia && (sub.km_min || sub.km_max || sub.zona1_2 || sub.zona3_4 || sub.zona5) && (
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                          {(sub.km_min || sub.km_max) && <div style={{ fontSize: 11, color: 'var(--text3)' }}>Volumen: <strong style={{ color: 'var(--text)' }}>{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</strong></div>}
+                          {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                            <div style={{ fontSize: 11, color: 'var(--text3)', display: 'flex', gap: 8 }}>
+                              <span>Z1-Z2 <strong style={{ color: '#10b981' }}>{sub.zona1_2}%</strong></span>
+                              <span>Z3-Z4 <strong style={{ color: '#f59e0b' }}>{sub.zona3_4}%</strong></span>
+                              <span>Z5 <strong style={{ color: '#ef4444' }}>{sub.zona5}%</strong></span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {!esResistencia && (sub.sesiones_min || sub.sesiones_max || sub.duracion_media_min || sub.exigencia) && (
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, color: 'var(--text3)' }}>
+                          {(sub.sesiones_min || sub.sesiones_max) && <span>Sesiones: <strong style={{ color: 'var(--text)' }}>{sub.sesiones_min}–{sub.sesiones_max}/sem</strong></span>}
+                          {sub.duracion_media_min && <span>Duración: <strong style={{ color: 'var(--text)' }}>{sub.duracion_media_min} min</strong></span>}
+                          {sub.exigencia && <span>Exigencia: <strong style={{ color: 'var(--text)' }}>{sub.exigencia}</strong></span>}
+                        </div>
+                      )}
+                      {!esResistencia && sub.enfoque_prioridad && Object.keys(sub.enfoque_prioridad).length > 0 && (() => {
+                        const total = Object.values(sub.enfoque_prioridad).reduce((s, v) => s + v, 0)
+                        return (
+                          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
+                              const pct = Math.round(v / total * 100)
+                              return <span key={k} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 8, background: COLOR + '20', color: COLOR, fontWeight: 500 }}>{k} {pct}%</span>
+                            })}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {!esSalud && subs.length === 0 && <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Sin sub-bloques añadidos.</div>}
+          </div>
+        )
+      }
+
+      // ── VER DETALLE SUB-BLOQUE ────────────────────────────────────────────
+      case 'ver_subbloque': {
+        const sub = modalItem
+        if (!sub) return null
+        const b = bloques.find(x => x.id === sub.bloque_id)
+        const COLOR = b?.color || '#2d6a4f'
+        const fIS = b ? format(calcFechaInicioSemana(b, sub.semana_inicio), "d 'de' MMMM yyyy", { locale: es }) : ''
+        const fFS = b ? format(calcFechaFinSemana(b, sub.semana_fin), "d 'de' MMMM yyyy", { locale: es }) : ''
+        const totalPrior = Object.values(sub.enfoque_prioridad || {}).reduce((s, v) => s + v, 0)
+        return (
+          <div style={{ padding: '0 20px 8px' }}>
+            <div style={{ padding: '12px 16px', background: COLOR + '12', borderRadius: 10, marginBottom: 16, borderLeft: `3px solid ${COLOR}` }}>
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: sub.notas ? 4 : 0 }}>{fIS} – {fFS}</div>
+              {sub.notas && <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{sub.notas}</div>}
+            </div>
+            {esResistencia && (sub.km_min || sub.km_max || sub.zona1_2 || sub.zona3_4 || sub.zona5) && (
+              <div style={{ marginBottom: 16 }}>
+                {(sub.km_min || sub.km_max) && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Volumen objetivo</div>
+                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.km_min ?? '?'}–{sub.km_max ?? '?'} km/sem</div>
+                  </div>
+                )}
+                {(sub.zona1_2 > 0 || sub.zona3_4 > 0 || sub.zona5 > 0) && (
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Distribución de zonas</div>
+                    {[{ key: 'zona1_2', label: 'Z1-Z2', color: '#10b981' }, { key: 'zona3_4', label: 'Z3-Z4', color: '#f59e0b' }, { key: 'zona5', label: 'Z5+', color: '#ef4444' }].map(z => (
+                      <div key={z.key} style={{ marginBottom: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: z.color }}>{z.label}</span>
+                          <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 600 }}>{sub[z.key] || 0}%</span>
+                        </div>
+                        <div style={{ height: 5, background: 'var(--bg2)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${sub[z.key] || 0}%`, background: z.color, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {!esResistencia && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {(sub.sesiones_min || sub.sesiones_max) && (
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Frecuencia semanal</div>
+                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.sesiones_min}–{sub.sesiones_max} sesiones/sem{sub.duracion_media_min ? ` · ${sub.duracion_media_min} min de media` : ''}</div>
+                  </div>
+                )}
+                {sub.exigencia && (
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 4 }}>Exigencia</div>
+                    <div style={{ fontSize: 13, color: 'var(--text)' }}>{sub.exigencia}</div>
+                  </div>
+                )}
+                {totalPrior > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500, marginBottom: 8 }}>Enfoque / contenidos</div>
+                    {Object.entries(sub.enfoque_prioridad).filter(([, v]) => v > 0).sort((a, x) => x[1] - a[1]).map(([k, v]) => {
+                      const pct = Math.round(v / totalPrior * 100)
+                      return (
+                        <div key={k} style={{ marginBottom: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text)' }}>{k}</span>
+                            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: COLOR, fontWeight: 600 }}>{pct}%</span>
+                          </div>
+                          <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: COLOR, borderRadius: 2 }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+
       default: return null
     }
   }
@@ -1589,10 +1781,12 @@ export default function Planificacion({ clientePlanificacion }) {
             </div>
             {renderFormulario()}
             <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarModal} disabled={saving}>
-                {saving ? 'Guardando...' : (modalItem?.id || modalItem?.semanaData?.id) ? 'Guardar cambios' : getTituloCrear()}
-              </button>
+              <button className="btn btn-ghost" onClick={closeModal}>{modalTipo?.startsWith('ver_') ? 'Cerrar' : 'Cancelar'}</button>
+              {!modalTipo?.startsWith('ver_') && (
+                <button className="btn btn-primary" onClick={guardarModal} disabled={saving}>
+                  {saving ? 'Guardando...' : (modalItem?.id || modalItem?.semanaData?.id) ? 'Guardar cambios' : getTituloCrear()}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1733,7 +1927,15 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                       {b.semanas} sem · {format(parseISO(b.fecha_inicio), 'd MMM yyyy', { locale: es })} – {format(fFin, 'd MMM yyyy', { locale: es })}
                     </span>
                   </div>
-                  {b.objetivo && <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ color: b.color || 'var(--accent)', fontStyle: 'normal', marginRight: 5, fontWeight: 700 }}>—</span>{b.objetivo}</div>}
+                  {b.objetivo && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.objetivo}</span>
+                      <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_bloque', b) }} style={{ flexShrink: 0, fontSize: 10, padding: '1px 7px', color: 'var(--accent)', borderColor: 'var(--accent)' }}>Ver más</button>
+                    </div>
+                  )}
+                  {!b.objetivo && (
+                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_bloque', b) }} style={{ marginTop: 2, fontSize: 10, padding: '1px 7px', color: 'var(--text3)' }}>Ver detalle</button>
+                  )}
                 </div>
               ) : (
                 <input
@@ -1862,7 +2064,14 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                 </span>
                               )}
                             </div>
-                            {sub.notas && <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ color: b.color || 'var(--accent)', fontStyle: 'normal', marginRight: 5, fontWeight: 700 }}>—</span>{sub.notas}</div>}
+                            {sub.notas ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.notas}</span>
+                                <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_subbloque', { ...sub, bloque_id: b.id }) }} style={{ flexShrink: 0, fontSize: 10, padding: '1px 7px', color: 'var(--accent)', borderColor: 'var(--accent)' }}>Ver más</button>
+                              </div>
+                            ) : (
+                              <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_subbloque', { ...sub, bloque_id: b.id }) }} style={{ marginTop: 2, fontSize: 10, padding: '1px 7px', color: 'var(--text3)' }}>Ver detalle</button>
+                            )}
                           </div>
                         ) : (
                           <input
