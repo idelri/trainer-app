@@ -26,6 +26,7 @@ function calcOffsetSemanaGlobal(bloques, bloqueId, numSemanaLocal) {
   return offset + numSemanaLocal
 }
 function iconoSesion(s) {
+  if (s.icono) return s.icono
   const t = (s.titulo || '').toLowerCase()
   if (/fuerza|gym|pesas|pesa|musculac|core|funcional/.test(t)) return '💪'
   if (/rodaje|carrera|run|correr|trote|fondo|series|tempo|interval/.test(t)) return '🏃'
@@ -248,6 +249,7 @@ export default function Planificacion({ clientePlanificacion }) {
           estado:       item?.estado       || 'pendiente',
           objetivo:     item?.objetivo     || '',
           duracion_min: item?.duracion_min || '',
+          icono:        item?.icono        || '',
         }
       case 'comp':
         return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', objetivo: item?.objetivo || '', notas: item?.notas || '' }
@@ -366,7 +368,7 @@ export default function Planificacion({ clientePlanificacion }) {
 
         case 'sesion': {
           if (!formData.titulo) break
-          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null }
+          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null, icono: formData.icono || null }
           if (modalItem?.id) await supabase.from('sesiones').update(datos).eq('id', modalItem.id)
           else await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -899,6 +901,17 @@ export default function Planificacion({ clientePlanificacion }) {
       case 'sesion':
         return (
           <div style={{ padding: '0 20px 4px' }}>
+            <div className="form-group">
+              <label className="form-label">Icono de sesión</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {['💪','🏃','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🏇','🎯','🧗','🤽','🏄','🛶','🎿','⛷️','🏌️','🏹','🤺','🛝','🚣','🏇','🦵','🔥','⚡','🌟','🎽'].map(e => (
+                  <button key={e} onClick={() => fd('icono', formData.icono === e ? '' : e)}
+                    style={{ width: 34, height: 34, borderRadius: 8, border: `2px solid ${formData.icono === e ? 'var(--accent)' : 'var(--border)'}`, background: formData.icono === e ? 'var(--accent-light)' : 'var(--bg)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="form-group">
               <label className="form-label">Título *</label>
               <input className="form-input" value={formData.titulo || ''} onChange={e => fd('titulo', e.target.value)} placeholder="Ej: Fuerza tren superior" autoFocus />
@@ -1718,7 +1731,7 @@ export default function Planificacion({ clientePlanificacion }) {
                                     onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
                                     style={{ width: 18, height: 18, borderRadius: '50%', background: est ? est.bg : (b.color || '#2d6a4f') + '22', border: est ? `1.5px solid ${est.border}` : s.tipo_sesion === 'flexible' ? `1.5px dashed ${b.color || '#2d6a4f'}` : `1.5px solid ${b.color || '#2d6a4f'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, cursor: 'pointer', color: est?.color }}
                                     title={s.titulo}>
-                                    {est ? est.icono : iconoSesion(s)}
+                                    {est ? est.icono : (s.icono || iconoSesion(s))}
                                   </div>
                                 )
                               })}
@@ -1818,7 +1831,7 @@ export default function Planificacion({ clientePlanificacion }) {
                 <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {sesionesSem.map((s, si) => (
                     <div key={s.id} style={{ paddingTop: si > 0 ? 5 : 0, paddingBottom: 5, borderTop: si > 0 ? '0.5px solid var(--border)' : 'none' }}>
-                      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)' }}>{iconoSesion(s)} {s.titulo}</div>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)' }}>{s.icono || iconoSesion(s)} {s.titulo}</div>
                       {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', marginLeft: 16, marginTop: 1 }}><span style={{ fontStyle: 'normal', marginRight: 3 }}>·</span>{s.objetivo.slice(0, 70)}{s.objetivo.length > 70 ? '…' : ''}</div>}
                     </div>
                   ))}
@@ -2343,11 +2356,16 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                           onMouseOver={e => e.currentTarget.style.background = 'var(--bg2)'}
                                           onMouseOut={e => e.currentTarget.style.background = ''}
                                           style={{ display: 'grid', gridTemplateColumns: '20px 1fr 96px 96px 64px 36px', padding: '7px 0', borderBottom: '0.5px solid var(--border)', gap: 8, alignItems: 'center', cursor: 'pointer', borderRadius: 4 }}>
-                                          <span style={{ fontSize: 14 }} title={s.estado || ''}>
-                                            {s.estado === 'completada' ? '✅' : s.estado === 'parcial' ? '〜' : s.estado === 'perdida' ? '❌' : iconoSesion(s)}
+                                          <span style={{ fontSize: 14 }}>
+                                            {s.icono || iconoSesion(s)}
                                           </span>
                                           <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                              {s.titulo}
+                                              {s.estado === 'completada' && <span title="Completada" style={{ fontSize: 12 }}>✅</span>}
+                                              {s.estado === 'parcial'    && <span title="Parcial"    style={{ fontSize: 12 }}>〜</span>}
+                                              {s.estado === 'perdida'    && <span title="No realizada" style={{ fontSize: 12 }}>❌</span>}
+                                            </div>
                                             {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}><span style={{ fontStyle: 'normal', marginRight: 4, color: 'var(--text3)' }}>·</span>{s.objetivo}</div>}
                                           </div>
                                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>
