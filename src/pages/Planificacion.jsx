@@ -1876,6 +1876,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                             const kmMax  = sub?.km_max ?? null
                             const kmMed  = kmMin != null ? (kmMin + (kmMax || kmMin)) / 2 : null
                             const kmDiff2  = kmMed != null && kmReal != null ? Math.abs(kmReal - kmMed) : null
+                            const kmOK     = kmDiff2 != null && kmDiff2 <= 8
                             const kmColor  = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#16a34a' : kmDiff2 <= 12 ? '#ca8a04' : '#dc2626'
                             const estadoBg = kmReal == null ? 'var(--bg2)' : kmDiff2 == null ? 'var(--bg2)' : kmDiff2 <= 8 ? '#bbf7d0' : kmDiff2 <= 12 ? '#fef9c3' : '#fca5a5'
                             const estadoColor = kmReal == null ? 'var(--text3)' : kmDiff2 == null ? 'var(--text3)' : kmDiff2 <= 8 ? '#166534' : kmDiff2 <= 12 ? '#713f12' : '#7f1d1d'
