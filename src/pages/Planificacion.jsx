@@ -79,6 +79,9 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [filtros,    setFiltros]    = useState({ bloques: true, sub: true, semanas: true, sesiones: true, eventos: false })
   const [tooltip,    setTooltip]    = useState({ visible: false, tipo: null, item: null, x: 0, y: 0 })
   const [menuAnadir, setMenuAnadir] = useState(false)
+  const [modalPack, setModalPack] = useState(null)
+  const [formPack, setFormPack] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' })
+  const [savingPack, setSavingPack] = useState(false)
 
   // ── Modal unificado ──
   const [modalTipo, setModalTipo] = useState(null)
@@ -297,6 +300,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   }
 
   function openModal(tipo, item = null) {
+    if (tipo === 'pack') { setFormPack({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }); setModalPack('nuevo'); return }
     setModalTipo(tipo)
     setModalItem(item)
     setFormData(getInitialForm(tipo, item))
@@ -311,6 +315,16 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   // Atajo para actualizar un campo de formData
   function fd(key, val) {
     setFormData(f => ({ ...f, [key]: val }))
+  }
+
+  async function guardarPack() {
+    setSavingPack(true)
+    if (modalPack?.id) {
+      await supabase.from('packs_flexibles').update({ nombre: formPack.nombre, fecha_inicio: formPack.fecha_inicio, fecha_fin: formPack.fecha_fin, descripcion: formPack.descripcion || null }).eq('id', modalPack.id)
+    } else {
+      await supabase.from('packs_flexibles').insert({ cliente_id: clienteSeleccionado, nombre: formPack.nombre, fecha_inicio: formPack.fecha_inicio, fecha_fin: formPack.fecha_fin, descripcion: formPack.descripcion || null })
+    }
+    setSavingPack(false); setModalPack(null); cargarPlanificacion()
   }
 
   async function guardarModal() {
@@ -1488,6 +1502,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                   {[
                     ['bloque',   '+ Bloque'],
                     ['sesion',   '+ Sesión'],
+                    ['pack',     '📦 Pack flexible'],
                     ['comp',     '🏆 Competición'],
                     ['control',  '🔬 Control / Valoración'],
                     ['nota',     '📝 Nota'],
@@ -2489,6 +2504,38 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
           </div>
         )
       })}
+      {modalPack && (
+        <div className="modal-backdrop" onClick={() => setModalPack(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modalPack === 'nuevo' ? 'Nuevo pack flexible' : 'Editar pack'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPack(null)}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre del pack *</label>
+              <input className="form-input" value={formPack.nombre} onChange={e => setFormPack(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Plan de vacaciones" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha inicio *</label>
+                <input className="form-input" type="date" value={formPack.fecha_inicio} onChange={e => setFormPack(f => ({ ...f, fecha_inicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha fin *</label>
+                <input className="form-input" type="date" value={formPack.fecha_fin} onChange={e => setFormPack(f => ({ ...f, fecha_fin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descripción para el cliente</label>
+              <textarea className="form-input" value={formPack.descripcion} onChange={e => setFormPack(f => ({ ...f, descripcion: e.target.value }))} placeholder="Ej: Durante estos días puedes realizar estas sesiones de forma flexible según disponibilidad..." rows={3} style={{ resize: 'vertical' }} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPack(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={savingPack || !formPack.nombre || !formPack.fecha_inicio || !formPack.fecha_fin} onClick={guardarPack}>{savingPack ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
