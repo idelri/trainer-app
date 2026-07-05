@@ -277,22 +277,47 @@ export default function SesionPublica({ token }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
                                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Peso</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.peso}</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.peso} kg</span>
                               </span>
-                              <input type="text" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
-                                placeholder={`Lo que hiciste (si fue diferente)`}
-                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input type="number" min="0" step="0.5" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
+                                  placeholder="kg reales"
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
+                                <span style={{ fontSize: 11, color: T.ink3 }}>kg</span>
+                              </div>
+                            </div>
+                          )}
+                          {activas.includes('Peso/lado') && (e.peso_der || e.peso_izq) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Peso/lado</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>D: {e.peso_der || '—'} · I: {e.peso_izq || '—'} kg</span>
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 11, color: T.ink2, fontWeight: 600 }}>D</span>
+                                <input type="number" min="0" step="0.5" value={vrEj.peso_der || ''} onChange={ev => actualizarValorReal(e.id, 'peso_der', ev.target.value)}
+                                  placeholder={e.peso_der || '—'}
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 60 }} />
+                                <span style={{ fontSize: 11, color: T.ink2, fontWeight: 600 }}>I</span>
+                                <input type="number" min="0" step="0.5" value={vrEj.peso_izq || ''} onChange={ev => actualizarValorReal(e.id, 'peso_izq', ev.target.value)}
+                                  placeholder={e.peso_izq || '—'}
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 60 }} />
+                                <span style={{ fontSize: 11, color: T.ink3 }}>kg</span>
+                              </div>
                             </div>
                           )}
                           {activas.includes('Duración') && e.duracion && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
                                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Duración</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.duracion}</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.duracion} s</span>
                               </span>
-                              <input type="text" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
-                                placeholder={`Lo que hiciste (si fue diferente)`}
-                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input type="number" min="0" step="1" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
+                                  placeholder="seg reales"
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
+                                <span style={{ fontSize: 11, color: T.ink3 }}>s</span>
+                              </div>
                             </div>
                           )}
                           {activas.includes('RIR') && e.rpe && (
@@ -305,17 +330,20 @@ export default function SesionPublica({ token }) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
                                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Distancia</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.distancia}</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.distancia} m</span>
                               </span>
-                              <input type="text" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
-                                placeholder={`Lo que hiciste (si fue diferente)`}
-                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input type="number" min="0" step="0.5" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
+                                  placeholder="m reales"
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
+                                <span style={{ fontSize: 11, color: T.ink3 }}>m</span>
+                              </div>
                             </div>
                           )}
                           {activas.includes('Altura') && e.altura && (
                             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
                               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Altura</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.altura}</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.altura} cm</span>
                             </span>
                           )}
                           {activas.includes('Descanso') && e.descanso && (

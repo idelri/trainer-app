@@ -24,7 +24,7 @@ async function ytTitulo(url) {
 }
 
 /* input que guarda solo, sin botones, al perder el foco o tras una pausa */
-function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) {
+function InlineInput({ value, onSave, placeholder, style, textarea, fontSize, type }) {
   const [v, setV] = useState(value || '')
   const timer = useRef(null)
   useEffect(() => { setV(value || '') }, [value])
@@ -41,10 +41,12 @@ function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) 
   const Comp = textarea ? 'textarea' : 'input'
   return (
     <Comp
+      type={textarea ? undefined : (type || 'text')}
       value={v}
       onChange={handleChange}
       onBlur={handleBlur}
       placeholder={placeholder}
+      min={type === 'number' ? 0 : undefined}
       style={{
         border: 'none', background: 'transparent', outline: 'none', width: '100%',
         fontFamily: 'inherit', fontSize: fontSize || 13, color: 'inherit', padding: 0,
@@ -850,7 +852,7 @@ async function guardarSesion() {
           {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bloques.map((b, idx) => {
               const VARS_MENU = [
-                { grupo: 'Carga', items: ['Peso','Duración','RIR','Distancia','Altura'] },
+                { grupo: 'Carga', items: ['Peso','Peso/lado','Duración','RIR','Distancia','Altura'] },
                 { grupo: 'Ejecución', items: ['Descanso','Forma de ejecución'] },
                 { grupo: 'Notas', items: ['Indicaciones'] },
               ]
@@ -966,28 +968,53 @@ async function guardarSesion() {
                             {activas.includes('Peso') && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Peso</span>
-                                <div style={{ flex: 1 }}><InlineInput value={e.peso} placeholder="80 kg · 20 kg/mancuerna · Peso corporal · 75% 1RM" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'peso', v)} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                                  <InlineInput value={e.peso} placeholder="80" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso', v)} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+                                </div>
                                 <button onClick={() => toggleVariable(e, 'Peso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Peso/lado') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Peso/lado</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
+                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>D</span>
+                                  <InlineInput value={e.peso_der} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_der', v)} style={{ width: 36 }} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>I</span>
+                                  <InlineInput value={e.peso_izq} placeholder="15" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_izq', v)} style={{ width: 36 }} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+                                </div>
+                                <button onClick={() => toggleVariable(e, 'Peso/lado')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                               </div>
                             )}
                             {activas.includes('Duración') && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Duración</span>
-                                <div style={{ flex: 1 }}><InlineInput value={e.duracion} placeholder="20 s · 45 s · 1 min" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'duracion', v)} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                                  <InlineInput value={e.duracion} placeholder="45" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'duracion', v)} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>s</span>
+                                </div>
                                 <button onClick={() => toggleVariable(e, 'Duración')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                               </div>
                             )}
                             {activas.includes('Distancia') && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Distancia</span>
-                                <div style={{ flex: 1 }}><InlineInput value={e.distancia} placeholder="10 m · 20 m" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                                  <InlineInput value={e.distancia} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>m</span>
+                                </div>
                                 <button onClick={() => toggleVariable(e, 'Distancia')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                               </div>
                             )}
                             {activas.includes('Altura') && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Altura</span>
-                                <div style={{ flex: 1 }}><InlineInput value={e.altura} placeholder="Cajón 40 cm · Valla 30 cm" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} /></div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+                                  <InlineInput value={e.altura} placeholder="40" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} />
+                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>cm</span>
+                                </div>
                                 <button onClick={() => toggleVariable(e, 'Altura')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                               </div>
                             )}
@@ -1125,11 +1152,12 @@ async function guardarSesion() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {e.series && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>SERIES</span>{e.series}</span>}
                             {e.reps && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>REPS</span>{e.reps}</span>}
-                            {activas.includes('Peso') && e.peso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO</span>{e.peso}</span>}
-                            {activas.includes('Duración') && e.duracion && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DURACIÓN</span>{e.duracion}</span>}
+                            {activas.includes('Peso') && e.peso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO</span>{e.peso} kg</span>}
+                            {activas.includes('Peso/lado') && (e.peso_der || e.peso_izq) && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO/LADO</span>D: {e.peso_der || '—'} · I: {e.peso_izq || '—'} kg</span>}
+                            {activas.includes('Duración') && e.duracion && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DURACIÓN</span>{e.duracion} s</span>}
                             {activas.includes('RIR') && e.rpe && <span style={{ background: rirColors[e.rpe] + '22', borderRadius: 7, padding: '4px 9px', fontSize: 11, color: rirColors[e.rpe] }}><span style={{ fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>RIR</span>{e.rpe}</span>}
-                            {activas.includes('Distancia') && e.distancia && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DISTANCIA</span>{e.distancia}</span>}
-                            {activas.includes('Altura') && e.altura && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>ALTURA</span>{e.altura}</span>}
+                            {activas.includes('Distancia') && e.distancia && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DISTANCIA</span>{e.distancia} m</span>}
+                            {activas.includes('Altura') && e.altura && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>ALTURA</span>{e.altura} cm</span>}
                             {activas.includes('Descanso') && e.descanso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DESCANSO</span>{e.descanso}</span>}
                             {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
                               <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}>
