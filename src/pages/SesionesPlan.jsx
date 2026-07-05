@@ -20,6 +20,7 @@ const TIPOS_ACTIVIDAD = [
 ]
 const ICONO_ACTIVIDAD = Object.fromEntries(TIPOS_ACTIVIDAD.map(t => [t.value, t.icono]))
 function iconoSesion(s) {
+  if (s?.icono) return s.icono
   const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
   return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
 }
