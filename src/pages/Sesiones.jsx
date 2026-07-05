@@ -610,7 +610,8 @@ async function guardarSesion() {
       }
     }
     setSaving(false)
-    if (clienteDestino === clienteSeleccionado) cargarSesiones()
+    if (clienteDestino !== clienteSeleccionado) setClienteSeleccionado(clienteDestino)
+    else cargarSesiones()
   }
   async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
