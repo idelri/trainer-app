@@ -138,6 +138,27 @@ export default function SesionPublica({ token }) {
     })
   }
 
+  function marcarEjercicio(ejId, numSeries) {
+    setProgreso(p => {
+      const prev = p[ejId] || { series: Array(numSeries).fill(false), hecho: false }
+      const yaHecho = prev.hecho
+      const series = prev.series.map(() => !yaHecho)
+      return { ...p, [ejId]: { series, hecho: !yaHecho } }
+    })
+  }
+
+  function marcarBloque(ejsDelBloque) {
+    setProgreso(p => {
+      const next = { ...p }
+      const yaHechoTodo = ejsDelBloque.every(e => next[e.id]?.hecho)
+      ejsDelBloque.forEach(e => {
+        const n = next[e.id]?.series.length || parseInt(e.series) || 1
+        next[e.id] = { series: Array(n).fill(!yaHechoTodo), hecho: !yaHechoTodo }
+      })
+      return next
+    })
+  }
+
   function toggleSerie(ejId, serieIdx) {
     setProgreso(p => {
       const prev = p[ejId] || { series: [], hecho: false }
@@ -213,7 +234,18 @@ export default function SesionPublica({ token }) {
               <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 14, background: b.color || '#E29A2E' }}>
                 {String(idx + 1).padStart(2, '0')}
               </div>
-              <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.18 }}>{b.nombre}</h2>
+              <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.18, flex: 1 }}>{b.nombre}</h2>
+              {(() => {
+                const ejsBloque = ejercicios[b.id] || []
+                if (!ejsBloque.length) return null
+                const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
+                return (
+                  <button onClick={() => marcarBloque(ejsBloque)}
+                    style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${bloqueHecho ? '#16a34a' : (b.color || '#E29A2E')}`, background: bloqueHecho ? '#f0fdf4' : 'transparent', color: bloqueHecho ? '#16a34a' : (b.color || '#875708'), cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {bloqueHecho ? '✓ Bloque hecho' : '✓ Todo el bloque'}
+                  </button>
+                )
+              })()}
             </div>
             {b.nota && (
               <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', borderRadius: 11, padding: '11px 13px', marginBottom: 13, fontSize: 13, lineHeight: 1.45, background: COLORES_TINT(b.color || '#E29A2E'), color: b.color || '#875708' }}>
@@ -364,8 +396,12 @@ export default function SesionPublica({ token }) {
                             </span>
                           )}
                         </div>
-                        {/* Checks de series */}
+                        {/* Marcar ejercicio + checks de series */}
                         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
+                            style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${hecho ? '#16a34a' : T.line}`, background: hecho ? '#f0fdf4' : T.card, color: hecho ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
+                            {hecho ? '✓ Ejercicio completado' : '✓ Marcar ejercicio'}
+                          </button>
                           {prog.series.map((hecha, sIdx) => (
                             <label key={sIdx} onClick={() => toggleSerie(e.id, sIdx)}
                               style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
