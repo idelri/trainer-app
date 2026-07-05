@@ -87,6 +87,8 @@ export default function SesionPublica({ token }) {
   const [valoresReales, setValoresReales] = useState({})
   // fecha (string) si la sesión flexible ya fue guardada como realizada en esta visita
   const [sesionFlexibleGuardada, setSesionFlexibleGuardada] = useState(null)
+  const [guardandoSesion, setGuardandoSesion] = useState(false)
+  const [sesionFijaGuardada, setSesionFijaGuardada] = useState(false)
 
   useEffect(() => { cargar() }, [token])
 
@@ -159,6 +161,40 @@ export default function SesionPublica({ token }) {
       })
       return next
     })
+  }
+
+  async function clonarSesionHoy() {
+    const hoyStr = format(new Date(), 'yyyy-MM-dd')
+    const nuevoToken = crypto.randomUUID()
+    const { data: clon, error: clonError } = await supabase.from('sesiones').insert({
+      cliente_id: sesion.cliente_id, titulo: sesion.titulo, fecha: hoyStr,
+      objetivo: sesion.objetivo, duracion_min: sesion.duracion_min, material: sesion.material,
+      indicaciones: sesion.indicaciones, tipo_sesion: 'programada', icono: sesion.icono,
+      tipo_editor: sesion.tipo_editor, con_feedback: sesion.con_feedback, token_publico: nuevoToken,
+    }).select().single()
+    if (clonError || !clon) return null
+    for (const bloque of bloques) {
+      const { data: nuevoBloque } = await supabase.from('sesion_bloques').insert({
+        sesion_id: clon.id, nombre: bloque.nombre, color: bloque.color, nota: bloque.nota, orden: bloque.orden,
+      }).select().single()
+      if (nuevoBloque) {
+        for (const ej of (ejercicios[bloque.id] || [])) {
+          await supabase.from('sesion_ejercicios').insert({
+            bloque_id: nuevoBloque.id, nombre: ej.nombre, series: ej.series, reps: ej.reps,
+            rpe: ej.rpe, notas: ej.notas, media_tipo: ej.media_tipo, media_url: ej.media_url,
+            video_url: ej.video_url, orden: ej.orden, peso: ej.peso, duracion: ej.duracion,
+            distancia: ej.distancia, altura: ej.altura, descanso: ej.descanso,
+            ejecucion_tipo: ej.ejecucion_tipo, ejecucion_texto: ej.ejecucion_texto,
+            variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
+            reps_por_lado: ej.reps_por_lado, valores_reales: valoresReales[ej.id] || {},
+          })
+          if (Object.keys(valoresReales[ej.id] || {}).length > 0) {
+            await supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', ej.id)
+          }
+        }
+      }
+    }
+    return { clon, hoyStr }
   }
 
   function toggleSerie(ejId, serieIdx) {
@@ -468,55 +504,16 @@ export default function SesionPublica({ token }) {
                     setEditandoFeedback(false)
                     if (act) setFeedbackEnviado(act)
                   } else if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
-                    // Sesión flexible: clonar con fecha de hoy, conservar original limpia
-                    const hoyStr = format(new Date(), 'yyyy-MM-dd')
-                    const nuevoToken = crypto.randomUUID()
-                    const { data: clon, error: clonError } = await supabase.from('sesiones').insert({
-                      cliente_id: sesion.cliente_id,
-                      titulo: sesion.titulo,
-                      fecha: hoyStr,
-                      objetivo: sesion.objetivo,
-                      duracion_min: sesion.duracion_min,
-                      material: sesion.material,
-                      indicaciones: sesion.indicaciones,
-                      tipo_sesion: 'programada',
-                      icono: sesion.icono,
-                      tipo_editor: sesion.tipo_editor,
-                      con_feedback: sesion.con_feedback,
-                      token_publico: nuevoToken,
-                    }).select().single()
-                    if (clonError || !clon) {
+                    const resultado = await clonarSesionHoy()
+                    if (!resultado) {
                       setEnviandoFeedback(false)
                       alert('Error al guardar la sesión. Inténtalo de nuevo.')
                       return
                     }
-                    for (const bloque of bloques) {
-                      const { data: nuevoBloque } = await supabase.from('sesion_bloques').insert({
-                        sesion_id: clon.id, nombre: bloque.nombre, color: bloque.color, nota: bloque.nota, orden: bloque.orden,
-                      }).select().single()
-                      if (nuevoBloque) {
-                        const ejsBloque = ejercicios[bloque.id] || []
-                        for (const ej of ejsBloque) {
-                          await supabase.from('sesion_ejercicios').insert({
-                            bloque_id: nuevoBloque.id, nombre: ej.nombre, series: ej.series, reps: ej.reps,
-                            rpe: ej.rpe, notas: ej.notas, media_tipo: ej.media_tipo, media_url: ej.media_url,
-                            video_url: ej.video_url, orden: ej.orden, peso: ej.peso, duracion: ej.duracion,
-                            distancia: ej.distancia, altura: ej.altura, descanso: ej.descanso,
-                            ejecucion_tipo: ej.ejecucion_tipo, ejecucion_texto: ej.ejecucion_texto,
-                            variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
-                            reps_por_lado: ej.reps_por_lado,
-                            valores_reales: valoresReales[ej.id] || {},
-                          })
-                          if (Object.keys(valoresReales[ej.id] || {}).length > 0) {
-                            await supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', ej.id)
-                          }
-                        }
-                      }
-                    }
-                    await supabase.from('sesion_feedback').insert({ sesion_id: clon.id, data })
+                    await supabase.from('sesion_feedback').insert({ sesion_id: resultado.clon.id, data })
                     setEnviandoFeedback(false)
                     setValoresReales({})
-                    setSesionFlexibleGuardada(hoyStr)
+                    setSesionFlexibleGuardada(resultado.hoyStr)
                   } else {
                     const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
                     setEnviandoFeedback(false)
@@ -527,6 +524,35 @@ export default function SesionPublica({ token }) {
             </div>
           ) : null}
         </div>}
+
+        {/* BOTÓN GUARDAR SESIÓN (siempre visible, independiente del feedback) */}
+        {!sesionFlexibleGuardada && !sesionFijaGuardada && (
+          <div style={{ marginTop: 20 }}>
+            <button
+              onClick={async () => {
+                setGuardandoSesion(true)
+                if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
+                  const resultado = await clonarSesionHoy()
+                  setGuardandoSesion(false)
+                  if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
+                  setValoresReales({})
+                  setSesionFlexibleGuardada(resultado.hoyStr)
+                } else {
+                  setGuardandoSesion(false)
+                  setSesionFijaGuardada(true)
+                }
+              }}
+              disabled={guardandoSesion}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, border: `2px solid ${T.accent}`, background: 'transparent', color: T.accent, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
+              {guardandoSesion ? 'Guardando...' : '↑ Guardar y enviar sesión'}
+            </button>
+          </div>
+        )}
+        {sesionFijaGuardada && (
+          <div style={{ marginTop: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 18px', textAlign: 'center' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d' }}>✓ Sesión enviada</span>
+          </div>
+        )}
       </div>
     </div>
   )
