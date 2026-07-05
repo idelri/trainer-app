@@ -342,7 +342,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones({ clienteInicial, sesionInicialId, setPage }) {
+export default function Sesiones({ clienteInicial, sesionInicialId, setPage, setClientePlanificacion }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
@@ -524,6 +524,13 @@ async function guardarSesion() {
     cargarSesiones()
   }
 
+  function volverAlCalendario() {
+    localStorage.setItem('planVista', 'calendario')
+    if (setClientePlanificacion && clienteSeleccionado) setClientePlanificacion(clienteSeleccionado)
+    if (setPage) setPage('planificacion')
+    else setSesionAbierta(null)
+  }
+
   function copiarEnlaceSesion(s) {
     const url = `${window.location.origin}/sesion/${s.token_publico}`
     navigator.clipboard.writeText(url)
@@ -644,7 +651,7 @@ async function guardarSesion() {
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
               if (dirty) { setAvisoSinGuardar(true) }
-              else { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }
+              else { volverAlCalendario() }
             }}>← Volver</button>
             <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
           </div>
@@ -652,7 +659,7 @@ async function guardarSesion() {
         {avisoSinGuardar && (
           <div style={{ margin: '8px 0 0', padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#713f12' }}>
             <span>⚠️ Tienes cambios sin guardar. Pulsa <strong>Guardar</strong> para confirmarlos.</span>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#713f12' }} onClick={() => { setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Salir sin guardar</button>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#713f12' }} onClick={() => { setAvisoSinGuardar(false); volverAlCalendario() }}>Salir sin guardar</button>
             <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
           </div>
         )}
