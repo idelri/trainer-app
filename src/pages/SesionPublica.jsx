@@ -111,11 +111,14 @@ export default function SesionPublica({ token }) {
     }
     const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
     setFeedbackEnviado(fb || null)
+    // Restaurar estado de completada si ya fue guardada anteriormente
+    if (s.completada_el) setSesionFlexibleGuardada(s.completada_el)
     const progInit = {}
     const vrInit = {}
     ejsList.forEach(e => {
       const n = parseInt(e.series) || 1
-      progInit[e.id] = { series: Array(n).fill(false), hecho: false }
+      const hecho = s.completada_el ? true : false
+      progInit[e.id] = { series: Array(n).fill(hecho), hecho }
       vrInit[e.id] = e.valores_reales || {}
     })
     setProgreso(progInit)
@@ -188,12 +191,11 @@ export default function SesionPublica({ token }) {
             variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
             reps_por_lado: ej.reps_por_lado, valores_reales: valoresReales[ej.id] || {},
           })
-          if (Object.keys(valoresReales[ej.id] || {}).length > 0) {
-            await supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', ej.id)
-          }
         }
       }
     }
+    // Marcar la sesión original como completada (persiste entre recargas)
+    await supabase.from('sesiones').update({ completada_el: hoyStr }).eq('id', sesion.id)
     return { clon, hoyStr }
   }
 
@@ -510,8 +512,23 @@ export default function SesionPublica({ token }) {
           {sesionFlexibleGuardada && (
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 16, padding: '18px 16px', textAlign: 'center' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
-              <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800, color: '#15803d' }}>Sesión guardada</p>
-              <p style={{ margin: 0, fontSize: 13.5, color: '#166534' }}>Registrada el {format(new Date(sesionFlexibleGuardada), 'dd MMM yyyy', { locale: es })}. El enlace sigue activo para volver a realizarla cuando quieras.</p>
+              <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800, color: '#15803d' }}>Sesión completada</p>
+              <p style={{ margin: '0 0 14px', fontSize: 13.5, color: '#166534' }}>Registrada el {format(new Date(sesionFlexibleGuardada + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}.</p>
+              <button onClick={async () => {
+                // Resetear para nueva realización
+                await supabase.from('sesiones').update({ completada_el: null }).eq('id', sesion.id)
+                const allEjs = Object.values(ejercicios).flat()
+                await Promise.all(allEjs.map(e => supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', e.id)))
+                setSesionFlexibleGuardada(null)
+                setSesion(s => ({ ...s, completada_el: null }))
+                const progInit = {}
+                const vrInit = {}
+                allEjs.forEach(e => { const n = parseInt(e.series) || 1; progInit[e.id] = { series: Array(n).fill(false), hecho: false }; vrInit[e.id] = {} })
+                setProgreso(progInit)
+                setValoresReales(vrInit)
+              }} style={{ fontSize: 12.5, fontWeight: 600, padding: '7px 16px', borderRadius: 8, border: '1px solid #16a34a', background: 'transparent', color: '#15803d', cursor: 'pointer' }}>
+                Realizar de nuevo
+              </button>
             </div>
           )}
           {!sesionFlexibleGuardada && feedbackEnviado && !editandoFeedback ? (
