@@ -592,20 +592,35 @@ async function guardarSesion() {
 
   async function pegarSesion(sesionOrigen, fechaDestino, clienteDestino) {
     setSaving(true)
-    const { data: nuevaSesion } = await supabase.from('sesiones').insert({
-      cliente_id: clienteDestino, titulo: sesionOrigen.titulo, fecha: fechaDestino,
-      objetivo: sesionOrigen.objetivo, duracion_min: sesionOrigen.duracion_min,
+    const { data: nuevaSesion, error: errSesion } = await supabase.from('sesiones').insert({
+      cliente_id: clienteDestino,
+      titulo: sesionOrigen.titulo,
+      fecha: fechaDestino,
+      objetivo: sesionOrigen.objetivo,
+      duracion_min: sesionOrigen.duracion_min,
+      material: sesionOrigen.material,
+      indicaciones: sesionOrigen.indicaciones,
+      tipo_sesion: sesionOrigen.tipo_sesion || 'programada',
+      tipo_editor: sesionOrigen.tipo_editor || 'fuerza',
+      con_feedback: sesionOrigen.con_feedback !== false,
+      icono: sesionOrigen.icono,
     }).select().single()
+    if (errSesion || !nuevaSesion) { console.error('Error pegando sesión:', errSesion); setSaving(false); return }
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({
         sesion_id: nuevaSesion.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
       }).select().single()
+      if (!nb) continue
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
       for (const e of ejs || []) {
         await supabase.from('sesion_ejercicios').insert({
           bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas,
           media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
+          variables_activas: e.variables_activas, peso: e.peso, duracion: e.duracion,
+          distancia: e.distancia, altura: e.altura, descanso: e.descanso,
+          ejecucion_tipo: e.ejecucion_tipo, ejecucion_texto: e.ejecucion_texto,
+          peso_der: e.peso_der, peso_izq: e.peso_izq, reps_por_lado: e.reps_por_lado,
         })
       }
     }
