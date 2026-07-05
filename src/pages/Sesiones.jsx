@@ -646,14 +646,14 @@ async function guardarSesion() {
               if (dirty) { setAvisoSinGuardar(true) }
               else { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }
             }}>← Volver</button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
           </div>
         )}
         {avisoSinGuardar && (
           <div style={{ margin: '8px 0 0', padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#713f12' }}>
             <span>⚠️ Tienes cambios sin guardar. Pulsa <strong>Guardar</strong> para confirmarlos.</span>
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#713f12' }} onClick={() => { setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Salir sin guardar</button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
           </div>
         )}
       </div>
