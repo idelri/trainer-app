@@ -247,19 +247,12 @@ export default function SesionPublica({ token }) {
           )}
         </header>
 
-        {/* MARCAR TODO */}
-        <div style={{ marginTop: 14 }}>
-          {sesionFlexibleGuardada || sesionFijaGuardada ? (
-            <div style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', fontSize: 14.5, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
-              ✓ Sesión completada y guardada
-            </div>
-          ) : (
-            <button onClick={marcarTodas}
-              style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
-              ✓ Marcar sesión como completada
-            </button>
-          )}
-        </div>
+        {/* BANNER COMPLETADA (solo cuando ya está guardada) */}
+        {(sesionFlexibleGuardada || sesionFijaGuardada) && (
+          <div style={{ marginTop: 14, width: '100%', padding: '13px', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', fontSize: 14.5, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
+            ✓ Sesión completada y guardada
+          </div>
+        )}
 
         {sesion.material && (
           <div style={{ marginTop: 16, background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '16px 18px' }}>
@@ -492,6 +485,19 @@ export default function SesionPublica({ token }) {
             </div>
          </section>
         ))}
+
+        {/* MARCAR SESIÓN COMPLETA — botón pequeño al final */}
+        {!sesionFlexibleGuardada && !sesionFijaGuardada && (() => {
+          const todaMarcada = Object.keys(progreso).length > 0 && Object.values(progreso).every(p => p.hecho)
+          return (
+            <div style={{ marginTop: 20 }}>
+              <button onClick={marcarTodas}
+                style={{ fontSize: 11.5, fontWeight: 700, padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${todaMarcada ? '#16a34a' : T.line}`, background: todaMarcada ? '#f0fdf4' : T.card, color: todaMarcada ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
+                {todaMarcada ? '✓ Sesión marcada como completada' : '✓ Marcar sesión como completada'}
+              </button>
+            </div>
+          )
+        })()}
 
         {/* BOTÓN GUARDAR SESIÓN */}
         {!sesionFlexibleGuardada && !sesionFijaGuardada && (
