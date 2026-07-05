@@ -351,6 +351,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage }) {
   const [bloques, setBloques] = useState([])
   const [ejercicios, setEjercicios] = useState({})
 
+  const [dirty, setDirty] = useState(false)
+  const [avisoSinGuardar, setAvisoSinGuardar] = useState(false)
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
@@ -369,7 +371,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [editandoNota, setEditandoNota] = useState(null)
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
-  useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
+  useEffect(() => { if (sesionAbierta) { cargarDetalle(sesionAbierta.id); setDirty(false); setAvisoSinGuardar(false) } }, [sesionAbierta])
   useEffect(() => {
     if (!menuVariableAbierto) return
     function handler(ev) {
@@ -449,17 +451,19 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
 
   async function añadirFase() {
     const { data } = await supabase.from('sesion_fases').insert({ sesion_id: sesionAbierta.id, nombre: `Fase ${fases.length + 1}`, orden: fases.length }).select().single()
-    if (data) setFases(f => [...f, data])
+    if (data) { setFases(f => [...f, data]); setDirty(true) }
   }
 
   async function actualizarFase(id, campo, valor) {
     setFases(fs => fs.map(f => f.id === id ? { ...f, [campo]: valor } : f))
     await supabase.from('sesion_fases').update({ [campo]: valor }).eq('id', id)
+    setDirty(true)
   }
 
   async function eliminarFase(id) {
     setFases(fs => fs.filter(f => f.id !== id))
     await supabase.from('sesion_fases').delete().eq('id', id)
+    setDirty(true)
   }
 
   function abrirNuevaSesion() {
@@ -528,11 +532,13 @@ async function guardarSesion() {
   async function actualizarBloque(id, campo, valor) {
     await supabase.from('sesion_bloques').update({ [campo]: valor }).eq('id', id)
     setBloques(bs => bs.map(b => b.id === id ? { ...b, [campo]: valor } : b))
+    setDirty(true)
   }
 
   async function cambiarColorBloque(id, color) {
     await supabase.from('sesion_bloques').update({ color }).eq('id', id)
     setBloques(bs => bs.map(b => b.id === id ? { ...b, color } : b))
+    setDirty(true)
   }
 
   async function añadirBloque() {
@@ -542,6 +548,7 @@ async function guardarSesion() {
     if (b) {
       setBloques(bs => [...bs, b])
       setEjercicios(e => ({ ...e, [b.id]: [] }))
+      setDirty(true)
     }
   }
 
@@ -549,6 +556,7 @@ async function guardarSesion() {
     if (!window.confirm('¿Eliminar este bloque y sus ejercicios?')) return
     await supabase.from('sesion_bloques').delete().eq('id', id)
     setBloques(bs => bs.filter(b => b.id !== id))
+    setDirty(true)
   }
 
   async function añadirEjercicio(bloqueId) {
@@ -557,17 +565,19 @@ async function guardarSesion() {
       bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '',
       media_tipo: 'youtube', media_url: '', video_url: '', orden: lista.length,
     }).select().single()
-    if (e) setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] }))
+    if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
   }
 
   async function actualizarEjercicio(bloqueId, id, campo, valor) {
     await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
+    setDirty(true)
   }
 
   async function eliminarEjercicio(bloqueId, id) {
     await supabase.from('sesion_ejercicios').delete().eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).filter(e => e.id !== id) }))
+    setDirty(true)
   }
 
   async function pegarSesion(sesionOrigen, fechaDestino, clienteDestino) {
@@ -631,8 +641,18 @@ async function guardarSesion() {
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>← Volver</button>
-            <button className="btn btn-primary btn-sm" onClick={() => { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => {
+              if (dirty) { setAvisoSinGuardar(true) }
+              else { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }
+            }}>← Volver</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
+          </div>
+        )}
+        {avisoSinGuardar && (
+          <div style={{ margin: '8px 0 0', padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#713f12' }}>
+            <span>⚠️ Tienes cambios sin guardar. Pulsa <strong>Guardar</strong> para confirmarlos.</span>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#713f12' }} onClick={() => { setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Salir sin guardar</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false); localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
           </div>
         )}
       </div>
@@ -745,7 +765,7 @@ async function guardarSesion() {
               placeholder="Ej: Seguir construyendo base de movilidad y fuerza general..."
               textarea
               fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })) }}
+              onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })); setDirty(true) }}
             />
           </div>
 
@@ -756,7 +776,7 @@ async function guardarSesion() {
               placeholder="Ej: Esterilla, discos y mancuernas, goma (resistencia baja)..."
               textarea
               fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })) }}
+              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })); setDirty(true) }}
             />
           </div>
 
@@ -767,7 +787,7 @@ async function guardarSesion() {
               placeholder="Ej: Realiza los ejercicios del bloque en orden, las series que toquen y pasa al siguiente..."
               textarea
               fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })) }}
+              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })); setDirty(true) }}
             />
           </div>
 
