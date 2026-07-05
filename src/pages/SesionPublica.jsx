@@ -236,22 +236,19 @@ export default function SesionPublica({ token }) {
                 return (
                   <article key={e.id} style={{ position: 'relative', overflow: 'hidden', background: hecho ? '#f0fdf4' : T.card, border: `1px solid ${hecho ? '#bbf7d0' : T.line}`, borderRadius: 14, padding: '14px 14px 14px 18px', boxShadow: '0 1px 2px rgba(20,23,28,0.05), 0 4px 12px rgba(20,23,28,0.03)', transition: 'background 0.2s, border-color 0.2s' }}>
                     <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, background: hecho ? '#16a34a' : (b.color || '#E29A2E') }} />
-                    <div style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, justifyContent: 'space-between' }}>
-                          <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
-                            <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
-                            {e.nombre}
-                          </h3>
-                          {(esVideoArchivo || thumb) && (
-                            <div style={{ flexShrink: 0 }}>
-                              {esVideoArchivo
-                                ? <video src={e.media_url} controls muted preload="metadata" style={{ width: 80, height: 80, borderRadius: 9, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
-                                : <img src={thumb} alt={e.nombre} style={{ width: 80, height: 80, borderRadius: 9, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
-                              }
-                            </div>
-                          )}
-                        </div>
+                    <div>
+                        <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
+                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
+                          {e.nombre}
+                        </h3>
+                        {(esVideoArchivo || thumb) && (
+                          <div style={{ marginBottom: 12 }}>
+                            {esVideoArchivo
+                              ? <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: '#000' }} />
+                              : <img src={thumb} alt={e.nombre} style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper, display: 'block' }} />
+                            }
+                          </div>
+                        )}
                         {videoLink && (
                           <a href={videoLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.accent, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', padding: '6px 12px', borderRadius: 9, lineHeight: 1, marginBottom: 10 }}>
                             ▶ Vídeo
@@ -272,7 +269,7 @@ export default function SesionPublica({ token }) {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}</span>
                               </span>
                               <input type="text" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
-                                placeholder={`¿Hiciste? (${e.reps})`}
+                                placeholder={`Lo que hiciste (si fue diferente)`}
                                 style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 120 }} />
                             </div>
                           )}
@@ -283,7 +280,7 @@ export default function SesionPublica({ token }) {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.peso}</span>
                               </span>
                               <input type="text" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
-                                placeholder={`¿Hiciste? (${e.peso})`}
+                                placeholder={`Lo que hiciste (si fue diferente)`}
                                 style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
                             </div>
                           )}
@@ -294,7 +291,7 @@ export default function SesionPublica({ token }) {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.duracion}</span>
                               </span>
                               <input type="text" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
-                                placeholder={`¿Hiciste? (${e.duracion})`}
+                                placeholder={`Lo que hiciste (si fue diferente)`}
                                 style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
                             </div>
                           )}
@@ -311,7 +308,7 @@ export default function SesionPublica({ token }) {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.distancia}</span>
                               </span>
                               <input type="text" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
-                                placeholder={`¿Hiciste? (${e.distancia})`}
+                                placeholder={`Lo que hiciste (si fue diferente)`}
                                 style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
                             </div>
                           )}
@@ -360,7 +357,6 @@ export default function SesionPublica({ token }) {
                             <span>{e.notas}</span>
                           </p>
                         )}
-                      </div>
                     </div>
                   </article>
                 )
