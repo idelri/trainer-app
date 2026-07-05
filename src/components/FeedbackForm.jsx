@@ -44,7 +44,7 @@ function TextArea({ value, onChange, placeholder }) {
   )
 }
 
-export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor }) {
+export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor, submitLabel }) {
   const [fb, setFb] = useState(initial || emptyFeedback())
   const set = (path, value) => setFb(f => {
     const next = JSON.parse(JSON.stringify(f))
@@ -235,7 +235,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         <Section>
           <button type="button" disabled={!puedeEnviar() || submitting} onClick={enviar}
             style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: puedeEnviar() ? T.accent : T.line, color: puedeEnviar() ? '#fff' : T.ink3, fontWeight: 700, fontSize: 14.5, cursor: puedeEnviar() ? 'pointer' : 'not-allowed' }}>
-            {submitting ? 'Enviando...' : 'Enviar feedback'}
+            {submitting ? 'Guardando...' : (submitLabel || 'Enviar feedback')}
           </button>
         </Section>
       )}
