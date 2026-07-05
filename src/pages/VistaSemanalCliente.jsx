@@ -172,7 +172,11 @@ export default function VistaSemanalCliente() {
         const { data: feedbacks } = await supabase.from('sesion_feedback').select('sesion_id, data').in('sesion_id', filtradas.map(s => s.id))
         const estadoPorSesion = {}
         ;(feedbacks || []).forEach(f => { estadoPorSesion[f.sesion_id] = f.data?.completion?.status })
-        filtradas.forEach(s => { s._estado = estadoPorSesion[s.id] || null })
+        filtradas.forEach(s => {
+          if (estadoPorSesion[s.id]) s._estado = estadoPorSesion[s.id]
+          else if (s.completada_el) s._estado = 'completed'
+          else s._estado = null
+        })
       }
       setSesiones(filtradas)
 
@@ -488,7 +492,7 @@ export default function VistaSemanalCliente() {
 
 const ESTADO_COLOR = {
   completed: { color: '#1baf7a', label: '✓ Completada' },
-  partial: { color: '#9b9b9b', label: '◐ Parcial' },
+  partial: { color: '#ca8a04', label: '◐ Parcial' },
   missed: { color: '#e34948', label: '✕ No realizada' },
 }
 

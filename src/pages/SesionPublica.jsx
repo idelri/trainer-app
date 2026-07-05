@@ -112,7 +112,8 @@ export default function SesionPublica({ token }) {
     const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
     setFeedbackEnviado(fb || null)
     // Restaurar estado de completada si ya fue guardada anteriormente
-    if (s.completada_el) setSesionFlexibleGuardada(s.completada_el)
+    if (s.completada_el && !s.fecha) setSesionFlexibleGuardada(s.completada_el)
+    if (s.completada_el && s.fecha) setSesionFijaGuardada(true)
     const progInit = {}
     const vrInit = {}
     ejsList.forEach(e => {
@@ -505,6 +506,7 @@ export default function SesionPublica({ token }) {
                   setValoresReales({})
                   setSesionFlexibleGuardada(resultado.hoyStr)
                 } else {
+                  await supabase.from('sesiones').update({ completada_el: sesion.fecha }).eq('id', sesion.id)
                   setGuardandoSesion(false)
                   setSesionFijaGuardada(true)
                 }
