@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
+const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
 const ICONOS_OPCIONES = ['💪','🏃','🚶','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🏇','🎯','🧗','🤽','🏄','🛶','🎿','⛷️','🏌️','🏹','🤺','🛝','🚣','🦵','🔥','⚡','🌟','🎽']
 
@@ -852,12 +853,13 @@ async function guardarSesion() {
                           <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>RPE (1-10)</div>
                           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                             {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                              <button key={n} onClick={() => actualizarFase(f.id, 'rpe', f.rpe === n ? null : n)}
+                              <button key={n} title={`${n} – ${BORG_RPE[n]}`} onClick={() => actualizarFase(f.id, 'rpe', f.rpe === n ? null : n)}
                                 style={{ width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${f.rpe === n ? rpeColor : 'var(--border)'}`, background: f.rpe === n ? rpeColor : 'var(--bg)', color: f.rpe === n ? '#fff' : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
                                 {n}
                               </button>
                             ))}
                           </div>
+                          {f.rpe && <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: rpeColor }}>{f.rpe} – {BORG_RPE[f.rpe]}</div>}
                         </div>
                       </div>
                     </div>

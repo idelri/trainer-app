@@ -11,6 +11,7 @@ const T = {
 }
 
 const RPE_LABELS = ['Nada de esfuerzo','Muy, muy suave','Muy suave','Suave','Moderada','Algo exigente','Exigente','Muy exigente','Muy dura','Extremadamente dura','Máximo esfuerzo']
+const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
 
 function FeedbackResumen({ data, onEditar }) {
   const d = data || {}
@@ -321,14 +322,15 @@ export default function SesionPublica({ token }) {
                     </div>
                   )}
                   {f.rpe && (
-                    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>RPE</div>
-                      <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>RPE (esfuerzo percibido)</div>
+                      <div style={{ display: 'flex', gap: 3, alignItems: 'center', marginBottom: 6 }}>
                         {[1,2,3,4,5,6,7,8,9,10].map(n => (
                           <div key={n} style={{ width: 18, height: 18, borderRadius: 5, background: n <= f.rpe ? rpeColor : '#e5e7eb', opacity: n <= f.rpe ? 1 : 0.3 }} />
                         ))}
-                        <span style={{ marginLeft: 4, fontSize: 14, fontWeight: 700, color: rpeColor }}>{f.rpe}/10</span>
+                        <span style={{ marginLeft: 4, fontSize: 15, fontWeight: 800, color: rpeColor }}>{f.rpe}</span>
                       </div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: rpeColor }}>{f.rpe} – {BORG_RPE[f.rpe]}</div>
                     </div>
                   )}
                 </div>
