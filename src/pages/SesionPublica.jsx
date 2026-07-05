@@ -474,7 +474,7 @@ export default function SesionPublica({ token }) {
                     // Sesión flexible: clonar con fecha de hoy, conservar original limpia
                     const hoyStr = format(new Date(), 'yyyy-MM-dd')
                     const nuevoToken = crypto.randomUUID()
-                    const { data: clon } = await supabase.from('sesiones').insert({
+                    const { data: clon, error: clonError } = await supabase.from('sesiones').insert({
                       cliente_id: sesion.cliente_id,
                       titulo: sesion.titulo,
                       fecha: hoyStr,
@@ -488,33 +488,35 @@ export default function SesionPublica({ token }) {
                       con_feedback: sesion.con_feedback,
                       token_publico: nuevoToken,
                     }).select().single()
-                    if (clon) {
-                      for (const bloque of bloques) {
-                        const { data: nuevoBloque } = await supabase.from('sesion_bloques').insert({
-                          sesion_id: clon.id, nombre: bloque.nombre, color: bloque.color, nota: bloque.nota, orden: bloque.orden,
-                        }).select().single()
-                        if (nuevoBloque) {
-                          const ejsBloque = ejercicios[bloque.id] || []
-                          for (const ej of ejsBloque) {
-                            await supabase.from('sesion_ejercicios').insert({
-                              bloque_id: nuevoBloque.id, nombre: ej.nombre, series: ej.series, reps: ej.reps,
-                              rpe: ej.rpe, notas: ej.notas, media_tipo: ej.media_tipo, media_url: ej.media_url,
-                              video_url: ej.video_url, orden: ej.orden, peso: ej.peso, duracion: ej.duracion,
-                              distancia: ej.distancia, altura: ej.altura, descanso: ej.descanso,
-                              ejecucion_tipo: ej.ejecucion_tipo, ejecucion_texto: ej.ejecucion_texto,
-                              variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
-                              reps_por_lado: ej.reps_por_lado,
-                              valores_reales: valoresReales[ej.id] || {},
-                            })
-                            // Limpiar valores reales del ejercicio original
-                            if (Object.keys(valoresReales[ej.id] || {}).length > 0) {
-                              await supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', ej.id)
-                            }
+                    if (clonError || !clon) {
+                      setEnviandoFeedback(false)
+                      alert('Error al guardar la sesión. Inténtalo de nuevo.')
+                      return
+                    }
+                    for (const bloque of bloques) {
+                      const { data: nuevoBloque } = await supabase.from('sesion_bloques').insert({
+                        sesion_id: clon.id, nombre: bloque.nombre, color: bloque.color, nota: bloque.nota, orden: bloque.orden,
+                      }).select().single()
+                      if (nuevoBloque) {
+                        const ejsBloque = ejercicios[bloque.id] || []
+                        for (const ej of ejsBloque) {
+                          await supabase.from('sesion_ejercicios').insert({
+                            bloque_id: nuevoBloque.id, nombre: ej.nombre, series: ej.series, reps: ej.reps,
+                            rpe: ej.rpe, notas: ej.notas, media_tipo: ej.media_tipo, media_url: ej.media_url,
+                            video_url: ej.video_url, orden: ej.orden, peso: ej.peso, duracion: ej.duracion,
+                            distancia: ej.distancia, altura: ej.altura, descanso: ej.descanso,
+                            ejecucion_tipo: ej.ejecucion_tipo, ejecucion_texto: ej.ejecucion_texto,
+                            variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
+                            reps_por_lado: ej.reps_por_lado,
+                            valores_reales: valoresReales[ej.id] || {},
+                          })
+                          if (Object.keys(valoresReales[ej.id] || {}).length > 0) {
+                            await supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', ej.id)
                           }
                         }
                       }
-                      await supabase.from('sesion_feedback').insert({ sesion_id: clon.id, data })
                     }
+                    await supabase.from('sesion_feedback').insert({ sesion_id: clon.id, data })
                     setEnviandoFeedback(false)
                     setValoresReales({})
                     setSesionFlexibleGuardada(hoyStr)
