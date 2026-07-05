@@ -1592,9 +1592,12 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 10 }}>Sesiones sin fecha asignada</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {sesiones.filter(s => !s.fecha && !s.pack_id).map(s => (
-                      <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'pointer' }}
-                        onClick={() => openModal('sesion', s)}>
-                        {iconoSesion(s)} {s.titulo}
+                      <div key={s.id}
+                        draggable
+                        onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
+                        onDragEnd={() => setArrastrando(null)}
+                        style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
                       </div>
                     ))}
                   </div>
