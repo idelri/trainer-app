@@ -82,6 +82,9 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [modalPack, setModalPack] = useState(null)
   const [formPack, setFormPack] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' })
   const [savingPack, setSavingPack] = useState(false)
+  const [packsAbiertos, setPacksAbiertos] = useState(new Set())
+  const [arrastrando, setArrastrando] = useState(null)
+  const [dropPackId, setDropPackId] = useState(null)
 
   // ── Modal unificado ──
   const [modalTipo, setModalTipo] = useState(null)
@@ -325,6 +328,16 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       await supabase.from('packs_flexibles').insert({ cliente_id: clienteSeleccionado, nombre: formPack.nombre, fecha_inicio: formPack.fecha_inicio, fecha_fin: formPack.fecha_fin, descripcion: formPack.descripcion || null })
     }
     setSavingPack(false); setModalPack(null); cargarPlanificacion()
+  }
+
+  async function moverAPack(sesion, packId) {
+    await supabase.from('sesiones').update({ pack_id: packId, fecha: null }).eq('id', sesion.id)
+    cargarPlanificacion()
+  }
+
+  async function sacarDePack(sesion, fecha) {
+    await supabase.from('sesiones').update({ pack_id: null, fecha }).eq('id', sesion.id)
+    cargarPlanificacion()
   }
 
   async function guardarModal() {
@@ -1588,24 +1601,49 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 </div>
               )}
               {packs.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {packs.map(pack => {
                     const packSesiones = sesiones.filter(s => s.pack_id === pack.id)
+                    const abierto = packsAbiertos.has(pack.id)
+                    const esDrop = dropPackId === pack.id
                     return (
-                      <div key={pack.id} style={{ marginBottom: 10, padding: '12px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: packSesiones.length > 0 ? 8 : 0 }}>
+                      <div key={pack.id}
+                        onDragOver={e => { e.preventDefault(); if (arrastrando?._tipo === 'sesion') setDropPackId(pack.id) }}
+                        onDragLeave={() => setDropPackId(null)}
+                        onDrop={e => { e.preventDefault(); setDropPackId(null); if (arrastrando?._tipo === 'sesion') { moverAPack(arrastrando, pack.id); setArrastrando(null) } }}
+                        style={{ borderRadius: 10, border: esDrop ? '2px dashed #0369a1' : '1px solid #bae6fd', background: esDrop ? '#e0f2fe' : '#f0f9ff', transition: 'border 0.15s, background 0.15s' }}>
+                        <div
+                          onClick={() => setPacksAbiertos(prev => { const s = new Set(prev); s.has(pack.id) ? s.delete(pack.id) : s.add(pack.id); return s })}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', cursor: 'pointer', userSelect: 'none' }}>
+                          <span style={{ fontSize: 13, transition: 'transform 0.15s', display: 'inline-block', transform: abierto ? 'rotate(90deg)' : 'rotate(0deg)', color: '#0369a1' }}>▶</span>
                           <span style={{ fontSize: 14 }}>📦</span>
                           <span style={{ fontWeight: 600, fontSize: 13, color: '#0369a1' }}>{pack.nombre}</span>
                           <span style={{ fontSize: 11, color: '#0369a1', opacity: 0.7 }}>{pack.fecha_inicio} – {pack.fecha_fin}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', opacity: 0.6 }}>{packSesiones.length} sesión{packSesiones.length !== 1 ? 'es' : ''}</span>
+                          {esDrop && <span style={{ fontSize: 11, color: '#0369a1', fontWeight: 600 }}>Suelta aquí</span>}
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {packSesiones.map(s => (
-                            <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 500, cursor: 'pointer' }}
-                              onClick={() => openModal('sesion', s)}>
-                              {iconoSesion(s)} {s.titulo}
-                            </div>
-                          ))}
-                        </div>
+                        {abierto && (
+                          <div style={{ padding: '0 14px 12px', borderTop: '1px solid #bae6fd' }}>
+                            {packSesiones.length === 0 ? (
+                              <div style={{ fontSize: 12, color: '#0369a1', opacity: 0.6, paddingTop: 10, textAlign: 'center' }}>
+                                Arrastra sesiones del calendario aquí
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingTop: 10 }}>
+                                {packSesiones.map(s => (
+                                  <div key={s.id}
+                                    draggable
+                                    onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
+                                    onDragEnd={() => setArrastrando(null)}
+                                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
+                                    <span onClick={e => { e.stopPropagation(); eliminarItem('sesion', s.id) }} style={{ opacity: 0.5, cursor: 'pointer', marginLeft: 2 }}>×</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -1625,10 +1663,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
                 onNuevaNota={fecha => openModal('nota', { fecha })}
                 onEliminar={item => eliminarItem(item._tipo === 'sesion' ? 'sesion' : item._tipo === 'competicion' ? 'comp' : item._tipo === 'control' ? 'control' : 'nota', item.id)}
+                arrastrando={arrastrando}
+                setArrastrando={setArrastrando}
                 onMoverSesion={async (item, fechaDestino) => {
+                  if (item._tipo === 'sesion' && item.pack_id) {
+                    await sacarDePack(item, fechaDestino)
+                    return
+                  }
                   const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
-                  const campo = item._tipo === 'nota' ? 'fecha' : 'fecha'
-                  await supabase.from(tabla).update({ [campo]: fechaDestino }).eq('id', item.id)
+                  await supabase.from(tabla).update({ fecha: fechaDestino }).eq('id', item.id)
                   cargarPlanificacion()
                 }}
                 clipboard={clipboardSesion}

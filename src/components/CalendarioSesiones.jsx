@@ -71,10 +71,13 @@ export default function CalendarioSesiones({
   onEliminar, onMoverSesion,
   clipboard, onCopiar, onPegar, onPegarOtroCliente,
   clipboardSemana, onCopiarSemana, onPegarSemana, onPegarSemanaOtroCliente,
+  arrastrando: arrastandoExterno, setArrastrando: setArrastrandoExterno,
 }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
-  const [arrastrando, setArrastrando] = useState(null)
+  const [arrastandoInterno, setArrastrandoInterno] = useState(null)
+  const arrastrando = arrastandoExterno !== undefined ? arrastandoExterno : arrastandoInterno
+  const setArrastrando = setArrastrandoExterno || setArrastrandoInterno
   const [menu, setMenu] = useState(null)
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
