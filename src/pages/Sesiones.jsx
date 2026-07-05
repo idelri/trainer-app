@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_editor: 'fuerza', con_feedback: true, icono: '' }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
 const ICONOS_OPCIONES = ['💪', '🏃', '🚶', '🧘', '🚴', '🏊', '⚡']
 
 function ytId(url) {
@@ -468,7 +468,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '' })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '' })
     setModalSesion(s)
   }
 
@@ -476,7 +476,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
       setSesionAbierta(s => s ? { ...s, ...datos } : s)
@@ -1227,16 +1227,59 @@ async function guardarSesion() {
               </div>
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
-           <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Fecha</label>
-                <input className="form-input" type="date" value={formSesion.fecha} disabled={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, fecha: e.target.value }))} />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: 'var(--text3)' }}>
-                  <input type="checkbox" checked={formSesion.sinFecha} onChange={e => setFormSesion(f => ({ ...f, sinFecha: e.target.checked, fecha: e.target.checked ? '' : f.fecha }))} />
-                  Sin fecha asignada (plantilla / pendiente de hacer)
+            <div className="form-group">
+              <label className="form-label">Fecha</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input className="form-input" type="date" value={formSesion.fecha} disabled={formSesion.sinFecha} style={{ flex: 1, opacity: formSesion.sinFecha ? 0.4 : 1 }} onChange={e => setFormSesion(f => ({ ...f, fecha: e.target.value }))} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" checked={!!formSesion.sinFecha} onChange={e => {
+                    const checked = e.target.checked
+                    setFormSesion(f => ({ ...f, sinFecha: checked, fecha: checked ? '' : f.fecha, tipo_sesion: checked ? (f.tipo_sesion === 'programada' ? 'flexible' : f.tipo_sesion) : (f.tipo_sesion === 'flexible' ? 'programada' : f.tipo_sesion) }))
+                  }} />
+                  Sin fecha asignada
                 </label>
               </div>
-              <div className="form-group"><label className="form-label">Duración (min)</label><input className="form-input" type="number" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} placeholder="Ej: 45" /></div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo de sesión</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(formSesion.sinFecha
+                  ? [['flexible', '🔄 Flexible'], ['opcional', '⭐ Opcional']]
+                  : [['programada', '📅 Programada'], ['opcional', '⭐ Opcional']]
+                ).map(([val, label]) => {
+                  const active = (formSesion.tipo_sesion || 'programada') === val
+                  return (
+                    <button key={val} type="button" onClick={() => setFormSesion(f => ({ ...f, tipo_sesion: val }))}
+                      style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)' }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {modalSesion !== 'nueva' && (
+              <div className="form-group">
+                <label className="form-label">Estado</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['perdida','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
+                    const active = (formSesion.estado || 'pendiente') === val
+                    return (
+                      <button key={val} type="button" onClick={() => setFormSesion(f => ({ ...f, estado: val }))}
+                        style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? border : 'var(--border)'}`, background: active ? bg : 'var(--bg)', color: active ? color : 'var(--text3)', fontSize: 11, fontWeight: active ? 700 : 400, cursor: 'pointer' }}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Objetivo</label>
+              <textarea className="form-textarea" value={formSesion.objetivo} onChange={e => setFormSesion(f => ({ ...f, objetivo: e.target.value }))} rows={2} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Duración (min)</label>
+              <input className="form-input" type="number" min="1" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} style={{ maxWidth: 120 }} placeholder="Ej: 45" />
             </div>
             <div className="form-group" style={{ marginBottom: 4 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
