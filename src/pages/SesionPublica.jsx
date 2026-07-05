@@ -265,14 +265,14 @@ export default function SesionPublica({ token }) {
                           {e.reps && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Reps</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>{e.reps_por_lado ? 'Reps/lado' : 'Reps'}</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}{e.reps_por_lado ? '/lado' : ''}</span>
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <input type="number" min="0" step="1" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
-                                  placeholder="reps reales"
+                                  placeholder={e.reps_por_lado ? 'reps/lado reales' : 'reps reales'}
                                   style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>reps</span>
+                                <span style={{ fontSize: 11, color: T.ink3 }}>{e.reps_por_lado ? 'reps/lado' : 'reps'}</span>
                               </div>
                             </div>
                           )}

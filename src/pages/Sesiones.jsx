@@ -945,6 +945,12 @@ async function guardarSesion() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
                             <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
+                            <button
+                              onClick={() => actualizarEjercicio(b.id, e.id, 'reps_por_lado', !e.reps_por_lado)}
+                              title={e.reps_por_lado ? 'Unilateral (reps/lado) — clic para cambiar a bilateral' : 'Bilateral — clic para marcar como reps/lado'}
+                              style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, border: `1px solid ${e.reps_por_lado ? 'var(--accent)' : 'var(--border)'}`, background: e.reps_por_lado ? 'var(--accent)' : 'transparent', color: e.reps_por_lado ? '#fff' : 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                              /lado
+                            </button>
                           </div>
                         </div>
 
@@ -1151,7 +1157,7 @@ async function guardarSesion() {
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {e.series && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>SERIES</span>{e.series}</span>}
-                            {e.reps && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>REPS</span>{e.reps}</span>}
+                            {e.reps && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>REPS</span>{e.reps}{e.reps_por_lado ? '/lado' : ''}</span>}
                             {activas.includes('Peso') && e.peso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO</span>{e.peso} kg</span>}
                             {activas.includes('Peso/lado') && (e.peso_der || e.peso_izq) && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO/LADO</span>D: {e.peso_der || '—'} · I: {e.peso_izq || '—'} kg</span>}
                             {activas.includes('Duración') && e.duracion && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DURACIÓN</span>{e.duracion} s</span>}
