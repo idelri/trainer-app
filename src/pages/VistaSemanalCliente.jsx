@@ -165,7 +165,8 @@ export default function VistaSemanalCliente() {
         .order('orden', { ascending: true })
 
       const filtradas = (sesionesSemana || []).filter(s => {
-        if (s.tipo_sesion === 'flexible' || s.tipo_sesion === 'opcional') return !s.fecha || (s.fecha >= fechaInicioStr && s.fecha < fechaFinStr)
+        if (!s.fecha) return false  // sin fecha y sin pack → no mostrar al cliente
+        if (s.tipo_sesion === 'flexible' || s.tipo_sesion === 'opcional') return s.fecha >= fechaInicioStr && s.fecha < fechaFinStr
         return s.fecha >= fechaInicioStr && s.fecha < fechaFinStr
       })
       if (filtradas.length > 0) {
