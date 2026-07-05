@@ -20,7 +20,6 @@ const NAV = [
   { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
   { id: 'pagos',     label: 'Pagos',     icon: EuroIcon },
   { id: 'planificacion', label: 'Plan.', icon: CalendarIcon },
-  { id: 'sesiones',  label: 'Sesiones', icon: CheckIcon },
 ]
 
 export default function App() {

@@ -198,7 +198,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
       )}
 
       {/* Dificultad técnica general (si no se preguntó ya) */}
-      {(status === 'completed' || (status === 'partial' && !has('Dificultad técnica con algún ejercicio') && !has('No entendí algún ejercicio'))) && (
+      {(status === 'completed' || status === 'partial') && (tipoEditor === 'carrera' || (!has('Dificultad técnica con algún ejercicio') && !has('No entendí algún ejercicio'))) && (
         <Section>
           {tipoEditor === 'carrera'
             ? <Q>¿Hubo alguna parte de la sesión que te resultara especialmente difícil de completar según lo previsto?</Q>
