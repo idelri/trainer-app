@@ -482,7 +482,7 @@ export default function SesionPublica({ token }) {
             <button
               onClick={async () => {
                 setGuardandoSesion(true)
-                if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
+                if (!sesion.fecha) {
                   const resultado = await clonarSesionHoy()
                   setGuardandoSesion(false)
                   if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
@@ -544,7 +544,7 @@ export default function SesionPublica({ token }) {
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
                     if (act) setFeedbackEnviado(act)
-                  } else if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
+                  } else if (!sesion.fecha) {
                     const resultado = await clonarSesionHoy()
                     if (!resultado) {
                       setEnviandoFeedback(false)
