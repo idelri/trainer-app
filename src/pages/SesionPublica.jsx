@@ -268,9 +268,12 @@ export default function SesionPublica({ token }) {
                                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Reps</span>
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}</span>
                               </span>
-                              <input type="text" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
-                                placeholder={`Lo que hiciste (si fue diferente)`}
-                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 120 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input type="number" min="0" step="1" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
+                                  placeholder="reps reales"
+                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
+                                <span style={{ fontSize: 11, color: T.ink3 }}>reps</span>
+                              </div>
                             </div>
                           )}
                           {activas.includes('Peso') && e.peso && (
@@ -281,7 +284,7 @@ export default function SesionPublica({ token }) {
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <input type="number" min="0" step="0.5" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
-                                  placeholder="kg reales"
+                                  placeholder="kgs reales"
                                   style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
                                 <span style={{ fontSize: 11, color: T.ink3 }}>kg</span>
                               </div>
