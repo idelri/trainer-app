@@ -7,6 +7,12 @@ import CalendarioSesiones from '../components/CalendarioSesiones'
 import Seguimiento from './Seguimiento'
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
+const ICONO_ACTIVIDAD = { fuerza:'💪', correr:'🏃', caminar:'🚶', bicicleta:'🚴', nadar:'🏊', movilidad:'🤸', futbol:'⚽', padel:'🎾' }
+function iconoSesion(s) {
+  if (s?.icono) return s.icono
+  const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
+  return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
+}
 
 function calcFechaInicioSemana(bloque, numSemana) {
   return addWeeks(parseISO(bloque.fecha_inicio), numSemana - 1)
@@ -1538,7 +1544,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                     {sesiones.filter(s => !s.fecha && !s.pack_id).map(s => (
                       <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'pointer' }}
                         onClick={() => openModal('sesion', s)}>
-                        💪 {s.titulo}
+                        {iconoSesion(s)} {s.titulo}
                       </div>
                     ))}
                   </div>
@@ -1559,7 +1565,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                           {packSesiones.map(s => (
                             <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 500, cursor: 'pointer' }}
                               onClick={() => openModal('sesion', s)}>
-                              💪 {s.titulo}
+                              {iconoSesion(s)} {s.titulo}
                             </div>
                           ))}
                         </div>
