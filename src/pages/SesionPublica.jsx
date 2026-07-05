@@ -97,18 +97,19 @@ export default function SesionPublica({ token }) {
 
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     setBloques(bls || [])
+    let ejsList = []
     if (bls && bls.length > 0) {
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').in('bloque_id', bls.map(b => b.id)).order('orden')
+      ejsList = ejs || []
       const map = {}
-      ;(ejs || []).forEach(e => { if (!map[e.bloque_id]) map[e.bloque_id] = []; map[e.bloque_id].push(e) })
-     setEjercicios(map)
+      ejsList.forEach(e => { if (!map[e.bloque_id]) map[e.bloque_id] = []; map[e.bloque_id].push(e) })
+      setEjercicios(map)
     }
     const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
     setFeedbackEnviado(fb || null)
-    // Inicializar progreso y valores reales
     const progInit = {}
     const vrInit = {}
-    ;(ejs || []).forEach(e => {
+    ejsList.forEach(e => {
       const n = parseInt(e.series) || 1
       progInit[e.id] = { series: Array(n).fill(false), hecho: false }
       vrInit[e.id] = e.valores_reales || {}
