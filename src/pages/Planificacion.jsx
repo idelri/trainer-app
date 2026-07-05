@@ -67,6 +67,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [controles,           setControles]           = useState([])
   const [notas,               setNotas]               = useState([])
   const [feedbacks,           setFeedbacks]           = useState([])
+  const [packs,               setPacks]               = useState([])
   const [clipboardSesion,     setClipboardSesion]     = useState(null)
 
   // ── UI ──
@@ -167,6 +168,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setControles(ctrls || [])
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setNotas(nts || [])
+    const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha_inicio')
+    setPacks(pks || [])
     const { data: allSess } = await supabase.from('sesiones').select('id').eq('cliente_id', clienteSeleccionado)
     if (allSess && allSess.length > 0) {
       const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at').in('sesion_id', allSess.map(s => s.id))
@@ -1527,11 +1530,11 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         <>
           {vista === 'calendario' && (
             <div>
-              {sesiones.filter(s => !s.fecha).length > 0 && (
+              {sesiones.filter(s => !s.fecha && !s.pack_id).length > 0 && (
                 <div style={{ marginBottom: 20, padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 10 }}>Sesiones sin fecha asignada</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {sesiones.filter(s => !s.fecha).map(s => (
+                    {sesiones.filter(s => !s.fecha && !s.pack_id).map(s => (
                       <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'pointer' }}
                         onClick={() => openModal('sesion', s)}>
                         💪 {s.titulo}
@@ -1540,11 +1543,36 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                   </div>
                 </div>
               )}
+              {packs.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  {packs.map(pack => {
+                    const packSesiones = sesiones.filter(s => s.pack_id === pack.id)
+                    return (
+                      <div key={pack.id} style={{ marginBottom: 10, padding: '12px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: packSesiones.length > 0 ? 8 : 0 }}>
+                          <span style={{ fontSize: 14 }}>📦</span>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: '#0369a1' }}>{pack.nombre}</span>
+                          <span style={{ fontSize: 11, color: '#0369a1', opacity: 0.7 }}>{pack.fecha_inicio} – {pack.fecha_fin}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {packSesiones.map(s => (
+                            <div key={s.id} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 500, cursor: 'pointer' }}
+                              onClick={() => openModal('sesion', s)}>
+                              💪 {s.titulo}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
               <CalendarioSesiones
                 sesiones={sesiones}
                 competiciones={competiciones}
                 controles={controles}
                 notas={notas}
+                packs={packs}
                 bloquesPlan={bloques}
                 subbloquesPlan={subbloques}
                 onAbrirSesion={s => openModal('sesion', s)}
