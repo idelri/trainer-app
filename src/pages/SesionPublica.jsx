@@ -285,6 +285,13 @@ export default function SesionPublica({ token }) {
                 const ejsBloque = ejercicios[b.id] || []
                 if (!ejsBloque.length) return null
                 const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
+                if (sesionFlexibleGuardada || sesionFijaGuardada) {
+                  return (
+                    <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a', whiteSpace: 'nowrap' }}>
+                      ✓ Bloque hecho
+                    </span>
+                  )
+                }
                 return (
                   <button onClick={() => marcarBloque(ejsBloque)}
                     style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${bloqueHecho ? '#16a34a' : (b.color || '#E29A2E')}`, background: bloqueHecho ? '#f0fdf4' : 'transparent', color: bloqueHecho ? '#16a34a' : (b.color || '#875708'), cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -444,13 +451,19 @@ export default function SesionPublica({ token }) {
                         </div>
                         {/* Marcar ejercicio + checks de series */}
                         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
-                            style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${hecho ? '#16a34a' : T.line}`, background: hecho ? '#f0fdf4' : T.card, color: hecho ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
-                            {hecho ? '✓ Ejercicio completado' : '✓ Marcar ejercicio'}
-                          </button>
+                          {sesionFlexibleGuardada || sesionFijaGuardada ? (
+                            <span style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a' }}>
+                              ✓ Ejercicio completado
+                            </span>
+                          ) : (
+                            <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
+                              style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${hecho ? '#16a34a' : T.line}`, background: hecho ? '#f0fdf4' : T.card, color: hecho ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
+                              {hecho ? '✓ Ejercicio completado' : '✓ Marcar ejercicio'}
+                            </button>
+                          )}
                           {prog.series.map((hecha, sIdx) => (
-                            <label key={sIdx} onClick={() => toggleSerie(e.id, sIdx)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
+                            <label key={sIdx} onClick={sesionFlexibleGuardada || sesionFijaGuardada ? undefined : () => toggleSerie(e.id, sIdx)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: sesionFlexibleGuardada || sesionFijaGuardada ? 'default' : 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
                               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${hecha ? '#16a34a' : T.line}`, background: hecha ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                                 {hecha && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
                               </div>
