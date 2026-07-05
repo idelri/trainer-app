@@ -71,7 +71,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [clipboardSesion,     setClipboardSesion]     = useState(null)
 
   // ── UI ──
-  const [vista,      setVista]      = useState('timeline')
+  const [vista,      setVista]      = useState(() => localStorage.getItem('planVista') || 'timeline')
+  const cambiarVista = v => { setVista(v); localStorage.setItem('planVista', v) }
   const [zoomTL,     setZoomTL]     = useState(44)   // px por semana en el timeline
   const [loading,    setLoading]    = useState(false)
   const [saving,     setSaving]     = useState(false)
@@ -1503,7 +1504,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             {[['timeline','Timeline'],['lista','Lista'],['calendario','Calendario'],['seguimiento','Seguimiento']].map(([v, label]) => (
               <button key={v} className="btn btn-ghost btn-sm"
                 style={vista === v ? { background: 'var(--bg2)', fontWeight: 600 } : {}}
-                onClick={() => setVista(v)}>
+                onClick={() => cambiarVista(v)}>
                 {label}
               </button>
             ))}
@@ -2168,7 +2169,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                             {semAb && sesionesSem.length > 0 && (
                               <div style={{ padding: '8px 16px 8px 24px', background: 'var(--bg2)', borderBottom: '0.5px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {sesionesSem.map(s => (
-                                  <button key={s.id} className="btn btn-ghost btn-sm" onClick={() => { openModal('sesion', s); setVista('calendario') }}
+                                  <button key={s.id} className="btn btn-ghost btn-sm" onClick={() => { openModal('sesion', s); cambiarVista('calendario') }}
                                     style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
                                     {s.titulo || 'Sesión'}
                                   </button>
