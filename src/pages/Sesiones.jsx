@@ -369,9 +369,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
   useEffect(() => {
     if (!menuVariableAbierto) return
-    function handler() { setMenuVariableAbierto(null) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    function handler(ev) {
+      if (ev.target.closest('[data-var-menu]')) return
+      setMenuVariableAbierto(null)
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
   }, [menuVariableAbierto])
 
   async function cargarClientes() {
@@ -1034,7 +1037,7 @@ async function guardarSesion() {
                             ＋ Variable
                           </button>
                           {menuVariableAbierto === menuKey && (
-                            <div onClick={ev => ev.stopPropagation()}
+                            <div data-var-menu="1"
                               style={{ position: 'absolute', top: 24, left: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 180, overflow: 'hidden' }}>
                               {VARS_MENU.map(({ grupo, items }) => (
                                 <div key={grupo}>
