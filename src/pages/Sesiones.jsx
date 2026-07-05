@@ -360,6 +360,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage, set
   const [draggingEj, setDraggingEj] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(false)
   const [menuVariableAbierto, setMenuVariableAbierto] = useState(null)
+  const [menuVariablePos, setMenuVariablePos] = useState({ x: 0, y: 0 })
+  const [guardadoOk, setGuardadoOk] = useState(false)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
   const [clipboard, setClipboard] = useState(null)
@@ -653,14 +655,14 @@ async function guardarSesion() {
               if (dirty) { setAvisoSinGuardar(true) }
               else { volverAlCalendario() }
             }}>← Volver</button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
+            <button className="btn btn-primary btn-sm" style={{ minWidth: 90, background: guardadoOk ? '#16a34a' : undefined, borderColor: guardadoOk ? '#16a34a' : undefined }} onClick={() => { setDirty(false); setAvisoSinGuardar(false); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 2500) }}>{guardadoOk ? '✓ Guardado' : 'Guardar'}</button>
           </div>
         )}
         {avisoSinGuardar && (
           <div style={{ margin: '8px 0 0', padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#713f12' }}>
             <span>⚠️ Tienes cambios sin guardar. Pulsa <strong>Guardar</strong> para confirmarlos.</span>
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#713f12' }} onClick={() => { setAvisoSinGuardar(false); volverAlCalendario() }}>Salir sin guardar</button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setDirty(false); setAvisoSinGuardar(false) }}>Guardar</button>
+            <button className="btn btn-primary btn-sm" style={{ minWidth: 90, background: guardadoOk ? '#16a34a' : undefined, borderColor: guardadoOk ? '#16a34a' : undefined }} onClick={() => { setDirty(false); setAvisoSinGuardar(false); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 2500) }}>{guardadoOk ? '✓ Guardado' : 'Guardar'}</button>
           </div>
         )}
       </div>
@@ -1095,14 +1097,14 @@ async function guardarSesion() {
                         )}
 
                         {/* Botón + Variable con menú */}
-                        <div style={{ position: 'relative', display: 'inline-block', marginTop: 6 }}>
-                          <button onClick={ev => { ev.stopPropagation(); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
+                        <div style={{ display: 'inline-block', marginTop: 6 }}>
+                          <button onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setMenuVariablePos({ x: r.left, y: r.bottom + 4 }); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
                             style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
                             ＋ Variable
                           </button>
                           {menuVariableAbierto === menuKey && (
                             <div data-var-menu="1"
-                              style={{ position: 'absolute', top: 24, left: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 180, overflow: 'hidden' }}>
+                              style={{ position: 'fixed', top: menuVariablePos.y, left: menuVariablePos.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, overflow: 'hidden' }}>
                               {VARS_MENU.map(({ grupo, items }) => (
                                 <div key={grupo}>
                                   <div style={{ padding: '5px 10px 2px', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>{grupo}</div>
