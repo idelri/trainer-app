@@ -567,7 +567,26 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
 
       {sesionAbierta && (
         <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Estado manual */}
+            {[
+              { val: 'completed', label: '✓ Completada', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+              { val: 'partial',   label: '◐ Parcial',    color: '#ca8a04', bg: '#fffbeb', border: '#fde68a' },
+              { val: 'missed',    label: '✕ No realizada', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+            ].map(({ val, label, color, bg, border }) => {
+              const activo = sesionAbierta.estado_manual === val
+              return (
+                <button key={val} onClick={async () => {
+                  const nuevo = activo ? null : val
+                  await supabase.from('sesiones').update({ estado_manual: nuevo }).eq('id', sesionAbierta.id)
+                  setSesionAbierta(s => ({ ...s, estado_manual: nuevo }))
+                  setSesiones(list => list.map(s => s.id === sesionAbierta.id ? { ...s, estado_manual: nuevo } : s))
+                }} style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 8, border: `1.5px solid ${activo ? border : 'var(--border)'}`, background: activo ? bg : 'transparent', color: activo ? color : 'var(--text3)', cursor: 'pointer' }}>
+                  {label}
+                </button>
+              )
+            })}
+            <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlace(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha, tipo_sesion: sesionAbierta.tipo_sesion || 'programada', tipo_actividad: sesionAbierta.tipo_actividad || 'fuerza', tipos_actividad: sesionAbierta.tipos_actividad?.length > 0 ? sesionAbierta.tipos_actividad : [sesionAbierta.tipo_actividad || 'fuerza'] }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>

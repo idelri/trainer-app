@@ -257,6 +257,9 @@ export default function CalendarioSesiones({
                         }[item._tipo]
                         const icono = item._tipo === 'sesion' ? iconoSesion(item) : { competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
                         const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
+                        const estadoColor = item._tipo === 'sesion' ? {
+                          completed: '#16a34a', partial: '#ca8a04', missed: '#dc2626'
+                        }[item.estado_manual || (item.completada_el ? 'completed' : null)] : null
                         return (
                           <div key={item.id}
                             draggable
@@ -266,6 +269,7 @@ export default function CalendarioSesiones({
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
+                            {estadoColor && <span style={{ flexShrink: 0, width: 7, height: 7, borderRadius: '50%', background: estadoColor }} />}
                             <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
                         )
