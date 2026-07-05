@@ -5,7 +5,8 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_editor: 'fuerza', con_feedback: true }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_editor: 'fuerza', con_feedback: true, icono: '' }
+const ICONOS_OPCIONES = ['💪', '🏃', '🚶', '🧘', '🚴', '🏊', '⚡']
 
 function ytId(url) {
   if (!url) return null
@@ -467,7 +468,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '' })
     setModalSesion(s)
   }
 
@@ -475,7 +476,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
       setSesionAbierta(s => s ? { ...s, ...datos } : s)
@@ -1203,6 +1204,23 @@ async function guardarSesion() {
                     <button key={val} type="button" onClick={() => setFormSesion(f => ({ ...f, tipo_editor: val }))}
                       style={{ flex: 1, padding: '8px', borderRadius: 9, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <span style={{ fontSize: 16 }}>{ico}</span> {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Icono(s)</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {ICONOS_OPCIONES.map(ico => {
+                  const selected = (formSesion.icono || '').includes(ico)
+                  return (
+                    <button key={ico} type="button" onClick={() => setFormSesion(f => {
+                      const current = f.icono || ''
+                      const next = current.includes(ico) ? current.replace(ico, '') : current + ico
+                      return { ...f, icono: next }
+                    })} style={{ fontSize: 20, padding: '4px 8px', borderRadius: 8, border: `2px solid ${selected ? 'var(--accent)' : 'var(--border)'}`, background: selected ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', opacity: selected ? 1 : 0.5 }}>
+                      {ico}
                     </button>
                   )
                 })}
