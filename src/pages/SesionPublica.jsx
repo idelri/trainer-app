@@ -493,7 +493,7 @@ export default function SesionPublica({ token }) {
             <div style={{ marginTop: 20 }}>
               <button onClick={marcarTodas}
                 style={{ fontSize: 11.5, fontWeight: 700, padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${todaMarcada ? '#16a34a' : T.line}`, background: todaMarcada ? '#f0fdf4' : T.card, color: todaMarcada ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
-                {todaMarcada ? '✓ Sesión marcada como completada' : '✓ Marcar sesión como completada'}
+                {todaMarcada ? '✓ Todos los ejercicios y series completados' : '✓ Marcar todos los ejercicios y series como completados'}
               </button>
             </div>
           )
