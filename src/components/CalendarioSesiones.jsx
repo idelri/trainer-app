@@ -258,9 +258,7 @@ export default function CalendarioSesiones({
                         }[item._tipo]
                         const icono = item._tipo === 'sesion' ? iconoSesion(item) : { competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
                         const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
-                        const estadoColor = item._tipo === 'sesion' ? {
-                          completed: '#16a34a', partial: '#ca8a04', missed: '#dc2626'
-                        }[item.estado_manual || (item.completada_el ? 'completed' : null)] : null
+                        const estadoColor = item._tipo === 'sesion' ? (item._estadoColor || null) : null
                         return (
                           <div key={item.id}
                             draggable

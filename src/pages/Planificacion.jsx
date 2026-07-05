@@ -91,17 +91,45 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
   // ── Estado visual de sesión ──
   function estadoSesion(s) {
+    // 1. Trainer manual override (wins over everything)
     if (s.estado && s.estado !== 'pendiente') return s.estado
-    const tieneFeedback = feedbacks.some(f => f.sesion_id === s.id)
-    if (tieneFeedback) return 'completada'
-    if (s.fecha && new Date(s.fecha) < new Date(new Date().toDateString())) return 'perdida'
+
+    const hoy = new Date(new Date().toDateString())
+    const fb = feedbacks.find(f => f.sesion_id === s.id)
+    const fbStatus = fb?.data?.completion?.status  // 'completed' | 'partial' | 'missed' | null
+
+    // 2. Client saved+sent the session (completada_el set)
+    if (s.completada_el) {
+      if (fbStatus === 'completed') return 'completada'
+      if (fbStatus === 'partial')   return 'parcial'
+      return 'gris'  // saved but no feedback or missed
+    }
+
+    // 3. Client did NOT save — check if date has expired
+    const fechaExpira = s.fecha
+      ? new Date(s.fecha)
+      : s.pack_id
+        ? (() => { const p = packs.find(p => p.id === s.pack_id); return p ? new Date(p.fecha_fin) : null })()
+        : null
+
+    if (fechaExpira && fechaExpira < hoy) return 'perdida'
+
     return 'pendiente'
+  }
+  function colorEstado(s) {
+    const e = estadoSesion(s)
+    if (e === 'completada') return '#16a34a'
+    if (e === 'parcial')    return '#ca8a04'
+    if (e === 'perdida')    return '#dc2626'
+    if (e === 'gris')       return '#9ca3af'
+    return null
   }
   function iconoEstado(s) {
     const e = estadoSesion(s)
     if (e === 'completada') return { icono: '✓', bg: '#dcfce7', border: '#16a34a', color: '#166534' }
     if (e === 'parcial')    return { icono: '〜', bg: '#fef9c3', border: '#ca8a04', color: '#713f12' }
     if (e === 'perdida')    return { icono: '✗', bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d' }
+    if (e === 'gris')       return { icono: '○', bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' }
     return null
   }
 
@@ -173,7 +201,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setPacks(pks || [])
     const { data: allSess } = await supabase.from('sesiones').select('id').eq('cliente_id', clienteSeleccionado)
     if (allSess && allSess.length > 0) {
-      const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at').in('sesion_id', allSess.map(s => s.id))
+      const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at, data').in('sesion_id', allSess.map(s => s.id))
       setFeedbacks(fbs || [])
     } else {
       setFeedbacks([])
@@ -1569,7 +1597,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 </div>
               )}
               <CalendarioSesiones
-                sesiones={sesiones}
+                sesiones={sesiones.map(s => ({ ...s, _estadoColor: colorEstado(s) }))}
                 competiciones={competiciones}
                 controles={controles}
                 notas={notas}
