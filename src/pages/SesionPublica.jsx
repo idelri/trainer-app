@@ -76,6 +76,7 @@ export default function SesionPublica({ token }) {
   const [cliente, setCliente] = useState(null)
   const [bloques, setBloques] = useState([])
   const [ejercicios, setEjercicios] = useState({})
+  const [fases, setFases] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [feedbackEnviado, setFeedbackEnviado] = useState(null)
@@ -99,6 +100,8 @@ export default function SesionPublica({ token }) {
     if (!s) { setError(true); setLoading(false); return }
     setSesion(s); setCliente(s.clientes)
 
+    const { data: fss } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
+    setFases(fss || [])
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     setBloques(bls || [])
     let ejsList = []
@@ -267,6 +270,72 @@ export default function SesionPublica({ token }) {
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: T.accentD, fontWeight: 500 }}>{sesion.indicaciones}</p>
           </div>
         )}
+
+        {/* FASES (sesiones de resistencia/carrera) */}
+        {fases.length > 0 && (() => {
+          const FC_COLORS = ['#10b981','#84cc16','#f59e0b','#ef4444','#7c3aed']
+          const FC_LABELS = ['Zona 1 – Muy suave','Zona 2 – Suave','Zona 3 – Moderada','Zona 4 – Dura','Zona 5 – Máxima']
+          return fases.map((f, idx) => {
+            const zonaColor = f.fc_zona ? FC_COLORS[f.fc_zona - 1] : T.accent
+            const zonaLabel = f.fc_zona ? FC_LABELS[f.fc_zona - 1] : null
+            const rpeColor = !f.rpe ? 'var(--text3)' : f.rpe <= 4 ? '#10b981' : f.rpe <= 6 ? '#f59e0b' : '#ef4444'
+            return (
+              <section key={f.id} style={{ marginTop: 26 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 14, background: zonaColor }}>
+                    {String(idx + 1).padStart(2, '0')}
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.18, flex: 1 }}>{f.nombre || `Fase ${idx + 1}`}</h2>
+                </div>
+                {f.descripcion && (
+                  <div style={{ background: zonaColor + '12', border: `1px solid ${zonaColor}33`, borderRadius: 11, padding: '11px 14px', marginBottom: 12, fontSize: 13.5, lineHeight: 1.55, color: '#374151' }}>
+                    {f.descripcion}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                  {(f.volumen_min || f.volumen_km) && (
+                    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Volumen</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+                        {f.volumen_min ? `${f.volumen_min} min` : ''}{f.volumen_min && f.volumen_km ? ' · ' : ''}{f.volumen_km ? `${f.volumen_km} km` : ''}
+                      </div>
+                    </div>
+                  )}
+                  {(f.ritmo_inicio || f.ritmo_fin) && (
+                    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Ritmo (min/km)</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+                        {f.ritmo_inicio || '–'}{f.ritmo_fin ? ` – ${f.ritmo_fin}` : ''}
+                      </div>
+                    </div>
+                  )}
+                  {f.fc_zona && (
+                    <div style={{ background: zonaColor + '18', border: `1px solid ${zonaColor}44`, borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>FC Zona</div>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 2 }}>
+                        {[1,2,3,4,5].map(z => (
+                          <div key={z} style={{ width: 16, height: 16, borderRadius: '50%', background: f.fc_zona >= z ? FC_COLORS[z-1] : '#e5e7eb', border: `1.5px solid ${f.fc_zona >= z ? FC_COLORS[z-1] : '#d1d5db'}` }} />
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: zonaColor }}>{zonaLabel}</div>
+                    </div>
+                  )}
+                  {f.rpe && (
+                    <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 14px', minWidth: 90 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>RPE</div>
+                      <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                        {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                          <div key={n} style={{ width: 18, height: 18, borderRadius: 5, background: n <= f.rpe ? rpeColor : '#e5e7eb', opacity: n <= f.rpe ? 1 : 0.3 }} />
+                        ))}
+                        <span style={{ marginLeft: 4, fontSize: 14, fontWeight: 700, color: rpeColor }}>{f.rpe}/10</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )
+          })
+        })()}
 
         {/* BLOQUES */}
         {bloques.map((b, idx) => (
