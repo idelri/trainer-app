@@ -372,6 +372,10 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [modalNotaCal, setModalNotaCal] = useState(false)
   const [formNotaCal, setFormNotaCal] = useState({ texto: '', fecha: '' })
   const [editandoNota, setEditandoNota] = useState(null)
+  const [packs, setPacks] = useState([])
+  const [modalPack, setModalPack] = useState(null)
+  const [formPack, setFormPack] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' })
+  const [savingPack, setSavingPack] = useState(false)
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
   useEffect(() => { if (sesionAbierta) { cargarDetalle(sesionAbierta.id); setDirty(false); setAvisoSinGuardar(false) } }, [sesionAbierta])
@@ -401,17 +405,19 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
 
   async function cargarSesiones() {
     setLoading(true)
-    const [{ data: ses }, { data: nots }, { data: comps }, { data: ctrls }, { data: plan }] = await Promise.all([
+    const [{ data: ses }, { data: nots }, { data: comps }, { data: ctrls }, { data: plan }, { data: pks }] = await Promise.all([
       supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false }),
       supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('planificaciones').select('id, fecha_inicio').eq('cliente_id', clienteSeleccionado).order('fecha_inicio', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha_inicio'),
     ])
     setSesiones(ses || [])
     setNotas(nots || [])
     setCompeticionesCal(comps || [])
     setControlesCal(ctrls || [])
+    setPacks(pks || [])
     if (sesionInicialId && !sesionInicialCargada.current) {
       sesionInicialCargada.current = true
       const sesInicial = (ses || []).find(s => s.id === sesionInicialId)
@@ -651,6 +657,16 @@ async function guardarSesion() {
     cargarSesiones()
   }
 
+  async function guardarPack() {
+    setSavingPack(true)
+    if (modalPack?.id) {
+      await supabase.from('packs_flexibles').update({ nombre: formPack.nombre, fecha_inicio: formPack.fecha_inicio, fecha_fin: formPack.fecha_fin, descripcion: formPack.descripcion || null }).eq('id', modalPack.id)
+    } else {
+      await supabase.from('packs_flexibles').insert({ cliente_id: clienteSeleccionado, nombre: formPack.nombre, fecha_inicio: formPack.fecha_inicio, fecha_fin: formPack.fecha_fin, descripcion: formPack.descripcion || null })
+    }
+    setSavingPack(false); setModalPack(null); cargarSesiones()
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -659,7 +675,10 @@ async function guardarSesion() {
           {sesionAbierta && <p className="page-subtitle">{sesionAbierta.titulo}</p>}
         </div>
         {clienteSeleccionado && !sesionAbierta && (
-          <button className="btn btn-primary" onClick={abrirNuevaSesion}><Plus size={13} /> Nueva sesión</button>
+          <div className="flex gap-2">
+            <button className="btn btn-ghost btn-sm" onClick={() => { setFormPack({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }); setModalPack('nuevo') }}>📦 Nuevo pack flexible</button>
+            <button className="btn btn-primary" onClick={abrirNuevaSesion}><Plus size={13} /> Nueva sesión</button>
+          </div>
         )}
         {sesionAbierta && (
           <div className="flex gap-2">
@@ -1426,6 +1445,38 @@ async function guardarSesion() {
                 await duplicarSesion(modalDuplicar, fechaDuplicar)
                 setModalDuplicar(null)
               }}>{saving ? 'Duplicando...' : 'Duplicar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalPack && (
+        <div className="modal-backdrop" onClick={() => setModalPack(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modalPack === 'nuevo' ? 'Nuevo pack flexible' : 'Editar pack'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPack(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre del pack *</label>
+              <input className="form-input" value={formPack.nombre} onChange={e => setFormPack(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Plan de vacaciones" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha inicio *</label>
+                <input className="form-input" type="date" value={formPack.fecha_inicio} onChange={e => setFormPack(f => ({ ...f, fecha_inicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha fin *</label>
+                <input className="form-input" type="date" value={formPack.fecha_fin} onChange={e => setFormPack(f => ({ ...f, fecha_fin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descripción para el cliente</label>
+              <textarea className="form-input" value={formPack.descripcion} onChange={e => setFormPack(f => ({ ...f, descripcion: e.target.value }))} placeholder="Ej: Durante estos días puedes realizar estas sesiones de forma flexible según disponibilidad..." rows={3} style={{ resize: 'vertical' }} />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPack(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={savingPack || !formPack.nombre || !formPack.fecha_inicio || !formPack.fecha_fin} onClick={guardarPack}>{savingPack ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
         </div>
