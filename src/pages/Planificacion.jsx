@@ -7,12 +7,6 @@ import CalendarioSesiones from '../components/CalendarioSesiones'
 import Seguimiento from './Seguimiento'
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
-const ICONO_ACTIVIDAD = { fuerza:'💪', correr:'🏃', caminar:'🚶', bicicleta:'🚴', nadar:'🏊', movilidad:'🤸', futbol:'⚽', padel:'🎾' }
-function iconoSesion(s) {
-  if (s?.icono) return s.icono
-  const tipos = s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
-  return tipos.map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ')
-}
 
 function calcFechaInicioSemana(bloque, numSemana) {
   return addWeeks(parseISO(bloque.fecha_inicio), numSemana - 1)
