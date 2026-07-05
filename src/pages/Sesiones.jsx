@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_editor: 'fuerza', con_feedback: true }
 
 function ytId(url) {
   if (!url) return null
@@ -378,6 +378,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [subbloquesPlan, setSubbloquesPlan] = useState({})
 
   const [controlesCal, setControlesCal] = useState([])
+  const [fases, setFases] = useState([])
 
   async function cargarSesiones() {
     setLoading(true)
@@ -416,8 +417,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setLoading(false)
   }
   async function cargarDetalle(sesionId) {
-    const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionId).order('orden')
+    const [{ data: bls }, { data: fs }] = await Promise.all([
+      supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionId).order('orden'),
+      supabase.from('sesion_fases').select('*').eq('sesion_id', sesionId).order('orden'),
+    ])
     setBloques(bls || [])
+    setFases(fs || [])
     if (bls && bls.length > 0) {
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').in('bloque_id', bls.map(b => b.id)).order('orden')
       const map = {}
@@ -428,13 +433,28 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     }
   }
 
+  async function añadirFase() {
+    const { data } = await supabase.from('sesion_fases').insert({ sesion_id: sesionAbierta.id, nombre: `Fase ${fases.length + 1}`, orden: fases.length }).select().single()
+    if (data) setFases(f => [...f, data])
+  }
+
+  async function actualizarFase(id, campo, valor) {
+    setFases(fs => fs.map(f => f.id === id ? { ...f, [campo]: valor } : f))
+    await supabase.from('sesion_fases').update({ [campo]: valor }).eq('id', id)
+  }
+
+  async function eliminarFase(id) {
+    setFases(fs => fs.filter(f => f.id !== id))
+    await supabase.from('sesion_fases').delete().eq('id', id)
+  }
+
   function abrirNuevaSesion() {
     setFormSesion({ ...EMPTY_SESION, fecha: format(new Date(), 'yyyy-MM-dd') })
     setModalSesion('nueva')
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '' })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false })
     setModalSesion(s)
   }
 
@@ -442,25 +462,34 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
+      setSesionAbierta(s => s ? { ...s, ...datos } : s)
       setSaving(false); setModalSesion(null); cargarSesiones()
       return
     }
-    // Nueva sesión: crear con 4 bloques x 3 ejercicios por defecto
+    // Nueva sesión: si es fuerza crear 4 bloques x 3 ejercicios; si es carrera crear 3 fases
     const { data: nueva } = await supabase.from('sesiones').insert({ ...datos, cliente_id: clienteSeleccionado }).select().single()
     if (nueva) {
-      for (let i = 0; i < 4; i++) {
-        const { data: b } = await supabase.from('sesion_bloques').insert({
-          sesion_id: nueva.id, nombre: `Bloque ${i + 1}`, color: COLORES[i % COLORES.length], nota: '', orden: i,
-        }).select().single()
-        if (b) {
-          for (let j = 0; j < 3; j++) {
-            await supabase.from('sesion_ejercicios').insert({
-              bloque_id: b.id, nombre: '', series: '', reps: '', rpe: '', notas: '',
-              media_tipo: 'youtube', media_url: '', video_url: '', orden: j,
-            })
+      if (datos.tipo_editor === 'carrera') {
+        await supabase.from('sesion_fases').insert([
+          { sesion_id: nueva.id, nombre: 'Calentamiento', orden: 0 },
+          { sesion_id: nueva.id, nombre: 'Trabajo principal', orden: 1 },
+          { sesion_id: nueva.id, nombre: 'Vuelta a la calma', orden: 2 },
+        ])
+      } else {
+        for (let i = 0; i < 4; i++) {
+          const { data: b } = await supabase.from('sesion_bloques').insert({
+            sesion_id: nueva.id, nombre: `Bloque ${i + 1}`, color: COLORES[i % COLORES.length], nota: '', orden: i,
+          }).select().single()
+          if (b) {
+            for (let j = 0; j < 3; j++) {
+              await supabase.from('sesion_ejercicios').insert({
+                bloque_id: b.id, nombre: '', series: '', reps: '', rpe: '', notas: '',
+                media_tipo: 'youtube', media_url: '', video_url: '', orden: j,
+              })
+            }
           }
         }
       }
@@ -726,7 +755,87 @@ async function guardarSesion() {
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* ── EDITOR CARRERA ── */}
+          {sesionAbierta.tipo_editor === 'carrera' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {fases.map((f, idx) => {
+                const FC_COLORS = ['#10b981','#84cc16','#f59e0b','#ef4444','#7c3aed']
+                const rpeColor = !f.rpe ? 'var(--text3)' : f.rpe <= 4 ? '#10b981' : f.rpe <= 6 ? '#f59e0b' : '#ef4444'
+                return (
+                  <div key={f.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${FC_COLORS[(f.fc_zona || 1) - 1]}` }}>
+                    <div style={{ padding: '10px 14px', background: 'var(--bg2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', minWidth: 52 }}>Fase {idx + 1}</span>
+                      <div style={{ flex: 1 }}>
+                        <InlineInput value={f.nombre} placeholder="Nombre de la fase..." fontSize={13} style={{ fontWeight: 600 }}
+                          onSave={v => actualizarFase(f.id, 'nombre', v)} />
+                      </div>
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarFase(f.id)}><Trash2 size={12} /></button>
+                    </div>
+                    <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>Descripción</div>
+                        <InlineInput value={f.descripcion} placeholder="Describe esta fase..." textarea fontSize={12.5}
+                          onSave={v => actualizarFase(f.id, 'descripcion', v)} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>Volumen</div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <InlineInput value={f.volumen_min != null ? String(f.volumen_min) : ''} placeholder="min" fontSize={12}
+                              style={{ width: 40 }} onSave={v => actualizarFase(f.id, 'volumen_min', v ? parseInt(v) : null)} />
+                            <span style={{ fontSize: 11, color: 'var(--text3)' }}>min</span>
+                            <span style={{ fontSize: 11, color: 'var(--border)' }}>/</span>
+                            <InlineInput value={f.volumen_km != null ? String(f.volumen_km) : ''} placeholder="km" fontSize={12}
+                              style={{ width: 40 }} onSave={v => actualizarFase(f.id, 'volumen_km', v ? parseFloat(v) : null)} />
+                            <span style={{ fontSize: 11, color: 'var(--text3)' }}>km</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>FC zona</div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {[1,2,3,4,5].map(z => (
+                              <button key={z} title={`Zona ${z}`} onClick={() => actualizarFase(f.id, 'fc_zona', f.fc_zona === z ? null : z)}
+                                style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${f.fc_zona >= z ? FC_COLORS[z-1] : 'var(--border)'}`, background: f.fc_zona >= z ? FC_COLORS[z-1] : 'var(--bg)', fontSize: 9, fontWeight: 700, color: f.fc_zona >= z ? '#fff' : 'var(--text3)', cursor: 'pointer' }}>
+                                {z}
+                              </button>
+                            ))}
+                          </div>
+                          {f.fc_zona && <div style={{ fontSize: 10, color: FC_COLORS[f.fc_zona - 1], marginTop: 2 }}>Zona {f.fc_zona}</div>}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>Ritmo (min/km)</div>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <InlineInput value={f.ritmo_inicio || ''} placeholder="4:00" fontSize={12} style={{ width: 44 }}
+                              onSave={v => actualizarFase(f.id, 'ritmo_inicio', v || null)} />
+                            <span style={{ fontSize: 11, color: 'var(--text3)' }}>–</span>
+                            <InlineInput value={f.ritmo_fin || ''} placeholder="4:30" fontSize={12} style={{ width: 44 }}
+                              onSave={v => actualizarFase(f.id, 'ritmo_fin', v || null)} />
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>RPE (1-10)</div>
+                          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                            {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                              <button key={n} onClick={() => actualizarFase(f.id, 'rpe', f.rpe === n ? null : n)}
+                                style={{ width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${f.rpe === n ? rpeColor : 'var(--border)'}`, background: f.rpe === n ? rpeColor : 'var(--bg)', color: f.rpe === n ? '#fff' : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              <button className="btn btn-ghost" onClick={añadirFase} style={{ alignSelf: 'flex-start' }}>
+                <Plus size={13} /> Añadir fase
+              </button>
+            </div>
+          )}
+
+          {/* ── EDITOR FUERZA ── */}
+          {sesionAbierta.tipo_editor !== 'carrera' && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {bloques.map((b, idx) => (
               <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -802,8 +911,15 @@ async function guardarSesion() {
                               <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>RPE</span>
-                              <div style={{ width: 36 }}><InlineInput value={e.rpe} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'rpe', v)} /></div>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>RIR</span>
+                              <div style={{ display: 'flex', gap: 3 }}>
+                                {[['4+','#16a34a','#dcfce7','4 o más reps en reserva — esfuerzo muy bajo'],['2-3','#ca8a04','#fef9c3','2-3 reps en reserva — esfuerzo moderado'],['1-0','#dc2626','#fee2e2','0-1 reps en reserva — al límite o fallo muscular']].map(([val, color, bg, tip]) => (
+                                  <button key={val} title={tip} onClick={() => actualizarEjercicio(b.id, e.id, 'rpe', e.rpe === val ? '' : val)}
+                                    style={{ padding: '2px 6px', borderRadius: 8, border: `1.5px solid ${e.rpe === val ? color : 'var(--border)'}`, background: e.rpe === val ? bg : 'var(--bg)', color: e.rpe === val ? color : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                                    {val}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
@@ -848,7 +964,7 @@ async function guardarSesion() {
             <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}>
               <Plus size={13} /> Bloque
             </button>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -859,6 +975,20 @@ async function guardarSesion() {
             <div className="modal-header">
               <span className="modal-title">{modalSesion === 'nueva' ? 'Nueva sesión' : 'Editar sesión'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSesion(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo de editor</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['fuerza','💪','Fuerza / salud'],['carrera','🏃','Carrera / resistencia']].map(([val, ico, label]) => {
+                  const active = (formSesion.tipo_editor || 'fuerza') === val
+                  return (
+                    <button key={val} type="button" onClick={() => setFormSesion(f => ({ ...f, tipo_editor: val }))}
+                      style={{ flex: 1, padding: '8px', borderRadius: 9, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 16 }}>{ico}</span> {label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
            <div className="form-row">
@@ -872,8 +1002,20 @@ async function guardarSesion() {
               </div>
               <div className="form-group"><label className="form-label">Duración (min)</label><input className="form-input" type="number" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} placeholder="Ej: 45" /></div>
             </div>
+            <div className="form-group" style={{ marginBottom: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div onClick={() => setFormSesion(f => ({ ...f, con_feedback: !f.con_feedback }))}
+                  style={{ width: 36, height: 20, borderRadius: 10, background: formSesion.con_feedback !== false ? 'var(--accent)' : 'var(--border)', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
+                  <div style={{ position: 'absolute', top: 2, left: formSesion.con_feedback !== false ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Feedback post-sesión</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formSesion.con_feedback !== false ? 'El cliente verá el cuestionario al terminar' : 'Sin cuestionario (sesión de activación, movilidad...)'}</div>
+                </div>
+              </label>
+            </div>
             {modalSesion === 'nueva' && (
-              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar directamente.</p>
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{(formSesion.tipo_editor || 'fuerza') === 'carrera' ? 'Se crearán 3 fases de ejemplo (calentamiento, trabajo, vuelta a la calma).' : 'Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar.'}</p>
             )}
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSesion(null)}>Cancelar</button>

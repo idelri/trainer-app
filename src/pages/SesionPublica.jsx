@@ -217,7 +217,7 @@ export default function SesionPublica({ token }) {
         ))}
 
         {/* FEEDBACK POST-SESIÓN */}
-        <div style={{ marginTop: 36 }}>
+        {sesion.con_feedback !== false && <div style={{ marginTop: 36 }}>
           {feedbackEnviado && !editandoFeedback ? (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
               <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
@@ -234,6 +234,7 @@ export default function SesionPublica({ token }) {
               <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
               <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Esta será tu última oportunidad para modificarlo.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
               <FeedbackForm
+                tipoEditor={sesion.tipo_editor}
                 initial={editandoFeedback ? feedbackEnviado.data : null}
                 submitting={enviandoFeedback}
                 onSubmit={async (data) => {
@@ -257,7 +258,7 @@ export default function SesionPublica({ token }) {
               />
             </div>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   )

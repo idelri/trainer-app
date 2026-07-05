@@ -44,7 +44,7 @@ function TextArea({ value, onChange, placeholder }) {
   )
 }
 
-export default function FeedbackForm({ onSubmit, submitting, initial }) {
+export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor }) {
   const [fb, setFb] = useState(initial || emptyFeedback())
   const set = (path, value) => setFb(f => {
     const next = JSON.parse(JSON.stringify(f))
@@ -200,12 +200,21 @@ export default function FeedbackForm({ onSubmit, submitting, initial }) {
       {/* Dificultad técnica general (si no se preguntó ya) */}
       {(status === 'completed' || (status === 'partial' && !has('Dificultad técnica con algún ejercicio') && !has('No entendí algún ejercicio'))) && (
         <Section>
-          <Q>¿Hubo algún ejercicio difícil de ejecutar o entender?</Q>
+          {tipoEditor === 'carrera'
+            ? <Q>¿Hubo alguna parte de la sesión que te resultara especialmente difícil de completar según lo previsto?</Q>
+            : <Q>¿Hubo algún ejercicio difícil de ejecutar o entender?</Q>
+          }
           <OptionBtn active={fb.technical.additionalTechnicalDifficulty === false && fb.technical._answered} onClick={() => { set('technical.additionalTechnicalDifficulty', false); set('technical._answered', true) }}>No</OptionBtn>
           <OptionBtn active={fb.technical.additionalTechnicalDifficulty === true} onClick={() => { set('technical.additionalTechnicalDifficulty', true); set('technical.hasDifficulty', true); set('technical._answered', true) }}>Sí</OptionBtn>
           {fb.technical.additionalTechnicalDifficulty === true && (
             <div style={{ marginTop: 8 }}>
-              <TextArea value={fb.technical.additionalTechnicalDetails} onChange={v => set('technical.additionalTechnicalDetails', v)} placeholder="¿Qué ejercicio te resultó difícil y qué problema tuviste?" />
+              <TextArea
+                value={fb.technical.additionalTechnicalDetails}
+                onChange={v => set('technical.additionalTechnicalDetails', v)}
+                placeholder={tipoEditor === 'carrera'
+                  ? '¿Qué parte fue y qué notaste? Puedes indicar si te costó mantener el ritmo, la zona de FC, la duración, las recuperaciones o si apareció fatiga, molestias o sensación de esfuerzo excesivo.'
+                  : '¿Qué ejercicio te resultó difícil y qué problema tuviste?'}
+              />
             </div>
           )}
         </Section>

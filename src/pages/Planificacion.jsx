@@ -250,6 +250,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           objetivo:     item?.objetivo     || '',
           duracion_min: item?.duracion_min || '',
           icono:        item?.icono        || '',
+          tipo_editor:  item?.tipo_editor  || 'fuerza',
+          con_feedback: item?.con_feedback !== false,
         }
       case 'comp':
         return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', objetivo: item?.objetivo || '', notas: item?.notas || '' }
@@ -368,7 +370,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
         case 'sesion': {
           if (!formData.titulo) break
-          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null, icono: formData.icono || null }
+          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null, icono: formData.icono || null, tipo_editor: formData.tipo_editor || 'fuerza', con_feedback: formData.con_feedback !== false }
           if (modalItem?.id) await supabase.from('sesiones').update(datos).eq('id', modalItem.id)
           else await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -902,6 +904,20 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         return (
           <div style={{ padding: '0 20px 4px' }}>
             <div className="form-group">
+              <label className="form-label">Tipo de editor</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['fuerza','💪','Fuerza / salud'],['carrera','🏃','Carrera / resistencia']].map(([val, ico, label]) => {
+                  const active = (formData.tipo_editor || 'fuerza') === val
+                  return (
+                    <button key={val} onClick={() => fd('tipo_editor', val)}
+                      style={{ flex: 1, padding: '9px 8px', borderRadius: 9, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 16 }}>{ico}</span> {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="form-group">
               <label className="form-label">Icono de sesión</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {['💪','🏃','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🏇','🎯','🧗','🤽','🏄','🛶','🎿','⛷️','🏌️','🏹','🤺','🛝','🚣','🏇','🦵','🔥','⚡','🌟','🎽'].map(e => (
@@ -977,6 +993,18 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             <div className="form-group">
               <label className="form-label">Duración (min)</label>
               <input className="form-input" type="number" min="1" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} style={{ maxWidth: 120 }} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div onClick={() => fd('con_feedback', !formData.con_feedback)}
+                  style={{ width: 36, height: 20, borderRadius: 10, background: formData.con_feedback !== false ? 'var(--accent)' : 'var(--border)', position: 'relative', flexShrink: 0, transition: 'background .2s', cursor: 'pointer' }}>
+                  <div style={{ position: 'absolute', top: 2, left: formData.con_feedback !== false ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Feedback post-sesión</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formData.con_feedback !== false ? 'El cliente verá el cuestionario al terminar' : 'No se mostrará cuestionario'}</div>
+                </div>
+              </label>
             </div>
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
