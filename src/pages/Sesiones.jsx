@@ -341,7 +341,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones({ clienteInicial, sesionInicialId }) {
+export default function Sesiones({ clienteInicial, sesionInicialId, setPage }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
@@ -631,7 +631,7 @@ async function guardarSesion() {
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>← Volver</button>
           </div>
         )}
       </div>
