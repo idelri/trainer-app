@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import FeedbackForm from '../components/FeedbackForm'
@@ -70,6 +70,41 @@ function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
   return m ? m[1] : null
+}
+
+const RIR_INFO = {
+  '4+': {
+    titulo: 'Muy lejos del fallo',
+    desc: 'El ejercicio se siente cómodo. Todas las repeticiones son rápidas, con técnica perfecta y la sensación de que podrías hacer bastantes más sin problema.'
+  },
+  '2-3': {
+    titulo: 'Esfuerzo moderado-alto',
+    desc: 'Las últimas repeticiones ya requieren concentración, pero mantienes una buena velocidad y una técnica sólida. Notas que podrías hacer 2 o 3 repeticiones más.'
+  },
+  '1-0': {
+    titulo: 'Muy cerca del fallo',
+    desc: 'Máximo esfuerzo previsto. La velocidad disminuye claramente en las últimas repeticiones, pero la técnica debe mantenerse correcta. Solo podrías realizar 0 o 1 repetición más con buena ejecución.'
+  },
+}
+
+function RirChip({ valor, colorMap, bgMap, T }) {
+  const color = colorMap[valor] || '#888'
+  const bg = bgMap[valor] || '#f5f5f5'
+  const info = RIR_INFO[valor]
+  return (
+    <div style={{ display: 'inline-block' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: bg, borderRadius: 9, padding: '7px 12px' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color }}>RIR</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color }}>{valor}</span>
+      </span>
+      {info && (
+        <div style={{ marginTop: 6, background: bg, border: `1px solid ${color}33`, borderRadius: 10, padding: '10px 12px', maxWidth: 300 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 4 }}>{info.titulo}</div>
+          <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.5 }}>{info.desc}</div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function SesionPublica({ token }) {
@@ -483,10 +518,7 @@ export default function SesionPublica({ token }) {
                             </div>
                           )}
                           {activas.includes('RIR') && e.rpe && (
-                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: rirBgMap[e.rpe] || T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: rirColorMap[e.rpe] || T.ink3 }}>RIR</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: rirColorMap[e.rpe] || T.ink }}>{e.rpe}</span>
-                            </span>
+                            <RirChip valor={e.rpe} colorMap={rirColorMap} bgMap={rirBgMap} T={T} />
                           )}
                           {activas.includes('Distancia') && e.distancia && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
