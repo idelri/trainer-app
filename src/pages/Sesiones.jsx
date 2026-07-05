@@ -631,7 +631,8 @@ async function guardarSesion() {
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>← Volver</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>← Volver</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { localStorage.setItem('planVista', 'calendario'); if (setPage) setPage('planificacion'); else setSesionAbierta(null) }}>Guardar</button>
           </div>
         )}
       </div>
