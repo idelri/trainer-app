@@ -245,10 +245,16 @@ export default function SesionPublica({ token }) {
 
         {/* MARCAR TODO */}
         <div style={{ marginTop: 14 }}>
-          <button onClick={marcarTodas}
-            style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
-            ✓ Marcar sesión como completada
-          </button>
+          {sesionFlexibleGuardada || sesionFijaGuardada ? (
+            <div style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', fontSize: 14.5, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
+              ✓ Sesión completada y guardada
+            </div>
+          ) : (
+            <button onClick={marcarTodas}
+              style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
+              ✓ Marcar sesión como completada
+            </button>
+          )}
         </div>
 
         {sesion.material && (
@@ -470,8 +476,37 @@ export default function SesionPublica({ token }) {
          </section>
         ))}
 
+        {/* BOTÓN GUARDAR SESIÓN */}
+        {!sesionFlexibleGuardada && !sesionFijaGuardada && (
+          <div style={{ marginTop: 24 }}>
+            <button
+              onClick={async () => {
+                setGuardandoSesion(true)
+                if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
+                  const resultado = await clonarSesionHoy()
+                  setGuardandoSesion(false)
+                  if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
+                  setValoresReales({})
+                  setSesionFlexibleGuardada(resultado.hoyStr)
+                } else {
+                  setGuardandoSesion(false)
+                  setSesionFijaGuardada(true)
+                }
+              }}
+              disabled={guardandoSesion}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, border: `2px solid ${T.accent}`, background: 'transparent', color: T.accent, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
+              {guardandoSesion ? 'Guardando...' : '↑ Guardar y enviar sesión'}
+            </button>
+          </div>
+        )}
+        {(sesionFlexibleGuardada || sesionFijaGuardada) && (
+          <div style={{ marginTop: 24, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '13px 18px', textAlign: 'center' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d' }}>✓ Sesión guardada y enviada</span>
+          </div>
+        )}
+
         {/* FEEDBACK POST-SESIÓN */}
-        {sesion.con_feedback !== false && <div style={{ marginTop: 36 }}>
+        {sesion.con_feedback !== false && <div style={{ marginTop: 24 }}>
           {sesionFlexibleGuardada && (
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 16, padding: '18px 16px', textAlign: 'center' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
@@ -481,7 +516,10 @@ export default function SesionPublica({ token }) {
           )}
           {!sesionFlexibleGuardada && feedbackEnviado && !editandoFeedback ? (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
-              <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>Realizado</span>
+              </div>
               <FeedbackResumen
                 data={feedbackEnviado.data}
                 onEditar={() => setEditandoFeedback(true)}
@@ -489,7 +527,10 @@ export default function SesionPublica({ token }) {
             </div>
           ) : !sesionFlexibleGuardada ? (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: T.paper, color: T.ink3, border: `1px solid ${T.line}` }}>No realizado</span>
+              </div>
               <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Se guardará la última versión.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
               <FeedbackForm
                 tipoEditor={sesion.tipo_editor}
@@ -525,34 +566,6 @@ export default function SesionPublica({ token }) {
           ) : null}
         </div>}
 
-        {/* BOTÓN GUARDAR SESIÓN (siempre visible, independiente del feedback) */}
-        {!sesionFlexibleGuardada && !sesionFijaGuardada && (
-          <div style={{ marginTop: 20 }}>
-            <button
-              onClick={async () => {
-                setGuardandoSesion(true)
-                if (sesion.tipo_sesion === 'flexible' && !sesion.fecha) {
-                  const resultado = await clonarSesionHoy()
-                  setGuardandoSesion(false)
-                  if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
-                  setValoresReales({})
-                  setSesionFlexibleGuardada(resultado.hoyStr)
-                } else {
-                  setGuardandoSesion(false)
-                  setSesionFijaGuardada(true)
-                }
-              }}
-              disabled={guardandoSesion}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, border: `2px solid ${T.accent}`, background: 'transparent', color: T.accent, fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
-              {guardandoSesion ? 'Guardando...' : '↑ Guardar y enviar sesión'}
-            </button>
-          </div>
-        )}
-        {sesionFijaGuardada && (
-          <div style={{ marginTop: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '14px 18px', textAlign: 'center' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d' }}>✓ Sesión enviada</span>
-          </div>
-        )}
       </div>
     </div>
   )
