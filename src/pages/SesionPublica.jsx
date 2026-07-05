@@ -174,6 +174,7 @@ export default function SesionPublica({ token }) {
       objetivo: sesion.objetivo, duracion_min: sesion.duracion_min, material: sesion.material,
       indicaciones: sesion.indicaciones, tipo_sesion: 'programada', icono: sesion.icono,
       tipo_editor: sesion.tipo_editor, con_feedback: sesion.con_feedback, token_publico: nuevoToken,
+      completada_el: hoyStr,
     }).select().single()
     if (clonError || !clon) return null
     for (const bloque of bloques) {
