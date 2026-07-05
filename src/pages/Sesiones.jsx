@@ -6,7 +6,7 @@ import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
-const ICONOS_OPCIONES = ['💪', '🏃', '🚶', '🧘', '🚴', '🏊', '⚡']
+const ICONOS_OPCIONES = ['💪','🏃','🚶','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🏇','🎯','🧗','🤽','🏄','🛶','🎿','⛷️','🏌️','🏹','🤺','🛝','🚣','🦵','🔥','⚡','🌟','🎽']
 
 function ytId(url) {
   if (!url) return null
