@@ -448,25 +448,22 @@ export default function SesionPublica({ token }) {
               <h2 style={{ margin: '0 0 14px', fontSize: 17, fontWeight: 800 }}>Feedback de la sesión</h2>
               <FeedbackResumen
                 data={feedbackEnviado.data}
-                onEditar={feedbackEnviado.editado ? null : () => setEditandoFeedback(true)}
+                onEditar={() => setEditandoFeedback(true)}
               />
-              {feedbackEnviado.editado && (
-                <p style={{ margin: '12px 0 0', fontSize: 12, color: T.ink3, textAlign: 'center' }}>Ya has modificado este feedback. Si necesitas otro cambio, escríbeme por WhatsApp.</p>
-              )}
             </div>
           ) : !sesionFlexibleGuardada ? (
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
               <h2 style={{ margin: '0 0 4px', fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
-              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Esta será tu última oportunidad para modificarlo.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
+              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Se guardará la última versión.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
               <FeedbackForm
                 tipoEditor={sesion.tipo_editor}
                 initial={editandoFeedback ? feedbackEnviado.data : null}
                 submitting={enviandoFeedback}
-                submitLabel={sesion.tipo_sesion === 'flexible' && !sesion.fecha ? 'Guardar y enviar feedback' : 'Guardar y enviar feedback'}
+                submitLabel="Guardar y enviar feedback"
                 onSubmit={async (data) => {
                   setEnviandoFeedback(true)
                   if (editandoFeedback) {
-                    const { data: act } = await supabase.from('sesion_feedback').update({ data, editado: true }).eq('id', feedbackEnviado.id).select().single()
+                    const { data: act } = await supabase.from('sesion_feedback').update({ data }).eq('id', feedbackEnviado.id).select().single()
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
                     if (act) setFeedbackEnviado(act)
