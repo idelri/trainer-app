@@ -250,15 +250,17 @@ export default function CalendarioSesiones({
                       </div>
                       {packDia && <span style={{ fontSize: 8, color: '#0369a1', fontWeight: 600, letterSpacing: '0.03em', lineHeight: 1, paddingBottom: 1 }}>📦 {packDia.nombre}</span>}
                       {sesDia.map(item => {
-                        const tipoEstilo = {
-                          sesion:      { background: 'var(--accent-light)', color: 'var(--accent)' },
-                          competicion: { background: 'var(--danger-light)', color: 'var(--danger)' },
-                          control:     { background: '#eff6ff', color: '#3b82f6' },
-                          nota:        { background: '#fefce8', color: '#854d0e' },
-                        }[item._tipo]
+                        const estadoColor = item._tipo === 'sesion' ? (item._estadoColor || null) : null
+                        const tipoEstilo = estadoColor
+                          ? { background: estadoColor + '22', color: estadoColor, border: `1px solid ${estadoColor}55` }
+                          : {
+                              sesion:      { background: 'var(--accent-light)', color: 'var(--accent)' },
+                              competicion: { background: 'var(--danger-light)', color: 'var(--danger)' },
+                              control:     { background: '#eff6ff', color: '#3b82f6' },
+                              nota:        { background: '#fefce8', color: '#854d0e' },
+                            }[item._tipo]
                         const icono = item._tipo === 'sesion' ? iconoSesion(item) : { competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
                         const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
-                        const estadoColor = item._tipo === 'sesion' ? (item._estadoColor || null) : null
                         return (
                           <div key={item.id}
                             draggable
@@ -268,7 +270,6 @@ export default function CalendarioSesiones({
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
-                            {estadoColor && <span style={{ flexShrink: 0, width: 7, height: 7, borderRadius: '50%', background: estadoColor }} />}
                             <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
                         )

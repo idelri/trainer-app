@@ -91,7 +91,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
   // ── Estado visual de sesión ──
   function estadoSesion(s) {
-    // 1. Trainer manual override (wins over everything)
+    // 1. Trainer manual override (wins over automatic), or auto-set by client action
     if (s.estado && s.estado !== 'pendiente') return s.estado
 
     const hoy = new Date(new Date().toDateString())

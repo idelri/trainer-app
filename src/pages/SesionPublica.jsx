@@ -171,6 +171,14 @@ export default function SesionPublica({ token }) {
     })
   }
 
+  function estadoDesdeData(data) {
+    const status = data?.completion?.status
+    if (status === 'completed') return 'completada'
+    if (status === 'partial')   return 'parcial'
+    if (status === 'missed')    return 'perdida'
+    return 'gris'
+  }
+
   async function clonarSesionHoy() {
     const hoyStr = format(new Date(), 'yyyy-MM-dd')
     const nuevoToken = crypto.randomUUID()
@@ -580,10 +588,12 @@ export default function SesionPublica({ token }) {
                   const resultado = await clonarSesionHoy()
                   setGuardandoSesion(false)
                   if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
+                  await supabase.from('sesiones').update({ estado: 'gris' }).eq('id', resultado.clon.id)
                   setValoresReales({})
                   setSesionFlexibleGuardada(resultado.hoyStr)
                 } else {
-                  await supabase.from('sesiones').update({ completada_el: sesion.fecha }).eq('id', sesion.id)
+                  await supabase.from('sesiones').update({ completada_el: sesion.fecha, estado: 'gris' }).eq('id', sesion.id)
+                  setSesion(s => ({ ...s, estado: 'gris' }))
                   setGuardandoSesion(false)
                   setSesionFijaGuardada(true)
                 }
@@ -649,8 +659,14 @@ export default function SesionPublica({ token }) {
                 submitLabel="Guardar y enviar feedback"
                 onSubmit={async (data) => {
                   setEnviandoFeedback(true)
+                  const nuevoEstado = estadoDesdeData(data)
                   if (editandoFeedback) {
                     const { data: act } = await supabase.from('sesion_feedback').update({ data }).eq('id', feedbackEnviado.id).select().single()
+                    // Solo actualizar estado si el trainer no lo ha sobreescrito manualmente
+                    if (!sesion.estado || sesion.estado === 'pendiente' || sesion.estado === 'gris' || sesion.estado === 'completada' || sesion.estado === 'parcial' || sesion.estado === 'perdida') {
+                      await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', sesion.id)
+                      setSesion(s => ({ ...s, estado: nuevoEstado }))
+                    }
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
                     if (act) setFeedbackEnviado(act)
@@ -662,11 +678,14 @@ export default function SesionPublica({ token }) {
                       return
                     }
                     await supabase.from('sesion_feedback').insert({ sesion_id: resultado.clon.id, data })
+                    await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', resultado.clon.id)
                     setEnviandoFeedback(false)
                     setValoresReales({})
                     setSesionFlexibleGuardada(resultado.hoyStr)
                   } else {
                     const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
+                    await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', sesion.id)
+                    setSesion(s => ({ ...s, estado: nuevoEstado }))
                     setEnviandoFeedback(false)
                     if (nuevo) setFeedbackEnviado(nuevo)
                   }
