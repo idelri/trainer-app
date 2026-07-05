@@ -605,7 +605,7 @@ async function guardarSesion() {
       con_feedback: sesionOrigen.con_feedback !== false,
       icono: sesionOrigen.icono,
     }).select().single()
-    if (errSesion || !nuevaSesion) { console.error('Error pegando sesión:', errSesion); setSaving(false); return }
+    if (errSesion || !nuevaSesion) { alert('Error: ' + (errSesion?.message || errSesion?.code || JSON.stringify(errSesion))); setSaving(false); return }
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({
