@@ -81,6 +81,10 @@ export default function SesionPublica({ token }) {
   const [feedbackEnviado, setFeedbackEnviado] = useState(null)
   const [enviandoFeedback, setEnviandoFeedback] = useState(false)
   const [editandoFeedback, setEditandoFeedback] = useState(false)
+  // { [ejId]: { series: [bool,...], hecho: bool } }
+  const [progreso, setProgreso] = useState({})
+  // { [ejId]: { campo: valor } } — valores reales editados por el cliente
+  const [valoresReales, setValoresReales] = useState({})
 
   useEffect(() => { cargar() }, [token])
 
@@ -101,7 +105,45 @@ export default function SesionPublica({ token }) {
     }
     const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
     setFeedbackEnviado(fb || null)
+    // Inicializar progreso y valores reales
+    const progInit = {}
+    const vrInit = {}
+    ;(ejs || []).forEach(e => {
+      const n = parseInt(e.series) || 1
+      progInit[e.id] = { series: Array(n).fill(false), hecho: false }
+      vrInit[e.id] = e.valores_reales || {}
+    })
+    setProgreso(progInit)
+    setValoresReales(vrInit)
     setLoading(false)
+  }
+
+  async function actualizarValorReal(ejId, campo, valor) {
+    setValoresReales(vr => {
+      const next = { ...vr, [ejId]: { ...(vr[ejId] || {}), [campo]: valor } }
+      supabase.from('sesion_ejercicios').update({ valores_reales: next[ejId] }).eq('id', ejId)
+      return next
+    })
+  }
+
+  function marcarTodas() {
+    setProgreso(p => {
+      const next = { ...p }
+      Object.keys(next).forEach(ejId => {
+        const series = next[ejId].series.map(() => true)
+        next[ejId] = { series, hecho: true }
+      })
+      return next
+    })
+  }
+
+  function toggleSerie(ejId, serieIdx) {
+    setProgreso(p => {
+      const prev = p[ejId] || { series: [], hecho: false }
+      const series = prev.series.map((v, i) => i === serieIdx ? !v : v)
+      const hecho = series.every(Boolean)
+      return { ...p, [ejId]: { series, hecho } }
+    })
   }
 
   if (loading) return (
@@ -141,6 +183,14 @@ export default function SesionPublica({ token }) {
           )}
         </header>
 
+        {/* MARCAR TODO */}
+        <div style={{ marginTop: 14 }}>
+          <button onClick={marcarTodas}
+            style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
+            ✓ Marcar sesión como completada
+          </button>
+        </div>
+
         {sesion.material && (
           <div style={{ marginTop: 16, background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.ink3, marginBottom: 7 }}>🎒 Material necesario</div>
@@ -176,39 +226,141 @@ export default function SesionPublica({ token }) {
                 const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : ((e.media_tipo === 'imagen' || e.media_tipo === 'gif') ? e.media_url : null)
                 const esVideoArchivo = e.media_tipo === 'video' && e.media_url
                 const videoLink = e.media_tipo === 'youtube' ? e.media_url : e.video_url
+                const activas = e.variables_activas || []
+                const prog = progreso[e.id] || { series: [false], hecho: false }
+                const vrEj = valoresReales[e.id] || {}
+                const hecho = prog.hecho
+                const rirColorMap = { '4+': '#16a34a', '2-3': '#ca8a04', '1-0': '#dc2626' }
+                const rirBgMap = { '4+': '#f0fdf4', '2-3': '#fffbeb', '1-0': '#fef2f2' }
                 return (
-                  <article key={e.id} style={{ position: 'relative', overflow: 'hidden', background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '14px 14px 14px 18px', boxShadow: '0 1px 2px rgba(20,23,28,0.05), 0 4px 12px rgba(20,23,28,0.03)' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, background: b.color || '#E29A2E' }} />
-                    <div style={{ display: 'flex', gap: 13, alignItems: 'center' }}>
-                      {esVideoArchivo && (
-                        <video src={e.media_url} controls muted preload="metadata" style={{ width: 110, height: 110, flexShrink: 0, borderRadius: 11, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
-                      )}
-                      {!esVideoArchivo && thumb && <img src={thumb} alt={e.nombre} style={{ width: 110, height: 110, flexShrink: 0, borderRadius: 11, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />}
+                  <article key={e.id} style={{ position: 'relative', overflow: 'hidden', background: hecho ? '#f0fdf4' : T.card, border: `1px solid ${hecho ? '#bbf7d0' : T.line}`, borderRadius: 14, padding: '14px 14px 14px 18px', boxShadow: '0 1px 2px rgba(20,23,28,0.05), 0 4px 12px rgba(20,23,28,0.03)', transition: 'background 0.2s, border-color 0.2s' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, background: hecho ? '#16a34a' : (b.color || '#E29A2E') }} />
+                    <div style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                     <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
-                         <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
-                          {e.nombre}
-                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, justifyContent: 'space-between' }}>
+                          <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
+                            <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
+                            {e.nombre}
+                          </h3>
+                          {(esVideoArchivo || thumb) && (
+                            <div style={{ flexShrink: 0 }}>
+                              {esVideoArchivo
+                                ? <video src={e.media_url} controls muted preload="metadata" style={{ width: 80, height: 80, borderRadius: 9, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
+                                : <img src={thumb} alt={e.nombre} style={{ width: 80, height: 80, borderRadius: 9, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper }} />
+                              }
+                            </div>
+                          )}
+                        </div>
                         {videoLink && (
-                          <a href={videoLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.accent, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', padding: '6px 12px', borderRadius: 9, lineHeight: 1 }}>
+                          <a href={videoLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.accent, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', padding: '6px 12px', borderRadius: 9, lineHeight: 1, marginBottom: 10 }}>
                             ▶ Vídeo
                           </a>
                         )}
+                        {/* Variables */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                          {e.series && (
+                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Series</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.series}</span>
+                            </span>
+                          )}
+                          {e.reps && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Reps</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}</span>
+                              </span>
+                              <input type="text" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
+                                placeholder={`¿Hiciste? (${e.reps})`}
+                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 120 }} />
+                            </div>
+                          )}
+                          {activas.includes('Peso') && e.peso && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Peso</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.peso}</span>
+                              </span>
+                              <input type="text" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
+                                placeholder={`¿Hiciste? (${e.peso})`}
+                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                            </div>
+                          )}
+                          {activas.includes('Duración') && e.duracion && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Duración</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.duracion}</span>
+                              </span>
+                              <input type="text" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
+                                placeholder={`¿Hiciste? (${e.duracion})`}
+                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                            </div>
+                          )}
+                          {activas.includes('RIR') && e.rpe && (
+                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: rirBgMap[e.rpe] || T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: rirColorMap[e.rpe] || T.ink3 }}>RIR</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: rirColorMap[e.rpe] || T.ink }}>{e.rpe}</span>
+                            </span>
+                          )}
+                          {activas.includes('Distancia') && e.distancia && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Distancia</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.distancia}</span>
+                              </span>
+                              <input type="text" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
+                                placeholder={`¿Hiciste? (${e.distancia})`}
+                                style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: '100%', maxWidth: 140 }} />
+                            </div>
+                          )}
+                          {activas.includes('Altura') && e.altura && (
+                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Altura</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.altura}</span>
+                            </span>
+                          )}
+                          {activas.includes('Descanso') && e.descanso && (
+                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Descanso</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.descanso}</span>
+                            </span>
+                          )}
+                          {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
+                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Ejecución</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>
+                                {e.ejecucion_tipo !== 'Personalizado' ? e.ejecucion_tipo : ''}{e.ejecucion_texto ? (e.ejecucion_tipo !== 'Personalizado' ? ` — ${e.ejecucion_texto}` : e.ejecucion_texto) : ''}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                        {/* Checks de series */}
+                        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {prog.series.map((hecha, sIdx) => (
+                            <label key={sIdx} onClick={() => toggleSerie(e.id, sIdx)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
+                              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${hecha ? '#16a34a' : T.line}`, background: hecha ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                                {hecha && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
+                              </div>
+                              <span style={{ fontSize: 13, color: hecha ? '#16a34a' : T.ink2 }}>Serie {sIdx + 1}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {activas.includes('Indicaciones') && e.notas && (
+                          <p style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '12px 0 0', paddingTop: 12, borderTop: `1px solid ${T.line}`, fontSize: 12.5, color: T.ink2, lineHeight: 1.45 }}>
+                            <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
+                            <span>{e.notas}</span>
+                          </p>
+                        )}
+                        {!activas.includes('Indicaciones') && e.notas && (
+                          <p style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '12px 0 0', paddingTop: 12, borderTop: `1px solid ${T.line}`, fontSize: 12.5, color: T.ink2, lineHeight: 1.45 }}>
+                            <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
+                            <span>{e.notas}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {(e.series || e.reps || e.rpe) && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 13 }}>
-                        {e.series && <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Series</span><span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.series}</span></span>}
-                        {e.reps && <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Reps</span><span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}</span></span>}
-                        {e.rpe && <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}><span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>RPE</span><span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.rpe}</span></span>}
-                      </div>
-                    )}
-                    {e.notas && (
-                      <p style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '12px 0 0', paddingTop: 12, borderTop: `1px solid ${T.line}`, fontSize: 12.5, color: T.ink2, lineHeight: 1.45 }}>
-                        <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
-                        <span>{e.notas}</span>
-                      </p>
-                    )}
                   </article>
                 )
               })}

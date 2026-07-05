@@ -352,6 +352,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId }) {
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
+  const [vistaPrevia, setVistaPrevia] = useState(false)
+  const [menuVariableAbierto, setMenuVariableAbierto] = useState(null)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
   const [clipboard, setClipboard] = useState(null)
@@ -365,6 +367,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
   useEffect(() => { if (sesionAbierta) cargarDetalle(sesionAbierta.id) }, [sesionAbierta])
+  useEffect(() => {
+    if (!menuVariableAbierto) return
+    function handler() { setMenuVariableAbierto(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuVariableAbierto])
 
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
@@ -613,6 +621,7 @@ async function guardarSesion() {
         )}
         {sesionAbierta && (
           <div className="flex gap-2">
+            <button className="btn btn-ghost btn-sm" onClick={() => setVistaPrevia(v => !v)}>{vistaPrevia ? '✏️ Editor' : '👁 Vista cliente'}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Fecha / duración</button>
@@ -835,8 +844,21 @@ async function guardarSesion() {
           )}
 
           {/* ── EDITOR FUERZA ── */}
-          {sesionAbierta.tipo_editor !== 'carrera' && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {bloques.map((b, idx) => (
+          {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {bloques.map((b, idx) => {
+              const VARS_MENU = [
+                { grupo: 'Carga', items: ['Peso','Duración','RIR','Distancia','Altura'] },
+                { grupo: 'Ejecución', items: ['Descanso','Forma de ejecución'] },
+                { grupo: 'Notas', items: ['Indicaciones'] },
+              ]
+              async function toggleVariable(ej, varName) {
+                const current = ej.variables_activas || []
+                const next = current.includes(varName)
+                  ? current.filter(v => v !== varName)
+                  : [...current, varName]
+                await actualizarEjercicio(b.id, ej.id, 'variables_activas', next)
+              }
+              return (
               <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -858,8 +880,10 @@ async function guardarSesion() {
                 </div>
                 <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(ejercicios[b.id] || []).map((e, eIdx) => {
-                    const id = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-                    const thumb = e.media_tipo === 'youtube' && id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
+                    const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+                    const thumb = e.media_tipo === 'youtube' && ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
+                    const activas = e.variables_activas || []
+                    const menuKey = `${b.id}-${e.id}`
                     return (
                       <div key={e.id}
                         draggable
@@ -889,69 +913,175 @@ async function guardarSesion() {
                           if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                           setDraggingEj(null)
                         }}
-                        style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
-                        <div style={{ width: 56, height: 56, borderRadius: 8, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {thumb ? <img src={thumb} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 9, color: 'var(--text3)' }}>sin media</span>}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        style={{ padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
+                        {/* ROW: drag handle + name + delete */}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>{idx + 1}.{eIdx + 1}.</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <InlineInput value={e.nombre} placeholder="Nombre del ejercicio" fontSize={13} style={{ fontWeight: 600 }}
                                 onSave={v => actualizarEjercicio(b.id, e.id, 'nombre', v)} />
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
-                              <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
-                              <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>RIR</span>
-                              <div style={{ display: 'flex', gap: 3 }}>
-                                {[['4+','#16a34a','#dcfce7','4 o más reps en reserva — esfuerzo muy bajo'],['2-3','#ca8a04','#fef9c3','2-3 reps en reserva — esfuerzo moderado'],['1-0','#dc2626','#fee2e2','0-1 reps en reserva — al límite o fallo muscular']].map(([val, color, bg, tip]) => (
-                                  <button key={val} title={tip} onClick={() => actualizarEjercicio(b.id, e.id, 'rpe', e.rpe === val ? '' : val)}
-                                    style={{ padding: '2px 6px', borderRadius: 8, border: `1.5px solid ${e.rpe === val ? color : 'var(--border)'}`, background: e.rpe === val ? bg : 'var(--bg)', color: e.rpe === val ? color : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
-                                    {val}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                            <select className="form-select" style={{ fontSize: 11, padding: '3px 6px', width: 'auto' }} value={e.media_tipo} onChange={ev => actualizarEjercicio(b.id, e.id, 'media_tipo', ev.target.value)}>
-                              <option value="youtube">YouTube</option>
-                              <option value="imagen">Imagen</option>
-                              <option value="video">Vídeo</option>
-                              <option value="gif">GIF</option>
-                            </select>
-                            <div style={{ flex: 1 }}>
-                              <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
-                                onSave={async v => {
-                                  await actualizarEjercicio(b.id, e.id, 'media_url', v)
-                                  if (e.media_tipo === 'youtube' && v && !e.nombre) {
-                                    const titulo = await ytTitulo(v)
-                                    if (titulo) await actualizarEjercicio(b.id, e.id, 'nombre', titulo)
-                                  }
-                                }} />
-                            </div>
-                          </div>
-                          {e.media_tipo !== 'youtube' && (
-                            <div style={{ marginTop: 4 }}>
-                              <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
-                                onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
+                          {thumb && (
+                            <div style={{ width: 48, height: 48, borderRadius: 7, flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                              <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                           )}
-                          <div style={{ marginTop: 6 }}>
-                            <InlineInput value={e.notas} placeholder="Notas (opcional)..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }}
-                              onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
+                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminarEjercicio(b.id, e.id)}><X size={12} /></button>
+                        </div>
+
+                        {/* Series + Reps (siempre visibles) */}
+                        <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
+                            <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
+                            <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
                           </div>
                         </div>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminarEjercicio(b.id, e.id)}><X size={12} /></button>
+
+                        {/* Variables activas */}
+                        {activas.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
+                            {activas.includes('RIR') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>RIR</span>
+                                <div style={{ display: 'flex', gap: 3 }}>
+                                  {[['4+','#16a34a','#dcfce7','4+ reps en reserva'],['2-3','#ca8a04','#fef9c3','2-3 reps en reserva'],['1-0','#dc2626','#fee2e2','0-1 reps en reserva']].map(([val, color, bg, tip]) => (
+                                    <button key={val} title={tip} onClick={() => actualizarEjercicio(b.id, e.id, 'rpe', e.rpe === val ? '' : val)}
+                                      style={{ padding: '2px 6px', borderRadius: 8, border: `1.5px solid ${e.rpe === val ? color : 'var(--border)'}`, background: e.rpe === val ? bg : 'var(--bg)', color: e.rpe === val ? color : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                                      {val}
+                                    </button>
+                                  ))}
+                                </div>
+                                <button onClick={() => toggleVariable(e, 'RIR')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Peso') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Peso</span>
+                                <div style={{ flex: 1 }}><InlineInput value={e.peso} placeholder="80 kg · 20 kg/mancuerna · Peso corporal · 75% 1RM" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'peso', v)} /></div>
+                                <button onClick={() => toggleVariable(e, 'Peso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Duración') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Duración</span>
+                                <div style={{ flex: 1 }}><InlineInput value={e.duracion} placeholder="20 s · 45 s · 1 min" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'duracion', v)} /></div>
+                                <button onClick={() => toggleVariable(e, 'Duración')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Distancia') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Distancia</span>
+                                <div style={{ flex: 1 }}><InlineInput value={e.distancia} placeholder="10 m · 20 m" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} /></div>
+                                <button onClick={() => toggleVariable(e, 'Distancia')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Altura') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Altura</span>
+                                <div style={{ flex: 1 }}><InlineInput value={e.altura} placeholder="Cajón 40 cm · Valla 30 cm" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} /></div>
+                                <button onClick={() => toggleVariable(e, 'Altura')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Descanso') && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Descanso</span>
+                                <div style={{ flex: 1 }}><InlineInput value={e.descanso} placeholder="30 s · 60 s · 2 min" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'descanso', v)} /></div>
+                                <button onClick={() => toggleVariable(e, 'Descanso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Forma de ejecución') && (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60, paddingTop: 2 }}>Ejecución</span>
+                                <div style={{ flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                  <select className="form-select" style={{ fontSize: 11, padding: '2px 6px', width: 'auto' }}
+                                    value={e.ejecucion_tipo || ''} onChange={ev => actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', ev.target.value)}>
+                                    <option value="">Seleccionar...</option>
+                                    {['Explosiva','Controlada','Control excéntrico','Con pausa','Técnica prioritaria','Máxima estabilidad','Rango completo','Personalizado'].map(op => (
+                                      <option key={op} value={op}>{op}</option>
+                                    ))}
+                                  </select>
+                                  <div style={{ flex: 1, minWidth: 80 }}>
+                                    <InlineInput value={e.ejecucion_texto} placeholder="Texto libre..." fontSize={11}
+                                      onSave={v => actualizarEjercicio(b.id, e.id, 'ejecucion_texto', v)} />
+                                  </div>
+                                </div>
+                                <button onClick={() => toggleVariable(e, 'Forma de ejecución')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                            {activas.includes('Indicaciones') && (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60, paddingTop: 2 }}>Notas</span>
+                                <div style={{ flex: 1 }}>
+                                  <InlineInput value={e.notas} placeholder="Indicaciones para el ejercicio..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }}
+                                    onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
+                                </div>
+                                <button onClick={() => toggleVariable(e, 'Indicaciones')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Botón + Variable con menú */}
+                        <div style={{ position: 'relative', display: 'inline-block', marginTop: 6 }}>
+                          <button onClick={ev => { ev.stopPropagation(); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
+                            style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
+                            ＋ Variable
+                          </button>
+                          {menuVariableAbierto === menuKey && (
+                            <div onClick={ev => ev.stopPropagation()}
+                              style={{ position: 'absolute', top: 24, left: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: 180, overflow: 'hidden' }}>
+                              {VARS_MENU.map(({ grupo, items }) => (
+                                <div key={grupo}>
+                                  <div style={{ padding: '5px 10px 2px', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>{grupo}</div>
+                                  {items.map(item => {
+                                    const isActive = activas.includes(item)
+                                    return (
+                                      <button key={item} onClick={() => { toggleVariable(e, item); setMenuVariableAbierto(null) }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: isActive ? 'var(--accent)' : 'var(--text)' }}
+                                        onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg2)'}
+                                        onMouseLeave={ev => ev.currentTarget.style.background = 'none'}>
+                                        <span style={{ width: 14, flexShrink: 0 }}>{isActive ? '✓' : ''}</span>
+                                        {item}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Media */}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                          <select className="form-select" style={{ fontSize: 11, padding: '3px 6px', width: 'auto' }} value={e.media_tipo} onChange={ev => actualizarEjercicio(b.id, e.id, 'media_tipo', ev.target.value)}>
+                            <option value="youtube">YouTube</option>
+                            <option value="imagen">Imagen</option>
+                            <option value="video">Vídeo</option>
+                            <option value="gif">GIF</option>
+                          </select>
+                          <div style={{ flex: 1 }}>
+                            <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
+                              onSave={async v => {
+                                await actualizarEjercicio(b.id, e.id, 'media_url', v)
+                                if (e.media_tipo === 'youtube' && v && !e.nombre) {
+                                  const titulo = await ytTitulo(v)
+                                  if (titulo) await actualizarEjercicio(b.id, e.id, 'nombre', titulo)
+                                }
+                              }} />
+                          </div>
+                        </div>
+                        {e.media_tipo !== 'youtube' && (
+                          <div style={{ marginTop: 4 }}>
+                            <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
+                              onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -960,11 +1090,62 @@ async function guardarSesion() {
                   </button>
                 </div>
               </div>
-            ))}
+              )
+            })}
             <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}>
               <Plus size={13} /> Bloque
             </button>
           </div>}
+
+          {/* ── VISTA PREVIA CLIENTE (modo lectura) ── */}
+          {sesionAbierta.tipo_editor !== 'carrera' && vistaPrevia && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: '#856404' }}>
+                👁 Vista previa — así verá el cliente la sesión
+              </div>
+              {bloques.map((b, idx) => (
+                <div key={b.id} style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 14px', borderLeft: `4px solid ${b.color || COLORES[0]}`, fontWeight: 700, fontSize: 14 }}>
+                    {b.nombre || `Bloque ${idx + 1}`}
+                  </div>
+                  {b.nota && <div style={{ padding: '0 14px 8px', fontSize: 12.5, color: 'var(--text2)' }}>{b.nota}</div>}
+                  <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(ejercicios[b.id] || []).map((e, eIdx) => {
+                      const activas = e.variables_activas || []
+                      const rirColors = { '4+': '#16a34a', '2-3': '#ca8a04', '1-0': '#dc2626' }
+                      return (
+                        <div key={e.id} style={{ background: '#fff', borderRadius: 9, border: '1px solid var(--border)', padding: '10px 12px', borderLeft: `3px solid ${b.color || COLORES[0]}` }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginRight: 5 }}>{idx + 1}.{eIdx + 1}.</span>
+                            {e.nombre || 'Sin nombre'}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {e.series && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>SERIES</span>{e.series}</span>}
+                            {e.reps && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>REPS</span>{e.reps}</span>}
+                            {activas.includes('Peso') && e.peso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>PESO</span>{e.peso}</span>}
+                            {activas.includes('Duración') && e.duracion && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DURACIÓN</span>{e.duracion}</span>}
+                            {activas.includes('RIR') && e.rpe && <span style={{ background: rirColors[e.rpe] + '22', borderRadius: 7, padding: '4px 9px', fontSize: 11, color: rirColors[e.rpe] }}><span style={{ fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>RIR</span>{e.rpe}</span>}
+                            {activas.includes('Distancia') && e.distancia && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DISTANCIA</span>{e.distancia}</span>}
+                            {activas.includes('Altura') && e.altura && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>ALTURA</span>{e.altura}</span>}
+                            {activas.includes('Descanso') && e.descanso && <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}><span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>DESCANSO</span>{e.descanso}</span>}
+                            {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
+                              <span style={{ background: 'var(--bg2)', borderRadius: 7, padding: '4px 9px', fontSize: 11 }}>
+                                <span style={{ color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--mono)', marginRight: 4 }}>EJECUCIÓN</span>
+                                {e.ejecucion_tipo !== 'Personalizado' ? e.ejecucion_tipo : ''}{e.ejecucion_texto ? (e.ejecucion_tipo !== 'Personalizado' ? ` — ${e.ejecucion_texto}` : e.ejecucion_texto) : ''}
+                              </span>
+                            )}
+                          </div>
+                          {activas.includes('Indicaciones') && e.notas && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 }}>📝 {e.notas}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
