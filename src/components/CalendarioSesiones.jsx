@@ -79,6 +79,24 @@ export default function CalendarioSesiones({
   const arrastrando = arrastandoExterno !== undefined ? arrastandoExterno : arrastandoInterno
   const setArrastrando = setArrastrandoExterno || setArrastrandoInterno
   const [menu, setMenu] = useState(null)
+  const [tooltip, setTooltip] = useState(null) // { x, y, sesionId, data }
+  const tooltipTimer = useRef(null)
+
+  async function mostrarTooltip(e, sesion) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = rect.right + 8
+    const y = rect.top
+    clearTimeout(tooltipTimer.current)
+    tooltipTimer.current = setTimeout(async () => {
+      const { data: bloques } = await supabase.from('sesion_bloques').select('id, nombre, color, sesion_ejercicios(nombre, orden)').eq('sesion_id', sesion.id).order('orden')
+      setTooltip({ x, y, sesion, bloques: bloques || [] })
+    }, 300)
+  }
+
+  function ocultarTooltip() {
+    clearTimeout(tooltipTimer.current)
+    setTooltip(null)
+  }
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
   const inicioSemana = new Date(cursor)
@@ -267,11 +285,13 @@ export default function CalendarioSesiones({
                         return (
                           <div key={item.id}
                             draggable
-                            onDragStart={() => setArrastrando(item)}
+                            onDragStart={() => { setArrastrando(item); ocultarTooltip() }}
                             onDragEnd={() => setArrastrando(null)}
                             onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item) }}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+                            onMouseEnter={e => { if (item._tipo === 'sesion') mostrarTooltip(e, item) }}
+                            onMouseLeave={ocultarTooltip}
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
                             <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
@@ -302,6 +322,34 @@ export default function CalendarioSesiones({
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
               📌 Pegar aquí
             </button>
+          )}
+        </div>
+      )}
+
+      {tooltip && (
+        <div onMouseEnter={() => clearTimeout(tooltipTimer.current)} onMouseLeave={ocultarTooltip}
+          style={{ position: 'fixed', top: Math.min(tooltip.y, window.innerHeight - 300), left: Math.min(tooltip.x, window.innerWidth - 240), zIndex: 200, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.15)', minWidth: 200, maxWidth: 260, padding: '10px 12px', pointerEvents: 'none' }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>{iconoSesion(tooltip.sesion)}</span>
+            <span>{tooltip.sesion.titulo}</span>
+          </div>
+          {tooltip.sesion.duracion_min && (
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6 }}>⏱ {tooltip.sesion.duracion_min} min</div>
+          )}
+          {tooltip.bloques.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin bloques</div>
+          ) : (
+            tooltip.bloques.map(b => (
+              <div key={b.id} style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: b.color || '#888', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{b.nombre || 'Bloque'}</span>
+                </div>
+                {(b.sesion_ejercicios || []).sort((a,z) => a.orden - z.orden).map((e, i) => (
+                  <div key={i} style={{ fontSize: 10.5, color: 'var(--text2)', paddingLeft: 13, lineHeight: 1.6 }}>· {e.nombre || '—'}</div>
+                ))}
+              </div>
+            ))
           )}
         </div>
       )}
