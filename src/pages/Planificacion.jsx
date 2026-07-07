@@ -1680,9 +1680,39 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 clipboard={clipboardSesion}
                 onCopiar={setClipboardSesion}
                 onPegar={async (item, fecha) => {
-                  const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
-                  const { id, created_at, token_publico, ...resto } = item
-                  await supabase.from(tabla).insert({ ...resto, cliente_id: clienteSeleccionado, fecha })
+                  if (item._tipo === 'sesion') {
+                    const { data: nueva, error } = await supabase.from('sesiones').insert({
+                      cliente_id: clienteSeleccionado,
+                      titulo: item.titulo,
+                      fecha,
+                      objetivo: item.objetivo || null,
+                      duracion_min: item.duracion_min || null,
+                      material: item.material || null,
+                      indicaciones: item.indicaciones || null,
+                      tipo_sesion: item.tipo_sesion || 'programada',
+                      tipo_editor: item.tipo_editor || 'fuerza',
+                      con_feedback: item.con_feedback !== false,
+                      icono: item.icono || null,
+                      estado: 'pendiente',
+                    }).select().single()
+                    if (error || !nueva) { console.error('Error pegando sesión:', error); return }
+                    const bloques = await supabase.from('sesion_bloques').select('*, sesion_ejercicios(*)').eq('sesion_id', item.id)
+                    for (const b of bloques.data || []) {
+                      const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
+                      if (!nb) continue
+                      for (const e of b.sesion_ejercicios || []) {
+                        await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
+                      }
+                    }
+                    const fases = await supabase.from('sesion_fases').select('*').eq('sesion_id', item.id)
+                    for (const f of fases.data || []) {
+                      await supabase.from('sesion_fases').insert({ sesion_id: nueva.id, nombre: f.nombre, descripcion: f.descripcion, orden: f.orden, volumen_min: f.volumen_min, volumen_km: f.volumen_km, fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin, rpe: f.rpe })
+                    }
+                  } else {
+                    const tabla = item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
+                    const { id, created_at, token_publico, _tipo, _estadoColor, ...resto } = item
+                    await supabase.from(tabla).insert({ ...resto, cliente_id: clienteSeleccionado, fecha })
+                  }
                   cargarPlanificacion()
                 }}
               />
