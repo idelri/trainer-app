@@ -575,11 +575,12 @@ async function guardarSesion() {
     setDirty(true)
   }
 
-  async function añadirEjercicio(bloqueId) {
+  async function añadirEjercicio(bloqueId, variablesDefault = []) {
     const lista = ejercicios[bloqueId] || []
     const { data: e } = await supabase.from('sesion_ejercicios').insert({
       bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '',
       media_tipo: 'youtube', media_url: '', video_url: '', orden: lista.length,
+      variables_activas: variablesDefault,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
   }
@@ -931,6 +932,8 @@ async function guardarSesion() {
                   : [...current, varName]
                 await actualizarEjercicio(b.id, ej.id, 'variables_activas', next)
               }
+              const varsDefault = b.variables_default || []
+              const TODAS_VARS = ['Peso','Peso/lado','Duración','RIR','Distancia','Altura','Descanso','Forma de ejecución','Indicaciones']
               return (
               <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -947,9 +950,24 @@ async function guardarSesion() {
                   </div>
                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                 </div>
-                <div style={{ padding: '0 16px 10px', fontSize: 12.5, color: 'var(--text2)' }}>
+                <div style={{ padding: '0 16px 8px', fontSize: 12.5, color: 'var(--text2)' }}>
                   <InlineInput value={b.nota} placeholder="Nota del bloque (opcional)..." textarea fontSize={12.5}
                     onSave={v => actualizarBloque(b.id, 'nota', v)} />
+                </div>
+                <div style={{ padding: '0 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 2 }}>Variables por defecto:</span>
+                  {TODAS_VARS.map(v => {
+                    const activa = varsDefault.includes(v)
+                    return (
+                      <button key={v} onClick={async () => {
+                        const next = activa ? varsDefault.filter(x => x !== v) : [...varsDefault, v]
+                        await actualizarBloque(b.id, 'variables_default', next)
+                        setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, variables_default: next } : bl))
+                      }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1.5px solid ${activa ? b.color || COLORES[0] : 'var(--border)'}`, background: activa ? (b.color || COLORES[0]) + '22' : 'transparent', color: activa ? b.color || COLORES[0] : 'var(--text3)', cursor: 'pointer', fontWeight: activa ? 600 : 400 }}>
+                        {v}
+                      </button>
+                    )
+                  })}
                 </div>
                 <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(ejercicios[b.id] || []).map((e, eIdx) => {
@@ -1206,7 +1224,7 @@ async function guardarSesion() {
                       </div>
                     )
                   })}
-                  <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id)} style={{ alignSelf: 'flex-start' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id, b.variables_default || [])} style={{ alignSelf: 'flex-start' }}>
                     <Plus size={12} /> Ejercicio
                   </button>
                 </div>
