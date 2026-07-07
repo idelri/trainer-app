@@ -1179,6 +1179,23 @@ async function guardarSesion() {
                                 }
                               }} />
                           </div>
+                          {e.media_tipo !== 'youtube' && (
+                            <label style={{ cursor: 'pointer', flexShrink: 0 }} title="Subir archivo desde tu ordenador">
+                              <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                                onChange={async ev => {
+                                  const file = ev.target.files?.[0]
+                                  if (!file) return
+                                  const ext = file.name.split('.').pop()
+                                  const path = `ejercicios/${e.id}_${Date.now()}.${ext}`
+                                  const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                                  if (error) { alert('Error al subir: ' + error.message); return }
+                                  const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                                  await actualizarEjercicio(b.id, e.id, 'media_url', publicUrl)
+                                  ev.target.value = ''
+                                }} />
+                              <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>📁 Subir</span>
+                            </label>
+                          )}
                         </div>
                         {e.media_tipo !== 'youtube' && (
                           <div style={{ marginTop: 4 }}>
