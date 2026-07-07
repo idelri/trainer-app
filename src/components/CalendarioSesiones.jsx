@@ -88,8 +88,13 @@ export default function CalendarioSesiones({
     const y = rect.top
     clearTimeout(tooltipTimer.current)
     tooltipTimer.current = setTimeout(async () => {
-      const { data: bloques } = await supabase.from('sesion_bloques').select('id, nombre, color, sesion_ejercicios(nombre, orden)').eq('sesion_id', sesion.id).order('orden')
-      setTooltip({ x, y, sesion, bloques: bloques || [] })
+      if (sesion.tipo_editor === 'carrera') {
+        const { data: fases } = await supabase.from('sesion_fases').select('nombre, descripcion, orden').eq('sesion_id', sesion.id).order('orden')
+        setTooltip({ x, y, sesion, fases: fases || [], bloques: [] })
+      } else {
+        const { data: bloques } = await supabase.from('sesion_bloques').select('id, nombre, color, sesion_ejercicios(nombre, orden)').eq('sesion_id', sesion.id).order('orden')
+        setTooltip({ x, y, sesion, bloques: bloques || [], fases: [] })
+      }
     }, 300)
   }
 
@@ -336,8 +341,15 @@ export default function CalendarioSesiones({
           {tooltip.sesion.duracion_min && (
             <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6 }}>⏱ {tooltip.sesion.duracion_min} min</div>
           )}
-          {tooltip.bloques.length === 0 ? (
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin bloques</div>
+          {tooltip.fases?.length > 0 ? (
+            tooltip.fases.map((f, i) => (
+              <div key={i} style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>▸ {f.nombre || 'Fase'}</div>
+                {f.descripcion && <div style={{ fontSize: 10.5, color: 'var(--text2)', paddingLeft: 10, lineHeight: 1.5 }}>{f.descripcion}</div>}
+              </div>
+            ))
+          ) : tooltip.bloques.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin contenido</div>
           ) : (
             tooltip.bloques.map(b => (
               <div key={b.id} style={{ marginBottom: 6 }}>
