@@ -67,7 +67,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, 
 export default function CalendarioSesiones({
   sesiones, competiciones = [], controles = [], notas = [],
   bloquesPlan, subbloquesPlan, packs = [],
-  onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota,
+  onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, onNuevaNota, onAbrirNota,
   onEliminar, onMoverSesion,
   clipboard, onCopiar, onPegar, onPegarOtroCliente,
   clipboardSemana, onCopiarSemana, onPegarSemana, onPegarSemanaOtroCliente,
@@ -88,7 +88,9 @@ export default function CalendarioSesiones({
     const y = rect.top
     clearTimeout(tooltipTimer.current)
     tooltipTimer.current = setTimeout(async () => {
-      if (sesion.tipo_editor === 'carrera') {
+      if (sesion._tipo === 'nota') {
+        setTooltip({ x, y, sesion, bloques: [], fases: [] })
+      } else if (sesion.tipo_editor === 'carrera') {
         const { data: fases } = await supabase.from('sesion_fases').select('nombre, descripcion, orden').eq('sesion_id', sesion.id).order('orden')
         setTooltip({ x, y, sesion, fases: fases || [], bloques: [] })
       } else {
@@ -292,9 +294,9 @@ export default function CalendarioSesiones({
                             draggable
                             onDragStart={() => { setArrastrando(item); ocultarTooltip() }}
                             onDragEnd={() => setArrastrando(null)}
-                            onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item) }}
+                            onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item); else if (item._tipo === 'nota' && onAbrirNota) onAbrirNota(item) }}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            onMouseEnter={e => { if (item._tipo === 'sesion') mostrarTooltip(e, item) }}
+                            onMouseEnter={e => { if (item._tipo === 'sesion' || item._tipo === 'nota') mostrarTooltip(e, item) }}
                             onMouseLeave={ocultarTooltip}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
@@ -333,7 +335,16 @@ export default function CalendarioSesiones({
 
       {tooltip && (
         <div onMouseEnter={() => clearTimeout(tooltipTimer.current)} onMouseLeave={ocultarTooltip}
-          style={{ position: 'fixed', top: Math.min(tooltip.y, window.innerHeight - 300), left: Math.min(tooltip.x, window.innerWidth - 240), zIndex: 200, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.15)', minWidth: 200, maxWidth: 260, padding: '10px 12px', pointerEvents: 'none' }}>
+          style={{ position: 'fixed', top: Math.min(tooltip.y, window.innerHeight - 300), left: Math.min(tooltip.x, window.innerWidth - 240), zIndex: 200, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.15)', minWidth: 200, maxWidth: 260, padding: '10px 12px', pointerEvents: tooltip.sesion._tipo === 'nota' ? 'auto' : 'none', cursor: tooltip.sesion._tipo === 'nota' ? 'pointer' : 'default' }}
+          onClick={() => { if (tooltip.sesion._tipo === 'nota' && onAbrirNota) { onAbrirNota(tooltip.sesion); ocultarTooltip() } }}>
+          {tooltip.sesion._tipo === 'nota' ? (
+            <>
+              <div style={{ fontWeight: 700, fontSize: 12, color: '#854d0e', marginBottom: 6 }}>📝 Nota</div>
+              <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{tooltip.sesion.texto || '—'}</div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>Clic para editar</div>
+            </>
+          ) : (
+          <>
           <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
             <span>{iconoSesion(tooltip.sesion)}</span>
             <span>{tooltip.sesion.titulo}</span>
@@ -362,6 +373,8 @@ export default function CalendarioSesiones({
                 ))}
               </div>
             ))
+          )}
+          </>
           )}
         </div>
       )}

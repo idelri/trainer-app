@@ -1667,6 +1667,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 onNuevaCompeticion={fecha => openModal('comp', { fecha })}
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
                 onNuevaNota={fecha => openModal('nota', { fecha })}
+                onAbrirNota={item => openModal('nota', item)}
                 onEliminar={item => eliminarItem(item._tipo === 'sesion' ? 'sesion' : item._tipo === 'competicion' ? 'comp' : item._tipo === 'control' ? 'control' : 'nota', item.id)}
                 arrastrando={arrastrando}
                 setArrastrando={setArrastrando}
