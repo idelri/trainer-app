@@ -128,7 +128,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     if (e === 'parcial')    return '#ca8a04'
     if (e === 'perdida')    return '#dc2626'
     if (e === 'gris')       return '#9ca3af'
-    return null
+    return '#64748b'
   }
   function iconoEstado(s) {
     const e = estadoSesion(s)
