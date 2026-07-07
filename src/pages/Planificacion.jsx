@@ -1596,8 +1596,9 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                         draggable
                         onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
                         onDragEnd={() => setArrastrando(null)}
-                        style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: clipboardSesion?.id === s.id ? 'var(--accent)' : 'var(--accent-light)', color: clipboardSesion?.id === s.id ? '#fff' : 'var(--accent)', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
+                        <span title="Copiar" onClick={e => { e.stopPropagation(); setClipboardSesion({ ...s, _tipo: 'sesion' }) }} style={{ opacity: 0.6, cursor: 'pointer', fontSize: 10 }}>📋</span>
                       </div>
                     ))}
                   </div>
@@ -1638,9 +1639,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                                     draggable
                                     onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
                                     onDragEnd={() => setArrastrando(null)}
-                                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: '#e0f2fe', color: '#0369a1', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: clipboardSesion?.id === s.id ? '#0369a1' : '#e0f2fe', color: clipboardSesion?.id === s.id ? '#fff' : '#0369a1', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
                                     <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
-                                    <span onClick={e => { e.stopPropagation(); eliminarItem('sesion', s.id) }} style={{ opacity: 0.5, cursor: 'pointer', marginLeft: 2 }}>×</span>
+                                    <span title="Copiar" onClick={e => { e.stopPropagation(); setClipboardSesion({ ...s, _tipo: 'sesion' }) }} style={{ opacity: 0.7, cursor: 'pointer', fontSize: 10 }}>📋</span>
+                                    <span onClick={e => { e.stopPropagation(); eliminarItem('sesion', s.id) }} style={{ opacity: 0.5, cursor: 'pointer' }}>×</span>
                                   </div>
                                 ))}
                               </div>
