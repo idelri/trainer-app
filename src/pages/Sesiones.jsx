@@ -364,8 +364,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage, set
   const [modalBiblioteca, setModalBiblioteca] = useState(null) // { bloqueId, variablesDefault }
   const [biblioteca, setBiblioteca] = useState(null) // null = no cargada aún
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
-  const [bibFiltroVar, setBibFiltroVar] = useState(null) // variable principal seleccionada
-  const [bibFiltroSub, setBibFiltroSub] = useState(null) // subvariable seleccionada
+  const [bibFiltros, setBibFiltros] = useState({}) // { [campo]: subvariable | null } — campos activos
   const [guardadoOk, setGuardadoOk] = useState(false)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
@@ -593,8 +592,7 @@ async function guardarSesion() {
   async function abrirBiblioteca(bloqueId, variablesDefault = []) {
     setModalBiblioteca({ bloqueId, variablesDefault })
     setBusquedaBiblioteca('')
-    setBibFiltroVar(null)
-    setBibFiltroSub(null)
+    setBibFiltros({})
     if (!biblioteca) {
       const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre')
       setBiblioteca(data || [])
@@ -1577,15 +1575,20 @@ async function guardarSesion() {
             { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)','Excéntrica acentuada','Isométrica','Isoinercial / Isocinética'] },
           ]},
         ]
-        const varActiva = BIB_VARS.find(v => v.campo === bibFiltroVar)
-        const bibFiltrada = !biblioteca ? [] : biblioteca.filter(e => {
-          if (busquedaBiblioteca && !e.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())) return false
-          if (bibFiltroSub && varActiva) {
-            const vals = e[varActiva.campo] || []
-            if (!vals.includes(bibFiltroSub)) return false
+
+        const hayFiltrosBib = Object.keys(bibFiltros).length > 0
+
+        // AND entre variables: ejercicio debe cumplir todas las variables activas
+        const bibFiltrada = !biblioteca ? [] : biblioteca.filter(item => {
+          if (busquedaBiblioteca && !item.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())) return false
+          for (const [campo, sub] of Object.entries(bibFiltros)) {
+            if (!sub) continue // variable activa pero sin subvariable seleccionada: no filtra por sub
+            const vals = item[campo] || []
+            if (!vals.includes(sub)) return false
           }
           return true
         })
+
         return (
           <div className="modal-backdrop" onClick={() => setModalBiblioteca(null)}>
             <div className="modal" style={{ maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
@@ -1599,39 +1602,45 @@ async function guardarSesion() {
                 <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} />
               </div>
 
-              {/* Selector de variable principal */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {/* Variables principales — selección múltiple */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {BIB_VARS.map(v => {
-                  const activa = bibFiltroVar === v.campo
+                  const activa = v.campo in bibFiltros
                   return (
                     <button key={v.campo} type="button"
-                      onClick={() => { if (activa) { setBibFiltroVar(null); setBibFiltroSub(null) } else { setBibFiltroVar(v.campo); setBibFiltroSub(null) } }}
-                      style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${activa ? v.color : 'var(--border)'}`, background: activa ? v.color + '18' : 'transparent', color: activa ? v.color : 'var(--text2)', cursor: 'pointer', fontWeight: activa ? 700 : 400, transition: 'all 0.1s' }}>
-                      {v.label}
+                      onClick={() => setBibFiltros(f => {
+                        const next = { ...f }
+                        if (activa) delete next[v.campo]
+                        else next[v.campo] = null
+                        return next
+                      })}
+                      style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${activa ? v.color : 'var(--border)'}`, background: activa ? v.color + '22' : 'transparent', color: activa ? v.color : 'var(--text2)', cursor: 'pointer', fontWeight: activa ? 700 : 400, transition: 'all 0.1s' }}>
+                      {v.label}{activa && bibFiltros[v.campo] ? ` · ${bibFiltros[v.campo].split('/')[0].trim()}` : ''}
                     </button>
                   )
                 })}
-                {(bibFiltroVar || bibFiltroSub) && (
-                  <button type="button" onClick={() => { setBibFiltroVar(null); setBibFiltroSub(null) }}
+                {hayFiltrosBib && (
+                  <button type="button" onClick={() => setBibFiltros({})}
                     style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer' }}>
                     ✕ Limpiar
                   </button>
                 )}
               </div>
 
-              {/* Subvariables de la variable activa */}
-              {varActiva && (
-                <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                  {varActiva.grupos.map(({ grupo, items }) => (
+              {/* Subvariables de cada variable activa */}
+              {BIB_VARS.filter(v => v.campo in bibFiltros).map(v => (
+                <div key={v.campo} style={{ marginBottom: 8, padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33` }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
+                  {v.grupos.map(({ grupo, items }) => (
                     <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
-                      {grupo && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{grupo}</div>}
+                      {grupo && <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>{grupo}</div>}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {items.map(item => {
-                          const activo = bibFiltroSub === item
+                          const activo = bibFiltros[v.campo] === item
                           return (
                             <button key={item} type="button"
-                              onClick={() => setBibFiltroSub(activo ? null : item)}
-                              style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? varActiva.color : 'var(--border)'}`, background: activo ? varActiva.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                              onClick={() => setBibFiltros(f => ({ ...f, [v.campo]: activo ? null : item }))}
+                              style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? v.color : 'var(--border)'}`, background: activo ? v.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
                               {item}
                             </button>
                           )
@@ -1640,7 +1649,7 @@ async function guardarSesion() {
                     </div>
                   ))}
                 </div>
-              )}
+              ))}
 
               {/* Lista de ejercicios */}
               <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1651,6 +1660,7 @@ async function guardarSesion() {
                 ) : bibFiltrada.map(item => {
                   const ytid = item.media_tipo === 'youtube' && item.media_url ? item.media_url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null
                   const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (item.media_url && item.media_tipo !== 'youtube' ? item.media_url : null)
+                  const varsActivas = BIB_VARS.filter(v => v.campo in bibFiltros)
                   return (
                     <div key={item.id} onClick={() => añadirDesdeBiblioteca(item)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent' }}
@@ -1663,11 +1673,11 @@ async function guardarSesion() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{item.nombre}</div>
                         {item.descripcion && <div style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.descripcion}</div>}
-                        {varActiva && item[varActiva.campo]?.length > 0 && (
+                        {varsActivas.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
-                            {item[varActiva.campo].map(v => (
-                              <span key={v} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: varActiva.color + '18', color: varActiva.color, border: `1px solid ${varActiva.color}33`, fontWeight: 500 }}>{v}</span>
-                            ))}
+                            {varsActivas.flatMap(v => (item[v.campo] || []).map(tag => (
+                              <span key={v.campo + tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: v.color + '18', color: v.color, border: `1px solid ${v.color}33`, fontWeight: 500 }}>{tag}</span>
+                            )))}
                           </div>
                         )}
                       </div>

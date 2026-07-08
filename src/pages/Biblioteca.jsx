@@ -376,11 +376,20 @@ export default function Biblioteca() {
         )}
 
         {filtroAbierto && (
-          <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {Object.entries(ETIQUETAS).map(([campo, config]) => (
+          <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 12px', fontStyle: 'italic' }}>
+              Seleccionar varias etiquetas de <strong>distintas categorías</strong> filtra con AND (debe cumplir todas). Dentro de la <strong>misma categoría</strong>, con OR (cualquiera vale).
+            </p>
+            {Object.entries(ETIQUETAS).map(([campo, config], idx, arr) => (
               <div key={campo}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{config.label}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em' }}>{config.label}</div>
+                  {(filtros[campo] || []).length > 0 && (
+                    <button type="button" onClick={() => setFiltros(f => ({ ...f, [campo]: [] }))}
+                      style={{ fontSize: 10, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕ limpiar</button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: idx < arr.length - 1 ? 0 : 0 }}>
                   {config.grupos.flatMap(g => g.items).map(item => {
                     const activo = (filtros[campo] || []).includes(item)
                     return (
@@ -391,6 +400,17 @@ export default function Biblioteca() {
                     )
                   })}
                 </div>
+                {idx < arr.length - 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    {(filtros[campo] || []).length > 0 && Object.entries(filtros).some(([k, v]) => k !== campo && v.length > 0) ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', padding: '1px 8px', borderRadius: 20, background: 'var(--accent-light)', border: '1px solid var(--accent)' }}>AND</span>
+                    ) : (
+                      <span style={{ fontSize: 10, color: 'var(--text3)', padding: '1px 8px' }}>+</span>
+                    )}
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
