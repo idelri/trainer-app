@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2 } from 'lucide-react'
+import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check } from 'lucide-react'
 
 function ytId(url) {
   if (!url) return null
@@ -83,23 +83,84 @@ function TagSelector({ campo, value = [], onChange }) {
   )
 }
 
-function TagChips({ values = [], color = 'var(--accent)' }) {
-  if (!values.length) return null
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-      {values.map(v => (
-        <span key={v} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}33`, fontWeight: 500 }}>{v}</span>
-      ))}
-    </div>
-  )
-}
-
 function MiniChips({ values = [], color }) {
   if (!values?.length) return <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
       {values.map(v => (
         <span key={v} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}33`, fontWeight: 500, whiteSpace: 'nowrap' }}>{v}</span>
+      ))}
+    </div>
+  )
+}
+
+// Etiquetas editables: con × para quitar y + para añadir
+function InlineTags({ campo, values = [], onChange }) {
+  const color = TAG_COLORS[campo]
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef()
+  const todosItems = ETIQUETAS[campo].grupos.flatMap(g => g.items)
+  const disponibles = todosItems.filter(i => !values.includes(i))
+
+  useEffect(() => {
+    if (!abierto) return
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [abierto])
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 4, position: 'relative' }} ref={ref}>
+      {values.map(v => (
+        <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '2px 6px 2px 8px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}55`, fontWeight: 500 }}>
+          {v}
+          <button type="button" onClick={() => onChange(values.filter(x => x !== v))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7, lineHeight: 1 }}>
+            <X size={9} />
+          </button>
+        </span>
+      ))}
+      {disponibles.length > 0 && (
+        <button type="button" onClick={() => setAbierto(o => !o)}
+          style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, border: `1px dashed ${color}88`, background: 'transparent', color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Plus size={9} /> añadir
+        </button>
+      )}
+      {abierto && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 200, maxWidth: 320 }}>
+          {ETIQUETAS[campo].grupos.map(({ grupo, items }) => {
+            const disp = items.filter(i => !values.includes(i))
+            if (!disp.length) return null
+            return (
+              <div key={grupo} style={{ marginBottom: 6 }}>
+                {grupo && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', marginBottom: 4 }}>{grupo}</div>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {disp.map(item => (
+                    <button key={item} type="button"
+                      onClick={() => { onChange([...values, item]); setAbierto(false) }}
+                      style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Panel de edición inline de etiquetas de un ejercicio
+function InlineTagsPanel({ ej, onChange }) {
+  return (
+    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {Object.keys(ETIQUETAS).map(campo => (
+        <div key={campo}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{ETIQUETAS[campo].label}</div>
+          <InlineTags campo={campo} values={ej[campo] || []} onChange={v => onChange(campo, v)} />
+        </div>
       ))}
     </div>
   )
@@ -115,9 +176,12 @@ export default function Biblioteca() {
   const [saving, setSaving] = useState(false)
   const [expandido, setExpandido] = useState(null)
   const [filtroAbierto, setFiltroAbierto] = useState(false)
-  const [vista, setVista] = useState('cards') // 'cards' | 'lista' | 'tabla'
+  const [vista, setVista] = useState('cards')
   const [sortBy, setSortBy] = useState('nombre')
   const [sortDir, setSortDir] = useState('asc')
+  const [inlineEj, setInlineEj] = useState(null) // { id, nombre, ...campos } ejercicio en edición inline
+  const [inlineSaving, setInlineSaving] = useState(false)
+  const [toast, setToast] = useState(null) // 'ok' | 'error'
 
   useEffect(() => { cargar() }, [])
 
@@ -128,9 +192,15 @@ export default function Biblioteca() {
     setLoading(false)
   }
 
+  function mostrarToast(tipo) {
+    setToast(tipo)
+    setTimeout(() => setToast(null), 2200)
+  }
+
   function abrirNuevo() { setForm(EMPTY); setModal('nuevo') }
 
   function abrirEditar(e) {
+    setInlineEj(null)
     setForm({
       nombre: e.nombre || '', descripcion: e.descripcion || '',
       media_tipo: e.media_tipo || '', media_url: e.media_url || '',
@@ -141,6 +211,17 @@ export default function Biblioteca() {
     })
     setModal(e)
   }
+
+  function activarInline(e) {
+    setInlineEj({
+      id: e.id, nombre: e.nombre || '',
+      zona_corporal: [...(e.zona_corporal || [])], patron_movimiento: [...(e.patron_movimiento || [])],
+      lateralidad_apoyo: [...(e.lateralidad_apoyo || [])], objetivo: [...(e.objetivo || [])],
+      tipo_contraccion: [...(e.tipo_contraccion || [])],
+    })
+  }
+
+  function cancelarInline() { setInlineEj(null) }
 
   function fd(campo, valor) { setForm(f => ({ ...f, [campo]: valor })) }
 
@@ -155,14 +236,38 @@ export default function Biblioteca() {
       lateralidad_apoyo: form.lateralidad_apoyo, objetivo: form.objetivo,
       tipo_contraccion: form.tipo_contraccion,
     }
-    if (modal === 'nuevo') await supabase.from('ejercicios_biblioteca').insert(datos)
-    else await supabase.from('ejercicios_biblioteca').update(datos).eq('id', modal.id)
-    setSaving(false); setModal(null); cargar()
+    const { error } = modal === 'nuevo'
+      ? await supabase.from('ejercicios_biblioteca').insert(datos)
+      : await supabase.from('ejercicios_biblioteca').update(datos).eq('id', modal.id)
+    setSaving(false)
+    if (error) { mostrarToast('error'); return }
+    setModal(null)
+    mostrarToast('ok')
+    cargar()
+  }
+
+  async function guardarInline() {
+    if (!inlineEj || !inlineEj.nombre.trim()) return
+    setInlineSaving(true)
+    const { error } = await supabase.from('ejercicios_biblioteca').update({
+      nombre: inlineEj.nombre.trim(),
+      zona_corporal: inlineEj.zona_corporal,
+      patron_movimiento: inlineEj.patron_movimiento,
+      lateralidad_apoyo: inlineEj.lateralidad_apoyo,
+      objetivo: inlineEj.objetivo,
+      tipo_contraccion: inlineEj.tipo_contraccion,
+    }).eq('id', inlineEj.id)
+    setInlineSaving(false)
+    if (error) { mostrarToast('error'); return }
+    setInlineEj(null)
+    mostrarToast('ok')
+    cargar()
   }
 
   async function eliminar(id) {
     if (!window.confirm('¿Eliminar este ejercicio de la biblioteca?')) return
     await supabase.from('ejercicios_biblioteca').delete().eq('id', id)
+    if (inlineEj?.id === id) setInlineEj(null)
     cargar()
   }
 
@@ -202,8 +307,27 @@ export default function Biblioteca() {
     return <span style={{ fontSize: 10 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
   }
 
+  // Renderiza acciones de edición inline (botones guardar/cancelar)
+  function InlineActions() {
+    return (
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        <button className="btn btn-primary btn-sm" onClick={guardarInline} disabled={inlineSaving || !inlineEj?.nombre?.trim()}>
+          {inlineSaving ? 'Guardando...' : <><Check size={12} /> Guardar</>}
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={cancelarInline}>Cancelar</button>
+      </div>
+    )
+  }
+
   return (
     <div className="page">
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 10, background: toast === 'ok' ? '#166534' : '#991b1b', color: '#fff', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', animation: 'fadeIn 0.2s' }}>
+          {toast === 'ok' ? <><Check size={15} /> Guardado</> : '✕ Error al guardar'}
+        </div>
+      )}
+
       <div className="page-header">
         <div>
           <h2 className="page-title">Biblioteca de ejercicios</h2>
@@ -225,7 +349,6 @@ export default function Biblioteca() {
           </button>
           {hayFiltros && <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({})}>Limpiar</button>}
 
-          {/* Selector de vista */}
           <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', background: 'var(--bg2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
             {[
               { id: 'cards', icon: <LayoutGrid size={14} />, title: 'Cards' },
@@ -240,8 +363,7 @@ export default function Biblioteca() {
           </div>
         </div>
 
-        {/* Ordenación (lista y tabla) */}
-        {(vista === 'lista') && (
+        {vista === 'lista' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ordenar por:</span>
             {SORT_OPTIONS.map(({ value, label }) => (
@@ -286,9 +408,10 @@ export default function Biblioteca() {
             const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
             const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
             const abierto = expandido === e.id
+            const editando = inlineEj?.id === e.id
             return (
-              <div key={e.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                {thumb && (
+              <div key={e.id} className="card" style={{ padding: 0, overflow: 'hidden', border: editando ? '2px solid var(--accent)' : undefined }}>
+                {thumb && !editando && (
                   <div style={{ position: 'relative', paddingBottom: '40%', background: '#000', cursor: ytid ? 'pointer' : 'default' }}
                     onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
                     <img src={thumb} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
@@ -301,13 +424,25 @@ export default function Biblioteca() {
                 )}
                 <div style={{ padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', flex: 1 }}>{e.nombre}</div>
+                    {editando ? (
+                      <input className="form-input" value={inlineEj.nombre} autoFocus
+                        onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
+                        style={{ flex: 1, fontWeight: 600, fontSize: 13, padding: '3px 8px' }} />
+                    ) : (
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', flex: 1, cursor: 'text' }}
+                        onDoubleClick={() => activarInline(e)}
+                        title="Doble clic para editar">
+                        {e.nombre}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }}><Pencil size={11} /></button>
+                      {!editando && <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>}
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
                     </div>
                   </div>
-                  {e.descripcion && (
+
+                  {!editando && e.descripcion && (
                     <div style={{ marginTop: 5 }}>
                       <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'block' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 2, WebkitBoxOrient: 'vertical' }}>
                         {e.descripcion}
@@ -319,12 +454,28 @@ export default function Biblioteca() {
                       )}
                     </div>
                   )}
-                  {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
-                  <TagChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} />
-                  <TagChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} />
-                  <TagChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} />
-                  <TagChips values={e.objetivo} color={TAG_COLORS.objetivo} />
-                  <TagChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} />
+
+                  {editando ? (
+                    <>
+                      <InlineTagsPanel ej={inlineEj} onChange={(campo, v) => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
+                      <InlineActions />
+                    </>
+                  ) : (
+                    <>
+                      {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
+                      {Object.keys(ETIQUETAS).map(campo => {
+                        const vals = e[campo] || []
+                        if (!vals.length) return null
+                        return (
+                          <div key={campo} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                            {vals.map(v => (
+                              <span key={v} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: TAG_COLORS[campo] + '18', color: TAG_COLORS[campo], border: `1px solid ${TAG_COLORS[campo]}33`, fontWeight: 500 }}>{v}</span>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </>
+                  )}
                 </div>
               </div>
             )
@@ -337,10 +488,11 @@ export default function Biblioteca() {
             const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
             const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
             const abierto = expandido === e.id
+            const editando = inlineEj?.id === e.id
             return (
-              <div key={e.id} className="card" style={{ padding: '10px 14px' }}>
+              <div key={e.id} className="card" style={{ padding: '10px 14px', border: editando ? '2px solid var(--accent)' : undefined }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  {thumb && (
+                  {thumb && !editando && (
                     <div style={{ width: 56, height: 40, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#000', cursor: ytid ? 'pointer' : 'default', position: 'relative' }}
                       onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
                       <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
@@ -351,13 +503,24 @@ export default function Biblioteca() {
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{e.nombre}</span>
+                      {editando ? (
+                        <input className="form-input" value={inlineEj.nombre} autoFocus
+                          onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
+                          style={{ flex: 1, fontWeight: 600, fontSize: 13, padding: '3px 8px' }} />
+                      ) : (
+                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', cursor: 'text' }}
+                          onDoubleClick={() => activarInline(e)} title="Doble clic para editar">
+                          {e.nombre}
+                        </span>
+                      )}
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }}><Pencil size={11} /></button>
+                        {!editando && <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>}
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
                         <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
                       </div>
                     </div>
-                    {e.descripcion && (
+
+                    {!editando && e.descripcion && (
                       <div style={{ marginTop: 3 }}>
                         <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'inline' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 1, WebkitBoxOrient: 'vertical' }}>
                           {e.descripcion}
@@ -369,13 +532,21 @@ export default function Biblioteca() {
                         )}
                       </div>
                     )}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                      {e.zona_corporal?.length > 0 && <MiniChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} />}
-                      {e.patron_movimiento?.length > 0 && <MiniChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} />}
-                      {e.objetivo?.length > 0 && <MiniChips values={e.objetivo} color={TAG_COLORS.objetivo} />}
-                      {e.tipo_contraccion?.length > 0 && <MiniChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} />}
-                      {e.lateralidad_apoyo?.length > 0 && <MiniChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} />}
-                    </div>
+
+                    {editando ? (
+                      <>
+                        <InlineTagsPanel ej={inlineEj} onChange={(campo, v) => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
+                        <InlineActions />
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        {Object.keys(ETIQUETAS).map(campo => {
+                          const vals = e[campo] || []
+                          if (!vals.length) return null
+                          return <MiniChips key={campo} values={vals} color={TAG_COLORS[campo]} />
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -401,29 +572,54 @@ export default function Biblioteca() {
                     {label} <SortArrow campo={campo} />
                   </th>
                 ))}
-                <th style={{ padding: '8px 10px', width: 60 }}></th>
+                <th style={{ padding: '8px 10px', width: 80 }}></th>
               </tr>
             </thead>
             <tbody>
-              {filtrados.map((e, i) => (
-                <tr key={e.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--bg2)' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--text)', minWidth: 180 }}>
-                    {e.nombre}
-                    {e.descripcion && <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text3)', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.descripcion}</div>}
-                  </td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} /></td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} /></td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} /></td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.objetivo} color={TAG_COLORS.objetivo} /></td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} /></td>
-                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }}><Pencil size={11} /></button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtrados.map((e, i) => {
+                const editando = inlineEj?.id === e.id
+                return (
+                  <tr key={e.id} style={{ borderBottom: '1px solid var(--border)', background: editando ? 'var(--accent-light)' : i % 2 === 0 ? 'transparent' : 'var(--bg2)', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 10px', minWidth: 180 }}>
+                      {editando ? (
+                        <input className="form-input" value={inlineEj.nombre} autoFocus
+                          onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
+                          style={{ fontWeight: 600, fontSize: 13, padding: '3px 8px', width: '100%' }} />
+                      ) : (
+                        <>
+                          <span style={{ fontWeight: 600, color: 'var(--text)', cursor: 'text' }}
+                            onDoubleClick={() => activarInline(e)} title="Doble clic para editar">
+                            {e.nombre}
+                          </span>
+                          {e.descripcion && <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text3)', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.descripcion}</div>}
+                        </>
+                      )}
+                    </td>
+                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'tipo_contraccion'].map(campo => (
+                      <td key={campo} style={{ padding: '8px 10px', maxWidth: 180 }}>
+                        {editando
+                          ? <InlineTags campo={campo} values={inlineEj[campo] || []} onChange={v => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
+                          : <MiniChips values={e[campo]} color={TAG_COLORS[campo]} />
+                        }
+                      </td>
+                    ))}
+                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                      {editando ? (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-primary btn-sm" onClick={guardarInline} disabled={inlineSaving}><Check size={11} /></button>
+                          <button className="btn btn-ghost btn-sm" onClick={cancelarInline}><X size={11} /></button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -499,7 +695,7 @@ export default function Biblioteca() {
 
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={saving || !form.nombre.trim()} onClick={guardar}>{saving ? 'Guardando...' : 'Guardar'}</button>
+              <button className="btn btn-primary" disabled={saving || !form.nombre.trim()} onClick={guardar}>{saving ? 'Guardando...' : <><Check size={13} /> Guardar</>}</button>
             </div>
           </div>
         </div>
