@@ -1706,8 +1706,6 @@ async function guardarSesion() {
                     </div>
                   )
                 })}
-                </div>
-
               </div>{/* fin columna derecha */}
               </div>{/* fin dos columnas */}
             </div>
