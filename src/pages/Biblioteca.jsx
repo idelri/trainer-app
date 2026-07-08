@@ -4,7 +4,7 @@ import { Search, Plus, X, Pencil, Trash2 } from 'lucide-react'
 
 function ytId(url) {
   if (!url) return null
-  const m = url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)
+  const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/|embed\/)([A-Za-z0-9_-]{11})/)
   return m ? m[1] : null
 }
 
