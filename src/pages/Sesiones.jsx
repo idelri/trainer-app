@@ -1574,6 +1574,14 @@ async function guardarSesion() {
           { campo: 'tipo_contraccion', label: 'Contracción', color: '#be185d', grupos: [
             { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)','Excéntrica acentuada','Isométrica','Isoinercial / Isocinética'] },
           ]},
+          { campo: 'material', label: 'Material', color: '#475569', grupos: [
+            { grupo: 'Sin equipamiento', items: ['Sin material / peso corporal','Colchoneta / esterilla'] },
+            { grupo: 'Pesos libres', items: ['Mancuernas','Kettlebell','Barra','Discos','Balón medicinal'] },
+            { grupo: 'Máquinas y poleas', items: ['Máquina guiada','Polea'] },
+            { grupo: 'Elásticos y suspensión', items: ['Goma elástica','Mini-band','TRX / suspensión'] },
+            { grupo: 'Accesorios', items: ['Fitball','Foam roller','Cajón / step','Banco','Bosu / superficie inestable','Sliders / plataforma deslizante','Trineo','Valla / cono / escalera'] },
+            { grupo: 'Cardio', items: ['Cinta de correr','Bicicleta','Remoergómetro','Assault bike / air bike','Ergómetro ski','Elíptica'] },
+          ]},
         ]
 
         const hayFiltrosBib = Object.keys(bibFiltros).length > 0

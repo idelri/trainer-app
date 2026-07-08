@@ -44,9 +44,20 @@ const ETIQUETAS = {
       { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)', 'Excéntrica acentuada', 'Isométrica', 'Isoinercial / Isocinética'] },
     ],
   },
+  material: {
+    label: 'Material',
+    grupos: [
+      { grupo: 'Sin equipamiento', items: ['Sin material / peso corporal', 'Colchoneta / esterilla'] },
+      { grupo: 'Pesos libres', items: ['Mancuernas', 'Kettlebell', 'Barra', 'Discos', 'Balón medicinal'] },
+      { grupo: 'Máquinas y poleas', items: ['Máquina guiada', 'Polea'] },
+      { grupo: 'Elásticos y suspensión', items: ['Goma elástica', 'Mini-band', 'TRX / suspensión'] },
+      { grupo: 'Accesorios', items: ['Fitball', 'Foam roller', 'Cajón / step', 'Banco', 'Bosu / superficie inestable', 'Sliders / plataforma deslizante', 'Trineo', 'Valla / cono / escalera'] },
+      { grupo: 'Cardio', items: ['Cinta de correr', 'Bicicleta', 'Remoergómetro', 'Assault bike / air bike', 'Ergómetro ski', 'Elíptica'] },
+    ],
+  },
 }
 
-const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d' }
+const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d', material: '#475569' }
 
 const SORT_OPTIONS = [
   { value: 'nombre', label: 'Nombre' },
@@ -54,9 +65,10 @@ const SORT_OPTIONS = [
   { value: 'patron_movimiento', label: 'Patrón' },
   { value: 'objetivo', label: 'Objetivo' },
   { value: 'tipo_contraccion', label: 'Contracción' },
+  { value: 'material', label: 'Material' },
 ]
 
-const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [] }
+const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [], material: [] }
 
 function TagSelector({ campo, value = [], onChange }) {
   const config = ETIQUETAS[campo]
@@ -207,7 +219,7 @@ export default function Biblioteca() {
       video_url: e.video_url || '', notas: e.notas || '',
       zona_corporal: e.zona_corporal || [], patron_movimiento: e.patron_movimiento || [],
       lateralidad_apoyo: e.lateralidad_apoyo || [], objetivo: e.objetivo || [],
-      tipo_contraccion: e.tipo_contraccion || [],
+      tipo_contraccion: e.tipo_contraccion || [], material: e.material || [],
     })
     setModal(e)
   }
@@ -217,7 +229,7 @@ export default function Biblioteca() {
       id: e.id, nombre: e.nombre || '',
       zona_corporal: [...(e.zona_corporal || [])], patron_movimiento: [...(e.patron_movimiento || [])],
       lateralidad_apoyo: [...(e.lateralidad_apoyo || [])], objetivo: [...(e.objetivo || [])],
-      tipo_contraccion: [...(e.tipo_contraccion || [])],
+      tipo_contraccion: [...(e.tipo_contraccion || [])], material: [...(e.material || [])],
     })
   }
 
@@ -234,7 +246,7 @@ export default function Biblioteca() {
       video_url: form.video_url || null, notas: form.notas || null,
       zona_corporal: form.zona_corporal, patron_movimiento: form.patron_movimiento,
       lateralidad_apoyo: form.lateralidad_apoyo, objetivo: form.objetivo,
-      tipo_contraccion: form.tipo_contraccion,
+      tipo_contraccion: form.tipo_contraccion, material: form.material,
     }
     const { error } = modal === 'nuevo'
       ? await supabase.from('ejercicios_biblioteca').insert(datos)
@@ -256,6 +268,7 @@ export default function Biblioteca() {
       lateralidad_apoyo: inlineEj.lateralidad_apoyo,
       objetivo: inlineEj.objetivo,
       tipo_contraccion: inlineEj.tipo_contraccion,
+      material: inlineEj.material,
     }).eq('id', inlineEj.id)
     setInlineSaving(false)
     if (error) { mostrarToast('error'); return }
@@ -586,6 +599,7 @@ export default function Biblioteca() {
                   { campo: 'lateralidad_apoyo', label: 'Apoyo' },
                   { campo: 'objetivo', label: 'Objetivo' },
                   { campo: 'tipo_contraccion', label: 'Contracción' },
+                  { campo: 'material', label: 'Material' },
                 ].map(({ campo, label }) => (
                   <th key={campo} onClick={() => toggleSort(campo)}
                     style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
@@ -615,7 +629,7 @@ export default function Biblioteca() {
                         </>
                       )}
                     </td>
-                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'tipo_contraccion'].map(campo => (
+                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'tipo_contraccion', 'material'].map(campo => (
                       <td key={campo} style={{ padding: '8px 10px', maxWidth: 180 }}>
                         {editando
                           ? <InlineTags campo={campo} values={inlineEj[campo] || []} onChange={v => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
