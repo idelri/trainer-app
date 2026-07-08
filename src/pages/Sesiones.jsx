@@ -361,6 +361,9 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage, set
   const [vistaPrevia, setVistaPrevia] = useState(false)
   const [menuVariableAbierto, setMenuVariableAbierto] = useState(null)
   const [menuVariablePos, setMenuVariablePos] = useState({ x: 0, y: 0 })
+  const [modalBiblioteca, setModalBiblioteca] = useState(null) // { bloqueId, variablesDefault }
+  const [biblioteca, setBiblioteca] = useState(null) // null = no cargada aún
+  const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
   const [guardadoOk, setGuardadoOk] = useState(false)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
@@ -583,6 +586,32 @@ async function guardarSesion() {
       variables_activas: variablesDefault,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
+  }
+
+  async function abrirBiblioteca(bloqueId, variablesDefault = []) {
+    setModalBiblioteca({ bloqueId, variablesDefault })
+    setBusquedaBiblioteca('')
+    if (!biblioteca) {
+      const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre')
+      setBiblioteca(data || [])
+    }
+  }
+
+  async function añadirDesdeBiblioteca(item) {
+    const { bloqueId, variablesDefault } = modalBiblioteca
+    const lista = ejercicios[bloqueId] || []
+    const { data: e } = await supabase.from('sesion_ejercicios').insert({
+      bloque_id: bloqueId,
+      nombre: item.nombre,
+      series: '', reps: '', rpe: '', notas: '',
+      media_tipo: item.media_tipo || 'youtube',
+      media_url: item.media_url || '',
+      video_url: item.video_url || '',
+      orden: lista.length,
+      variables_activas: variablesDefault,
+    }).select().single()
+    if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
+    setModalBiblioteca(null)
   }
 
   async function actualizarEjercicio(bloqueId, id, campo, valor) {
@@ -1227,9 +1256,14 @@ async function guardarSesion() {
                       </div>
                     )
                   })}
-                  <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id, b.variables_default || [])} style={{ alignSelf: 'flex-start' }}>
-                    <Plus size={12} /> Ejercicio
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id, b.variables_default || [])}>
+                      <Plus size={12} /> Ejercicio
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => abrirBiblioteca(b.id, b.variables_default || [])} style={{ color: 'var(--accent)' }}>
+                      📚 Desde biblioteca
+                    </button>
+                  </div>
                 </div>
               </div>
               )
@@ -1515,6 +1549,44 @@ async function guardarSesion() {
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalPack(null)}>Cancelar</button>
               <button className="btn btn-primary" disabled={savingPack || !formPack.nombre || !formPack.fecha_inicio || !formPack.fecha_fin} onClick={guardarPack}>{savingPack ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalBiblioteca && (
+        <div className="modal-backdrop" onClick={() => setModalBiblioteca(null)}>
+          <div className="modal" style={{ maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">📚 Biblioteca de ejercicios</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalBiblioteca(null)}>✕</button>
+            </div>
+            <div style={{ padding: '0 0 12px' }}>
+              <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {!biblioteca ? (
+                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Cargando...</div>
+              ) : (biblioteca.filter(e => !busquedaBiblioteca || e.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())).map(item => {
+                const ytid = item.media_tipo === 'youtube' && item.media_url ? item.media_url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null
+                const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (item.media_url && item.media_tipo !== 'youtube' ? item.media_url : null)
+                return (
+                  <div key={item.id} onClick={() => añadirDesdeBiblioteca(item)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}>
+                    {thumb
+                      ? <img src={thumb} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                      : <div style={{ width: 48, height: 36, borderRadius: 5, background: 'var(--bg2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💪</div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{item.nombre}</div>
+                      {item.descripcion && <div style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.descripcion}</div>}
+                    </div>
+                    {item.media_tipo && <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0 }}>{item.media_tipo === 'youtube' ? '▶' : '🖼'}</span>}
+                  </div>
+                )
+              }))}
             </div>
           </div>
         </div>
