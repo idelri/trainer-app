@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Search, Plus, X, Pencil, Trash2 } from 'lucide-react'
+import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
 function ytId(url) {
   if (!url) return null
@@ -8,16 +8,95 @@ function ytId(url) {
   return m ? m[1] : null
 }
 
-const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '' }
+const ETIQUETAS = {
+  zona_corporal: {
+    label: 'Zona corporal',
+    grupos: [
+      { grupo: 'Cadenas principales', items: ['Cadena Anterior', 'Cadena Posterior', 'Estabilizadores de Cadera', 'Cadena Medial / Aductores'] },
+      { grupo: 'CORE / Tronco', items: ['Lumbo-pélvico', 'Abdominal', 'Dorsal / Torácico', 'Cervical'] },
+      { grupo: 'Pie / Tobillo', items: ['Gemelos / Sóleos', 'Tibial anterior', 'Peroneos', 'Intrínsecos del pie'] },
+    ],
+  },
+  patron_movimiento: {
+    label: 'Patrón de movimiento',
+    grupos: [
+      { grupo: 'Tren inferior', items: ['Dominante de rodilla', 'Dominante de cadera', 'Abducción / Rotación externa', 'Aducción / Plano medial', 'Pliometría y salto', 'Carrera y locomoción', 'Cambio de dirección / Desaceleración'] },
+      { grupo: 'Tren superior', items: ['Empuje horizontal', 'Empuje vertical', 'Tracción horizontal', 'Tracción vertical', 'Estabilidad escapular'] },
+      { grupo: 'Core', items: ['Anti-extensión', 'Anti-rotación', 'Anti-flexión lateral', 'Rotación', 'Flexión de tronco', 'Control lumbopélvico'] },
+    ],
+  },
+  lateralidad_apoyo: {
+    label: 'Lateralidad y apoyo',
+    grupos: [
+      { grupo: 'Tipo de apoyo', items: ['Bilateral', 'Monopodal', 'Asimétrico (Split)', 'Cuadrupedia', 'Plancha / Suspensión'] },
+      { grupo: 'Ejecución y carga', items: ['Carga bilateral', 'Carga unilateral', 'Unilateral alterno', 'Contralateral', 'Ipsilateral'] },
+    ],
+  },
+  objetivo: {
+    label: 'Objetivo',
+    grupos: [
+      { grupo: '', items: ['Fuerza base', 'Fuerza específica', 'Potencia / Velocidad', 'Técnica / Control motor', 'Movilidad / Flexibilidad'] },
+    ],
+  },
+  tipo_contraccion: {
+    label: 'Tipo de contracción',
+    grupos: [
+      { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)', 'Excéntrica acentuada', 'Isométrica', 'Isoinercial / Isocinética'] },
+    ],
+  },
+}
+
+const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [] }
+
+function TagSelector({ campo, value = [], onChange }) {
+  const config = ETIQUETAS[campo]
+  return (
+    <div>
+      {config.grupos.map(({ grupo, items }) => (
+        <div key={grupo} style={{ marginBottom: 8 }}>
+          {grupo && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{grupo}</div>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {items.map(item => {
+              const activo = value.includes(item)
+              return (
+                <button key={item} type="button"
+                  onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, background: activo ? 'var(--accent-light)' : 'transparent', color: activo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                  {item}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TagChips({ values = [], color = 'var(--accent)' }) {
+  if (!values.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+      {values.map(v => (
+        <span key={v} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}33`, fontWeight: 500 }}>{v}</span>
+      ))}
+    </div>
+  )
+}
+
+const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d' }
 
 export default function Biblioteca() {
   const [ejercicios, setEjercicios] = useState([])
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda, setBusqueda] = useState([])
+  const [busquedaTexto, setBusquedaTexto] = useState('')
+  const [filtros, setFiltros] = useState({})
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(null) // null | 'nuevo' | ejercicio
+  const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [expandido, setExpandido] = useState(null)
+  const [filtroAbierto, setFiltroAbierto] = useState(false)
 
   useEffect(() => { cargar() }, [])
 
@@ -34,22 +113,33 @@ export default function Biblioteca() {
   }
 
   function abrirEditar(e) {
-    setForm({ nombre: e.nombre || '', descripcion: e.descripcion || '', media_tipo: e.media_tipo || '', media_url: e.media_url || '', video_url: e.video_url || '', notas: e.notas || '' })
+    setForm({
+      nombre: e.nombre || '', descripcion: e.descripcion || '',
+      media_tipo: e.media_tipo || '', media_url: e.media_url || '',
+      video_url: e.video_url || '', notas: e.notas || '',
+      zona_corporal: e.zona_corporal || [], patron_movimiento: e.patron_movimiento || [],
+      lateralidad_apoyo: e.lateralidad_apoyo || [], objetivo: e.objetivo || [],
+      tipo_contraccion: e.tipo_contraccion || [],
+    })
     setModal(e)
   }
+
+  function fd(campo, valor) { setForm(f => ({ ...f, [campo]: valor })) }
 
   async function guardar() {
     if (!form.nombre.trim()) return
     setSaving(true)
-    const datos = { nombre: form.nombre.trim(), descripcion: form.descripcion || null, media_tipo: form.media_tipo || null, media_url: form.media_url || null, video_url: form.video_url || null, notas: form.notas || null }
-    if (modal === 'nuevo') {
-      await supabase.from('ejercicios_biblioteca').insert(datos)
-    } else {
-      await supabase.from('ejercicios_biblioteca').update(datos).eq('id', modal.id)
+    const datos = {
+      nombre: form.nombre.trim(), descripcion: form.descripcion || null,
+      media_tipo: form.media_tipo || null, media_url: form.media_url || null,
+      video_url: form.video_url || null, notas: form.notas || null,
+      zona_corporal: form.zona_corporal, patron_movimiento: form.patron_movimiento,
+      lateralidad_apoyo: form.lateralidad_apoyo, objetivo: form.objetivo,
+      tipo_contraccion: form.tipo_contraccion,
     }
-    setSaving(false)
-    setModal(null)
-    cargar()
+    if (modal === 'nuevo') await supabase.from('ejercicios_biblioteca').insert(datos)
+    else await supabase.from('ejercicios_biblioteca').update(datos).eq('id', modal.id)
+    setSaving(false); setModal(null); cargar()
   }
 
   async function eliminar(id) {
@@ -58,30 +148,76 @@ export default function Biblioteca() {
     cargar()
   }
 
-  const filtrados = ejercicios.filter(e =>
-    !busqueda || e.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (e.descripcion || '').toLowerCase().includes(busqueda.toLowerCase())
-  )
+  function toggleFiltro(campo, valor) {
+    setFiltros(f => {
+      const prev = f[campo] || []
+      const next = prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]
+      return { ...f, [campo]: next }
+    })
+  }
+
+  const hayFiltros = Object.values(filtros).some(v => v.length > 0)
+
+  const filtrados = ejercicios.filter(e => {
+    if (busquedaTexto && !e.nombre.toLowerCase().includes(busquedaTexto.toLowerCase()) && !(e.descripcion || '').toLowerCase().includes(busquedaTexto.toLowerCase())) return false
+    for (const [campo, vals] of Object.entries(filtros)) {
+      if (!vals.length) continue
+      const ejVals = e[campo] || []
+      if (!vals.some(v => ejVals.includes(v))) return false
+    }
+    return true
+  })
 
   return (
     <div className="page">
       <div className="page-header">
         <div>
           <h2 className="page-title">Biblioteca de ejercicios</h2>
-          <p className="page-subtitle">{ejercicios.length} ejercicios</p>
+          <p className="page-subtitle">{filtrados.length} de {ejercicios.length} ejercicios</p>
         </div>
         <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo ejercicio</button>
       </div>
 
-      <div style={{ marginBottom: 16, position: 'relative', maxWidth: 360 }}>
-        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-        <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Buscar ejercicio..." value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-        {busqueda && <button onClick={() => setBusqueda('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}><X size={13} /></button>}
+      {/* Búsqueda y filtros */}
+      <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+            <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Buscar ejercicio..." value={busquedaTexto} onChange={e => setBusquedaTexto(e.target.value)} />
+            {busquedaTexto && <button onClick={() => setBusquedaTexto('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}><X size={13} /></button>}
+          </div>
+          <button className="btn btn-ghost" onClick={() => setFiltroAbierto(o => !o)} style={{ gap: 5, color: hayFiltros ? 'var(--accent)' : undefined, borderColor: hayFiltros ? 'var(--accent)' : undefined }}>
+            Filtros {hayFiltros ? `(activos)` : ''} {filtroAbierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
+          {hayFiltros && <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({})}>Limpiar</button>}
+        </div>
+
+        {filtroAbierto && (
+          <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {Object.entries(ETIQUETAS).map(([campo, config]) => (
+              <div key={campo}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{config.label}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {config.grupos.flatMap(g => g.items).map(item => {
+                    const activo = (filtros[campo] || []).includes(item)
+                    return (
+                      <button key={item} type="button" onClick={() => toggleFiltro(campo, item)}
+                        style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? TAG_COLORS[campo] : 'var(--border)'}`, background: activo ? TAG_COLORS[campo] + '18' : 'transparent', color: activo ? TAG_COLORS[campo] : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
+                        {item}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
         <div className="empty"><p>Cargando...</p></div>
       ) : filtrados.length === 0 ? (
-        <div className="empty"><p>No hay ejercicios{busqueda ? ' con ese nombre' : ''}.</p></div>
+        <div className="empty"><p>No hay ejercicios{busquedaTexto || hayFiltros ? ' con esos filtros' : ''}.</p></div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filtrados.map(e => {
@@ -121,9 +257,12 @@ export default function Biblioteca() {
                       )}
                     </div>
                   )}
-                  {e.video_url && (
-                    <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>
-                  )}
+                  {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
+                  <TagChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} />
+                  <TagChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} />
+                  <TagChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} />
+                  <TagChips values={e.objetivo} color={TAG_COLORS.objetivo} />
+                  <TagChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} />
                 </div>
               </div>
             )
@@ -133,22 +272,25 @@ export default function Biblioteca() {
 
       {modal && (
         <div className="modal-backdrop" onClick={() => setModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">{modal === 'nuevo' ? 'Nuevo ejercicio' : 'Editar ejercicio'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModal(null)}><X size={14} /></button>
             </div>
+
             <div className="form-group">
               <label className="form-label">Nombre *</label>
-              <input className="form-input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Sentadilla búlgara" autoFocus />
+              <input className="form-input" value={form.nombre} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Sentadilla búlgara" autoFocus />
             </div>
             <div className="form-group">
               <label className="form-label">Descripción</label>
-              <textarea className="form-input" value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
+              <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
             </div>
+
+            {/* Media */}
             <div className="form-group">
               <label className="form-label">Tipo de media</label>
-              <select className="form-select" value={form.media_tipo} onChange={e => setForm(f => ({ ...f, media_tipo: e.target.value, media_url: '' }))}>
+              <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)}>
                 <option value="">Sin media</option>
                 <option value="youtube">YouTube</option>
                 <option value="imagen">Imagen</option>
@@ -160,20 +302,17 @@ export default function Biblioteca() {
               <div className="form-group">
                 <label className="form-label">{form.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="form-input" value={form.media_url} onChange={e => setForm(f => ({ ...f, media_url: e.target.value }))} placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'} style={{ flex: 1 }} />
+                  <input className="form-input" value={form.media_url} onChange={e => fd('media_url', e.target.value)} placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'} style={{ flex: 1 }} />
                   {form.media_tipo !== 'youtube' && (
                     <label style={{ cursor: 'pointer', flexShrink: 0 }}>
                       <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
                         onChange={async ev => {
-                          const file = ev.target.files?.[0]
-                          if (!file) return
-                          const ext = file.name.split('.').pop()
-                          const path = `biblioteca/${Date.now()}.${ext}`
+                          const file = ev.target.files?.[0]; if (!file) return
+                          const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
                           const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
-                          if (error) { alert('Error al subir: ' + error.message); return }
+                          if (error) { alert('Error: ' + error.message); return }
                           const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
-                          setForm(f => ({ ...f, media_url: publicUrl }))
-                          ev.target.value = ''
+                          fd('media_url', publicUrl); ev.target.value = ''
                         }} />
                       <span className="btn btn-ghost btn-sm">📁 Subir</span>
                     </label>
@@ -184,13 +323,23 @@ export default function Biblioteca() {
             {form.media_tipo && form.media_tipo !== 'youtube' && (
               <div className="form-group">
                 <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
-                <input className="form-input" value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://..." />
+                <input className="form-input" value={form.video_url} onChange={e => fd('video_url', e.target.value)} placeholder="https://..." />
               </div>
             )}
+
+            {/* Etiquetas */}
+            {Object.entries(ETIQUETAS).map(([campo, config]) => (
+              <div key={campo} className="form-group">
+                <label className="form-label" style={{ color: TAG_COLORS[campo] }}>{config.label}</label>
+                <TagSelector campo={campo} value={form[campo]} onChange={v => fd(campo, v)} />
+              </div>
+            ))}
+
             <div className="form-group">
               <label className="form-label">Notas internas</label>
-              <textarea className="form-input" value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Apuntes, cuidados, variantes..." rows={2} style={{ resize: 'vertical' }} />
+              <textarea className="form-input" value={form.notas} onChange={e => fd('notas', e.target.value)} placeholder="Apuntes, cuidados, variantes..." rows={2} style={{ resize: 'vertical' }} />
             </div>
+
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
               <button className="btn btn-primary" disabled={saving || !form.nombre.trim()} onClick={guardar}>{saving ? 'Guardando...' : 'Guardar'}</button>
