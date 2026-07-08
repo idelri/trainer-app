@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2 } from 'lucide-react'
 
 function ytId(url) {
   if (!url) return null
@@ -20,15 +20,15 @@ const ETIQUETAS = {
   patron_movimiento: {
     label: 'Patrón de movimiento',
     grupos: [
-      { grupo: 'Tren inferior', items: ['Dominante de rodilla', 'Dominante de cadera', 'Abducción / Rotación externa', 'Aducción / Plano medial', 'Pliometría y salto', 'Carrera y locomoción', 'Cambio de dirección / Desaceleración'] },
+      { grupo: 'Tren inferior', items: ['Dominante de rodilla', 'Dominante de cadera', 'Dominante de tobillo', 'Abducción / Rotación externa', 'Aducción / Plano medial', 'Pliometría y salto', 'Carrera y locomoción', 'Cambio de dirección / Desaceleración'] },
       { grupo: 'Tren superior', items: ['Empuje horizontal', 'Empuje vertical', 'Tracción horizontal', 'Tracción vertical', 'Estabilidad escapular'] },
-      { grupo: 'Core', items: ['Anti-extensión', 'Anti-rotación', 'Anti-flexión lateral', 'Rotación', 'Flexión de tronco', 'Control lumbopélvico'] },
+      { grupo: 'Core', items: ['Anti-extensión', 'Anti-rotación', 'Anti-flexión lateral', 'Anti-flexión frontal', 'Rotación', 'Flexión de tronco', 'Control lumbopélvico'] },
     ],
   },
   lateralidad_apoyo: {
     label: 'Lateralidad y apoyo',
     grupos: [
-      { grupo: 'Tipo de apoyo', items: ['Bilateral', 'Monopodal', 'Asimétrico (Split)', 'Cuadrupedia', 'Plancha / Suspensión'] },
+      { grupo: 'Tipo de apoyo', items: ['Bilateral', 'Monopodal', 'Asimétrico (Split)', 'Cuadrupedia', 'Plancha / Suspensión', 'Decúbito prono', 'Decúbito supino', 'Decúbito lateral', 'Sentado'] },
       { grupo: 'Ejecución y carga', items: ['Carga bilateral', 'Carga unilateral', 'Unilateral alterno', 'Contralateral', 'Ipsilateral'] },
     ],
   },
@@ -45,6 +45,16 @@ const ETIQUETAS = {
     ],
   },
 }
+
+const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d' }
+
+const SORT_OPTIONS = [
+  { value: 'nombre', label: 'Nombre' },
+  { value: 'zona_corporal', label: 'Zona corporal' },
+  { value: 'patron_movimiento', label: 'Patrón' },
+  { value: 'objetivo', label: 'Objetivo' },
+  { value: 'tipo_contraccion', label: 'Contracción' },
+]
 
 const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [] }
 
@@ -84,11 +94,19 @@ function TagChips({ values = [], color = 'var(--accent)' }) {
   )
 }
 
-const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d' }
+function MiniChips({ values = [], color }) {
+  if (!values?.length) return <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+      {values.map(v => (
+        <span key={v} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}33`, fontWeight: 500, whiteSpace: 'nowrap' }}>{v}</span>
+      ))}
+    </div>
+  )
+}
 
 export default function Biblioteca() {
   const [ejercicios, setEjercicios] = useState([])
-  const [busqueda, setBusqueda] = useState([])
   const [busquedaTexto, setBusquedaTexto] = useState('')
   const [filtros, setFiltros] = useState({})
   const [loading, setLoading] = useState(true)
@@ -97,6 +115,9 @@ export default function Biblioteca() {
   const [saving, setSaving] = useState(false)
   const [expandido, setExpandido] = useState(null)
   const [filtroAbierto, setFiltroAbierto] = useState(false)
+  const [vista, setVista] = useState('cards') // 'cards' | 'lista' | 'tabla'
+  const [sortBy, setSortBy] = useState('nombre')
+  const [sortDir, setSortDir] = useState('asc')
 
   useEffect(() => { cargar() }, [])
 
@@ -107,10 +128,7 @@ export default function Biblioteca() {
     setLoading(false)
   }
 
-  function abrirNuevo() {
-    setForm(EMPTY)
-    setModal('nuevo')
-  }
+  function abrirNuevo() { setForm(EMPTY); setModal('nuevo') }
 
   function abrirEditar(e) {
     setForm({
@@ -156,6 +174,11 @@ export default function Biblioteca() {
     })
   }
 
+  function toggleSort(campo) {
+    if (sortBy === campo) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(campo); setSortDir('asc') }
+  }
+
   const hayFiltros = Object.values(filtros).some(v => v.length > 0)
 
   const filtrados = ejercicios.filter(e => {
@@ -166,7 +189,18 @@ export default function Biblioteca() {
       if (!vals.some(v => ejVals.includes(v))) return false
     }
     return true
+  }).sort((a, b) => {
+    let va = a[sortBy]; let vb = b[sortBy]
+    if (Array.isArray(va)) va = (va[0] || '')
+    if (Array.isArray(vb)) vb = (vb[0] || '')
+    va = (va || '').toLowerCase(); vb = (vb || '').toLowerCase()
+    return sortDir === 'asc' ? va.localeCompare(vb, 'es') : vb.localeCompare(va, 'es')
   })
+
+  const SortArrow = ({ campo }) => {
+    if (sortBy !== campo) return <span style={{ color: 'var(--text3)', fontSize: 10 }}>↕</span>
+    return <span style={{ fontSize: 10 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
 
   return (
     <div className="page">
@@ -178,10 +212,10 @@ export default function Biblioteca() {
         <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo ejercicio</button>
       </div>
 
-      {/* Búsqueda y filtros */}
+      {/* Búsqueda, filtros y selector de vista */}
       <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ position: 'relative', flex: 1, maxWidth: 360 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 360 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
             <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Buscar ejercicio..." value={busquedaTexto} onChange={e => setBusquedaTexto(e.target.value)} />
             {busquedaTexto && <button onClick={() => setBusquedaTexto('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}><X size={13} /></button>}
@@ -190,7 +224,34 @@ export default function Biblioteca() {
             Filtros {hayFiltros ? `(activos)` : ''} {filtroAbierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
           {hayFiltros && <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({})}>Limpiar</button>}
+
+          {/* Selector de vista */}
+          <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', background: 'var(--bg2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+            {[
+              { id: 'cards', icon: <LayoutGrid size={14} />, title: 'Cards' },
+              { id: 'lista', icon: <List size={14} />, title: 'Lista' },
+              { id: 'tabla', icon: <Table2 size={14} />, title: 'Tabla' },
+            ].map(({ id, icon, title }) => (
+              <button key={id} title={title} onClick={() => setVista(id)}
+                style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: vista === id ? 'var(--bg)' : 'transparent', color: vista === id ? 'var(--accent)' : 'var(--text3)', boxShadow: vista === id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.1s', display: 'flex', alignItems: 'center' }}>
+                {icon}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Ordenación (lista y tabla) */}
+        {(vista === 'lista') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ordenar por:</span>
+            {SORT_OPTIONS.map(({ value, label }) => (
+              <button key={value} onClick={() => toggleSort(value)}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sortBy === value ? 'var(--accent)' : 'var(--border)'}`, background: sortBy === value ? 'var(--accent-light)' : 'transparent', color: sortBy === value ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: sortBy === value ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {label} {sortBy === value && <SortArrow campo={value} />}
+              </button>
+            ))}
+          </div>
+        )}
 
         {filtroAbierto && (
           <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -218,7 +279,8 @@ export default function Biblioteca() {
         <div className="empty"><p>Cargando...</p></div>
       ) : filtrados.length === 0 ? (
         <div className="empty"><p>No hay ejercicios{busquedaTexto || hayFiltros ? ' con esos filtros' : ''}.</p></div>
-      ) : (
+      ) : vista === 'cards' ? (
+        /* ── VISTA CARDS ── */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filtrados.map(e => {
             const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
@@ -268,6 +330,103 @@ export default function Biblioteca() {
             )
           })}
         </div>
+      ) : vista === 'lista' ? (
+        /* ── VISTA LISTA ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filtrados.map(e => {
+            const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+            const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
+            const abierto = expandido === e.id
+            return (
+              <div key={e.id} className="card" style={{ padding: '10px 14px' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  {thumb && (
+                    <div style={{ width: 56, height: 40, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#000', cursor: ytid ? 'pointer' : 'default', position: 'relative' }}
+                      onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
+                      <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                      {ytid && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg viewBox="0 0 24 24" fill="white" width="10" height="10"><polygon points="5,3 19,12 5,21"/></svg>
+                      </div>}
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{e.nombre}</span>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }}><Pencil size={11} /></button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
+                      </div>
+                    </div>
+                    {e.descripcion && (
+                      <div style={{ marginTop: 3 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'inline' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 1, WebkitBoxOrient: 'vertical' }}>
+                          {e.descripcion}
+                        </span>
+                        {e.descripcion.length > 60 && (
+                          <button onClick={() => setExpandido(abierto ? null : e.id)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
+                            {abierto ? 'menos' : 'más'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      {e.zona_corporal?.length > 0 && <MiniChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} />}
+                      {e.patron_movimiento?.length > 0 && <MiniChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} />}
+                      {e.objetivo?.length > 0 && <MiniChips values={e.objetivo} color={TAG_COLORS.objetivo} />}
+                      {e.tipo_contraccion?.length > 0 && <MiniChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} />}
+                      {e.lateralidad_apoyo?.length > 0 && <MiniChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        /* ── VISTA TABLA ── */
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                {[
+                  { campo: 'nombre', label: 'Ejercicio' },
+                  { campo: 'zona_corporal', label: 'Zona corporal' },
+                  { campo: 'patron_movimiento', label: 'Patrón' },
+                  { campo: 'lateralidad_apoyo', label: 'Apoyo' },
+                  { campo: 'objetivo', label: 'Objetivo' },
+                  { campo: 'tipo_contraccion', label: 'Contracción' },
+                ].map(({ campo, label }) => (
+                  <th key={campo} onClick={() => toggleSort(campo)}
+                    style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                    {label} <SortArrow campo={campo} />
+                  </th>
+                ))}
+                <th style={{ padding: '8px 10px', width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map((e, i) => (
+                <tr key={e.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--bg2)' }}>
+                  <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--text)', minWidth: 180 }}>
+                    {e.nombre}
+                    {e.descripcion && <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text3)', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.descripcion}</div>}
+                  </td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.zona_corporal} color={TAG_COLORS.zona_corporal} /></td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.patron_movimiento} color={TAG_COLORS.patron_movimiento} /></td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.lateralidad_apoyo} color={TAG_COLORS.lateralidad_apoyo} /></td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.objetivo} color={TAG_COLORS.objetivo} /></td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}><MiniChips values={e.tipo_contraccion} color={TAG_COLORS.tipo_contraccion} /></td>
+                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }}><Pencil size={11} /></button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {modal && (
@@ -287,7 +446,6 @@ export default function Biblioteca() {
               <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
             </div>
 
-            {/* Media */}
             <div className="form-group">
               <label className="form-label">Tipo de media</label>
               <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)}>
@@ -327,7 +485,6 @@ export default function Biblioteca() {
               </div>
             )}
 
-            {/* Etiquetas */}
             {Object.entries(ETIQUETAS).map(([campo, config]) => (
               <div key={campo} className="form-group">
                 <label className="form-label" style={{ color: TAG_COLORS[campo] }}>{config.label}</label>

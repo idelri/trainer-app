@@ -364,6 +364,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage, set
   const [modalBiblioteca, setModalBiblioteca] = useState(null) // { bloqueId, variablesDefault }
   const [biblioteca, setBiblioteca] = useState(null) // null = no cargada aún
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
+  const [bibFiltroVar, setBibFiltroVar] = useState(null) // variable principal seleccionada
+  const [bibFiltroSub, setBibFiltroSub] = useState(null) // subvariable seleccionada
   const [guardadoOk, setGuardadoOk] = useState(false)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
@@ -591,6 +593,8 @@ async function guardarSesion() {
   async function abrirBiblioteca(bloqueId, variablesDefault = []) {
     setModalBiblioteca({ bloqueId, variablesDefault })
     setBusquedaBiblioteca('')
+    setBibFiltroVar(null)
+    setBibFiltroSub(null)
     if (!biblioteca) {
       const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre')
       setBiblioteca(data || [])
@@ -1554,43 +1558,132 @@ async function guardarSesion() {
         </div>
       )}
 
-      {modalBiblioteca && (
-        <div className="modal-backdrop" onClick={() => setModalBiblioteca(null)}>
-          <div className="modal" style={{ maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">📚 Biblioteca de ejercicios</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalBiblioteca(null)}>✕</button>
-            </div>
-            <div style={{ padding: '0 0 12px' }}>
-              <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} />
-            </div>
-            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {!biblioteca ? (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Cargando...</div>
-              ) : (biblioteca.filter(e => !busquedaBiblioteca || e.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())).map(item => {
-                const ytid = item.media_tipo === 'youtube' && item.media_url ? item.media_url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null
-                const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (item.media_url && item.media_tipo !== 'youtube' ? item.media_url : null)
-                return (
-                  <div key={item.id} onClick={() => añadirDesdeBiblioteca(item)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}>
-                    {thumb
-                      ? <img src={thumb} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
-                      : <div style={{ width: 48, height: 36, borderRadius: 5, background: 'var(--bg2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💪</div>
-                    }
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{item.nombre}</div>
-                      {item.descripcion && <div style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.descripcion}</div>}
+      {modalBiblioteca && (() => {
+        const BIB_VARS = [
+          { campo: 'patron_movimiento', label: 'Patrón', color: '#7c3aed', grupos: [
+            { grupo: 'Tren inferior', items: ['Dominante de rodilla','Dominante de cadera','Dominante de tobillo','Abducción / Rotación externa','Aducción / Plano medial','Pliometría y salto','Carrera y locomoción','Cambio de dirección / Desaceleración'] },
+            { grupo: 'Tren superior', items: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Estabilidad escapular'] },
+            { grupo: 'Core', items: ['Anti-extensión','Anti-rotación','Anti-flexión lateral','Anti-flexión frontal','Rotación','Flexión de tronco','Control lumbopélvico'] },
+          ]},
+          { campo: 'objetivo', label: 'Objetivo', color: '#b45309', grupos: [
+            { grupo: '', items: ['Fuerza base','Fuerza específica','Potencia / Velocidad','Técnica / Control motor','Movilidad / Flexibilidad'] },
+          ]},
+          { campo: 'zona_corporal', label: 'Zona corporal', color: '#0369a1', grupos: [
+            { grupo: 'Cadenas principales', items: ['Cadena Anterior','Cadena Posterior','Estabilizadores de Cadera','Cadena Medial / Aductores'] },
+            { grupo: 'CORE / Tronco', items: ['Lumbo-pélvico','Abdominal','Dorsal / Torácico','Cervical'] },
+            { grupo: 'Pie / Tobillo', items: ['Gemelos / Sóleos','Tibial anterior','Peroneos','Intrínsecos del pie'] },
+          ]},
+          { campo: 'tipo_contraccion', label: 'Contracción', color: '#be185d', grupos: [
+            { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)','Excéntrica acentuada','Isométrica','Isoinercial / Isocinética'] },
+          ]},
+        ]
+        const varActiva = BIB_VARS.find(v => v.campo === bibFiltroVar)
+        const bibFiltrada = !biblioteca ? [] : biblioteca.filter(e => {
+          if (busquedaBiblioteca && !e.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())) return false
+          if (bibFiltroSub && varActiva) {
+            const vals = e[varActiva.campo] || []
+            if (!vals.includes(bibFiltroSub)) return false
+          }
+          return true
+        })
+        return (
+          <div className="modal-backdrop" onClick={() => setModalBiblioteca(null)}>
+            <div className="modal" style={{ maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <span className="modal-title">📚 Biblioteca de ejercicios</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => setModalBiblioteca(null)}>✕</button>
+              </div>
+
+              {/* Búsqueda */}
+              <div style={{ padding: '0 0 10px' }}>
+                <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} />
+              </div>
+
+              {/* Selector de variable principal */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                {BIB_VARS.map(v => {
+                  const activa = bibFiltroVar === v.campo
+                  return (
+                    <button key={v.campo} type="button"
+                      onClick={() => { if (activa) { setBibFiltroVar(null); setBibFiltroSub(null) } else { setBibFiltroVar(v.campo); setBibFiltroSub(null) } }}
+                      style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${activa ? v.color : 'var(--border)'}`, background: activa ? v.color + '18' : 'transparent', color: activa ? v.color : 'var(--text2)', cursor: 'pointer', fontWeight: activa ? 700 : 400, transition: 'all 0.1s' }}>
+                      {v.label}
+                    </button>
+                  )
+                })}
+                {(bibFiltroVar || bibFiltroSub) && (
+                  <button type="button" onClick={() => { setBibFiltroVar(null); setBibFiltroSub(null) }}
+                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer' }}>
+                    ✕ Limpiar
+                  </button>
+                )}
+              </div>
+
+              {/* Subvariables de la variable activa */}
+              {varActiva && (
+                <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  {varActiva.grupos.map(({ grupo, items }) => (
+                    <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
+                      {grupo && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{grupo}</div>}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {items.map(item => {
+                          const activo = bibFiltroSub === item
+                          return (
+                            <button key={item} type="button"
+                              onClick={() => setBibFiltroSub(activo ? null : item)}
+                              style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? varActiva.color : 'var(--border)'}`, background: activo ? varActiva.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                              {item}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                    {item.media_tipo && <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0 }}>{item.media_tipo === 'youtube' ? '▶' : '🖼'}</span>}
-                  </div>
-                )
-              }))}
+                  ))}
+                </div>
+              )}
+
+              {/* Lista de ejercicios */}
+              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {!biblioteca ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Cargando...</div>
+                ) : bibFiltrada.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Sin resultados</div>
+                ) : bibFiltrada.map(item => {
+                  const ytid = item.media_tipo === 'youtube' && item.media_url ? item.media_url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null
+                  const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (item.media_url && item.media_tipo !== 'youtube' ? item.media_url : null)
+                  return (
+                    <div key={item.id} onClick={() => añadirDesdeBiblioteca(item)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}>
+                      {thumb
+                        ? <img src={thumb} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                        : <div style={{ width: 48, height: 36, borderRadius: 5, background: 'var(--bg2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>💪</div>
+                      }
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{item.nombre}</div>
+                        {item.descripcion && <div style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.descripcion}</div>}
+                        {varActiva && item[varActiva.campo]?.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
+                            {item[varActiva.campo].map(v => (
+                              <span key={v} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: varActiva.color + '18', color: varActiva.color, border: `1px solid ${varActiva.color}33`, fontWeight: 500 }}>{v}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {item.media_tipo && <span style={{ fontSize: 10, color: 'var(--text3)', flexShrink: 0 }}>{item.media_tipo === 'youtube' ? '▶' : '🖼'}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)', textAlign: 'right' }}>
+                {bibFiltrada.length} ejercicio{bibFiltrada.length !== 1 ? 's' : ''}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
