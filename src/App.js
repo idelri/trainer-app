@@ -7,6 +7,7 @@ import Clientes from './pages/Clientes'
 import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
 import Sesiones from './pages/Sesiones'
+import Biblioteca from './pages/Biblioteca'
 import PlanPublica from './pages/PlanPublica'
 import SesionPublica from './pages/SesionPublica'
 import CheckinSemanal from './pages/CheckinSemanal'
@@ -16,10 +17,11 @@ import PackPublico from './pages/PackPublico'
 import './index.css'
 
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
-  { id: 'clientes',  label: 'Clientes',  icon: UsersIcon },
-  { id: 'pagos',     label: 'Pagos',     icon: EuroIcon },
-  { id: 'planificacion', label: 'Plan.', icon: CalendarIcon },
+  { id: 'dashboard',    label: 'Dashboard',  icon: HomeIcon },
+  { id: 'clientes',     label: 'Clientes',   icon: UsersIcon },
+  { id: 'pagos',        label: 'Pagos',      icon: EuroIcon },
+  { id: 'planificacion',label: 'Plan.',      icon: CalendarIcon },
+  { id: 'biblioteca',   label: 'Biblioteca', icon: BookIcon },
 ]
 
 export default function App() {
@@ -118,6 +120,7 @@ export default function App() {
         {page === 'pagos'          && <Pagos setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} />}
         {page === 'sesiones'       && <Sesiones clienteInicial={sesionesContext.clienteId} sesionInicialId={sesionesContext.sesionId} setPage={setPage} setClientePlanificacion={setClientePlanificacion} />}
+        {page === 'biblioteca'     && <Biblioteca />}
       </main>
     </div>
   )
@@ -137,4 +140,7 @@ function CheckIcon() {
 }
 function CalendarIcon() {
   return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+}
+function BookIcon() {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
 }

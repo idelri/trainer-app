@@ -589,6 +589,9 @@ async function guardarSesion() {
     await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
     setDirty(true)
+    if (campo === 'nombre' && valor?.trim()) {
+      supabase.from('ejercicios_biblioteca').upsert({ nombre: valor.trim() }, { onConflict: 'nombre', ignoreDuplicates: true }).then(() => {})
+    }
   }
 
   async function eliminarEjercicio(bloqueId, id) {
