@@ -1597,9 +1597,11 @@ async function guardarSesion() {
           return true
         })
 
+        const varsActivas = BIB_VARS.filter(v => v.campo in bibFiltros)
+
         return (
           <div className="modal-backdrop" onClick={() => setModalBiblioteca(null)}>
-            <div className="modal" style={{ maxWidth: 640, maxHeight: '92vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth: 860, width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <span className="modal-title">📚 Biblioteca de ejercicios</span>
                 <button className="btn btn-ghost btn-sm" onClick={() => setModalBiblioteca(null)}>✕</button>
@@ -1635,44 +1637,51 @@ async function guardarSesion() {
                 )}
               </div>
 
-              {/* Subvariables de cada variable activa — scroll propio para no empujar resultados */}
-              {BIB_VARS.some(v => v.campo in bibFiltros) && (
-                <div style={{ overflowY: 'auto', maxHeight: 220, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8, paddingRight: 2 }}>
-                  {BIB_VARS.filter(v => v.campo in bibFiltros).map(v => (
-                    <div key={v.campo} style={{ padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33`, flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
-                      {v.grupos.map(({ grupo, items }) => (
-                        <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
-                          {grupo && <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>{grupo}</div>}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                            {items.map(item => {
-                              const activo = bibFiltros[v.campo] === item
-                              return (
-                                <button key={item} type="button"
-                                  onClick={() => setBibFiltros(f => ({ ...f, [v.campo]: activo ? null : item }))}
-                                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? v.color : 'var(--border)'}`, background: activo ? v.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
-                                  {item}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Layout dos columnas cuando hay filtros activos, una columna si no */}
+              <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
 
-              {/* Lista de ejercicios */}
-              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {!biblioteca ? (
-                  <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Cargando...</div>
-                ) : bibFiltrada.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Sin resultados</div>
-                ) : bibFiltrada.map(item => {
+                {/* Columna izquierda: subvariables (solo si hay filtros activos) */}
+                {varsActivas.length > 0 && (
+                  <div style={{ width: 280, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+                    {varsActivas.map(v => (
+                      <div key={v.campo} style={{ padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33` }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
+                        {v.grupos.map(({ grupo, items }) => (
+                          <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
+                            {grupo && <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>{grupo}</div>}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {items.map(item => {
+                                const activo = bibFiltros[v.campo] === item
+                                return (
+                                  <button key={item} type="button"
+                                    onClick={() => setBibFiltros(f => ({ ...f, [v.campo]: activo ? null : item }))}
+                                    style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? v.color : 'var(--border)'}`, background: activo ? v.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                                    {item}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Columna derecha: lista de ejercicios */}
+                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {varsActivas.length > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>
+                      {bibFiltrada.length} ejercicio{bibFiltrada.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                  {!biblioteca ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Cargando...</div>
+                  ) : bibFiltrada.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>Sin resultados</div>
+                  ) : bibFiltrada.map(item => {
                   const ytid = item.media_tipo === 'youtube' && item.media_url ? item.media_url.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/)?.[1] : null
                   const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (item.media_url && item.media_tipo !== 'youtube' ? item.media_url : null)
-                  const varsActivas = BIB_VARS.filter(v => v.campo in bibFiltros)
                   return (
                     <div key={item.id} onClick={() => añadirDesdeBiblioteca(item)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent' }}
@@ -1697,11 +1706,10 @@ async function guardarSesion() {
                     </div>
                   )
                 })}
-              </div>
+                </div>
 
-              <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)', textAlign: 'right' }}>
-                {bibFiltrada.length} ejercicio{bibFiltrada.length !== 1 ? 's' : ''}
-              </div>
+              </div>{/* fin columna derecha */}
+              </div>{/* fin dos columnas */}
             </div>
           </div>
         )
