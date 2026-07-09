@@ -435,15 +435,25 @@ export default function SesionPublica({ token }) {
                           <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
                           {e.nombre}
                         </h3>
-                        {(esVideoArchivo || thumb) && (
+                        {(esVideoArchivo || yid || thumb) && (
                           <div style={{ marginBottom: 12 }}>
                             {esVideoArchivo
                               ? <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: '#000' }} />
-                              : <img src={thumb} alt={e.nombre} style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper, display: 'block' }} />
+                              : yid
+                                ? <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', borderRadius: 10, overflow: 'hidden', border: `1px solid ${T.line}` }}>
+                                    <iframe
+                                      src={`https://www.youtube-nocookie.com/embed/${yid}`}
+                                      title={e.nombre}
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                    />
+                                  </div>
+                                : <img src={thumb} alt={e.nombre} style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper, display: 'block' }} />
                             }
                           </div>
                         )}
-                        {videoLink && (
+                        {!yid && videoLink && (
                           <a href={videoLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.accent, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', padding: '6px 12px', borderRadius: 9, lineHeight: 1, marginBottom: 10 }}>
                             ▶ Vídeo
                           </a>
