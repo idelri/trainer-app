@@ -76,8 +76,11 @@ export default function ClientePortal({ token }) {
       }
     }
 
-    const { data: ses } = await supabase.from('sesiones').select('*').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
-    setSesiones(ses || [])
+    const { data: ses } = await supabase.from('sesiones').select('*, sesion_feedback(submitted_at)').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
+    setSesiones((ses || []).map(s => ({
+      ...s,
+      estado_efectivo: s.estado_efectivo || (s.sesion_feedback?.submitted_at ? 'completed' : null)
+    })))
     setLoading(false)
   }
 
@@ -150,7 +153,7 @@ export default function ClientePortal({ token }) {
   function getConsistencia() {
     const hace4sem = addDays(new Date(), -28)
     const pasadas = sesiones.filter(s => s.fecha && parseISO(s.fecha) >= hace4sem && parseISO(s.fecha) <= new Date())
-    const hechas = pasadas.filter(s => s.estado_manual === 'completed' || s.estado_manual === 'partial')
+    const hechas = pasadas.filter(s => s.estado_efectivo === 'completed' || s.estado_efectivo === 'partial')
     if (!pasadas.length) return null
     return Math.round((hechas.length / pasadas.length) * 100)
   }
@@ -283,7 +286,7 @@ export default function ClientePortal({ token }) {
                     </thead>
                     <tbody>
                       {sesActuales.map(s => {
-                        const bd = badgeEstado(s.estado_manual)
+                        const bd = badgeEstado(s.estado_efectivo)
                         return (
                           <tr key={s.id}>
                             <td style={{ padding: '9px 8px', borderBottom: '1px solid #f8f7f4' }}>
@@ -308,7 +311,7 @@ export default function ClientePortal({ token }) {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {sesActuales.map(s => {
-                      const bd = badgeEstado(s.estado_manual)
+                      const bd = badgeEstado(s.estado_efectivo)
                       return (
                         <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, background: '#f8f7f4', border: '1px solid #eee' }}>
                           <span style={{ fontSize: 10, fontWeight: 600, color: '#aaa', minWidth: 32 }}>{format(parseISO(s.fecha), 'EEE', { locale: es }).toUpperCase()}</span>
@@ -353,7 +356,7 @@ export default function ClientePortal({ token }) {
                 <div style={S.secLabel}>Tu progreso esta semana</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(() => {
-                    const hechas = sesActuales.filter(s => s.estado_manual === 'completed' || s.estado_manual === 'partial').length
+                    const hechas = sesActuales.filter(s => s.estado_efectivo === 'completed' || s.estado_efectivo === 'partial').length
                     const total = sesActuales.length
                     return (
                       <div>
@@ -445,7 +448,7 @@ export default function ClientePortal({ token }) {
                       <span style={{ fontSize: 12, color: hoy ? '#fff' : '#333', fontWeight: hoy ? 600 : 400 }}>{format(dia, 'd')}</span>
                       {sesDia.length > 0 && (
                         <div style={{ display: 'flex', gap: 2, position: 'absolute', bottom: 3 }}>
-                          {sesDia.slice(0, 3).map((s, i) => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: hoy ? 'rgba(255,255,255,0.8)' : dotColor(s.estado_manual) }} />)}
+                          {sesDia.slice(0, 3).map((s, i) => <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: hoy ? 'rgba(255,255,255,0.8)' : dotColor(s.estado_efectivo) }} />)}
                         </div>
                       )}
                     </div>
@@ -468,7 +471,7 @@ export default function ClientePortal({ token }) {
                 <div style={S.secLabel}>Sesiones de {format(calMes, 'MMMM', { locale: es })}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {sesMes.map(s => {
-                    const bd = badgeEstado(s.estado_manual)
+                    const bd = badgeEstado(s.estado_efectivo)
                     return (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4', border: '1px solid #eee' }}>
                         <div style={{ textAlign: 'center', minWidth: 36, fontSize: 10, color: '#888', lineHeight: 1.3 }}>
@@ -497,7 +500,7 @@ export default function ClientePortal({ token }) {
                 <div style={S.secLabel}>Próximas sesiones</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {proximas.map(s => {
-                    const bd = badgeEstado(s.estado_manual)
+                    const bd = badgeEstado(s.estado_efectivo)
                     return (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4' }}>
                         <div style={{ textAlign: 'center', minWidth: 32 }}>
