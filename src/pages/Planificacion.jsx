@@ -1631,6 +1631,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                           <span style={{ fontSize: 11, color: '#0369a1', opacity: 0.7 }}>{pack.fecha_inicio} – {pack.fecha_fin}</span>
                           <span style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', opacity: 0.6 }}>{packSesiones.length} sesión{packSesiones.length !== 1 ? 'es' : ''}</span>
                           <button onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #0369a1', background: '#0369a1', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>🔗 Compartir</button>
+                          <button onClick={e => { e.stopPropagation(); setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #94a3b8', background: 'transparent', color: '#475569', cursor: 'pointer' }}>✏️ Editar</button>
                           {esDrop && <span style={{ fontSize: 11, color: '#0369a1', fontWeight: 600 }}>Suelta aquí</span>}
                         </div>
                         {abierto && (
