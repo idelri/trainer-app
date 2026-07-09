@@ -180,6 +180,13 @@ export default function Clientes() {
                     <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(c)}>
                       <Pencil size={12} />
                     </button>
+                    {c.token_cliente && (
+                      <button className="btn btn-ghost btn-sm" title="Enlace portal del cliente" onClick={() => {
+                        const url = `${window.location.origin}/cliente/${c.token_cliente}`
+                        navigator.clipboard.writeText(url).catch(() => {})
+                        alert(`Enlace del portal copiado:\n${url}`)
+                      }}>🔗</button>
+                    )}
                   </td>
                 </tr>
               )
