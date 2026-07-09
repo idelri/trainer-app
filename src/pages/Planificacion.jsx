@@ -330,6 +330,12 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setSavingPack(false); setModalPack(null); cargarPlanificacion()
   }
 
+  function copiarEnlacePack(pack) {
+    const url = `${window.location.origin}/pack/${pack.token_publico}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    alert(`Enlace del pack copiado:\n${url}`)
+  }
+
   async function moverAPack(sesion, packId) {
     await supabase.from('sesiones').update({ pack_id: packId, fecha: null }).eq('id', sesion.id)
     cargarPlanificacion()
@@ -1624,6 +1630,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                           <span style={{ fontWeight: 600, fontSize: 13, color: '#0369a1' }}>{pack.nombre}</span>
                           <span style={{ fontSize: 11, color: '#0369a1', opacity: 0.7 }}>{pack.fecha_inicio} – {pack.fecha_fin}</span>
                           <span style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1', opacity: 0.6 }}>{packSesiones.length} sesión{packSesiones.length !== 1 ? 'es' : ''}</span>
+                          <button onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #0369a1', background: '#0369a1', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>🔗 Compartir</button>
                           {esDrop && <span style={{ fontSize: 11, color: '#0369a1', fontWeight: 600 }}>Suelta aquí</span>}
                         </div>
                         {abierto && (
