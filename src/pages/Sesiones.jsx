@@ -702,6 +702,12 @@ async function guardarSesion() {
     setSavingPack(false); setModalPack(null); cargarSesiones()
   }
 
+  function copiarEnlacePack(pack) {
+    const url = `${window.location.origin}/pack/${pack.token_publico}`
+    navigator.clipboard.writeText(url).catch(() => {})
+    alert(`Enlace del pack copiado:\n${url}`)
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -750,6 +756,22 @@ async function guardarSesion() {
 
      {!loading && clienteSeleccionado && !sesionAbierta && (
         <>
+          {packs.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Packs flexibles</div>
+              {packs.map(pack => (
+                <div key={pack.id} className="card" style={{ marginBottom: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>📦</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{pack.nombre}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>{pack.fecha_inicio} – {pack.fecha_fin}</div>
+                  </div>
+                  <button className="btn btn-ghost btn-sm" title="Compartir con cliente" onClick={() => copiarEnlacePack(pack)}>🔗 Compartir</button>
+                  <button className="btn btn-ghost btn-sm" title="Editar pack" onClick={() => { setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }}>✏️</button>
+                </div>
+              ))}
+            </div>
+          )}
           {sesiones.filter(s => !s.fecha).length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
