@@ -134,6 +134,10 @@ export default function ClientePortal({ token }) {
 
   function getTotalSemanas() { return bloques.reduce((a, b) => a + (b.semanas || 0), 0) }
 
+  function abrirSesion(s) {
+    if (s.token_publico) window.location.href = `/sesion/${s.token_publico}`
+  }
+
   function getSesionesSemanaActual() {
     const { lun, dom } = getCurrentWeekRange()
     return sesiones.filter(s => {
@@ -288,7 +292,7 @@ export default function ClientePortal({ token }) {
                       {sesActuales.map(s => {
                         const bd = badgeEstado(s.estado_efectivo)
                         return (
-                          <tr key={s.id}>
+                          <tr key={s.id} onClick={() => abrirSesion(s)} style={{ cursor: s.token_publico ? 'pointer' : 'default' }}>
                             <td style={{ padding: '9px 8px', borderBottom: '1px solid #f8f7f4' }}>
                               <span style={{ fontSize: 10, fontWeight: 500, color: '#888', background: '#f4f3f0', border: '1px solid #e8e5e0', padding: '2px 7px', borderRadius: 5 }}>{format(parseISO(s.fecha), 'EEE d', { locale: es }).toUpperCase()}</span>
                             </td>
@@ -313,7 +317,7 @@ export default function ClientePortal({ token }) {
                     {sesActuales.map(s => {
                       const bd = badgeEstado(s.estado_efectivo)
                       return (
-                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, background: '#f8f7f4', border: '1px solid #eee' }}>
+                        <div key={s.id} onClick={() => abrirSesion(s)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, background: '#f8f7f4', border: '1px solid #eee', cursor: s.token_publico ? 'pointer' : 'default' }}>
                           <span style={{ fontSize: 10, fontWeight: 600, color: '#aaa', minWidth: 32 }}>{format(parseISO(s.fecha), 'EEE', { locale: es }).toUpperCase()}</span>
                           <div style={{ width: 28, height: 28, borderRadius: 7, background: '#f0ede8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>{iconoSesion(s)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -473,7 +477,7 @@ export default function ClientePortal({ token }) {
                   {sesMes.map(s => {
                     const bd = badgeEstado(s.estado_efectivo)
                     return (
-                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4', border: '1px solid #eee' }}>
+                      <div key={s.id} onClick={() => abrirSesion(s)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4', border: '1px solid #eee', cursor: s.token_publico ? 'pointer' : 'default' }}>
                         <div style={{ textAlign: 'center', minWidth: 36, fontSize: 10, color: '#888', lineHeight: 1.3 }}>
                           <strong style={{ display: 'block', fontSize: 14, color: '#333' }}>{format(parseISO(s.fecha), 'd')}</strong>
                           {format(parseISO(s.fecha), 'EEE', { locale: es })}
@@ -502,7 +506,7 @@ export default function ClientePortal({ token }) {
                   {proximas.map(s => {
                     const bd = badgeEstado(s.estado_efectivo)
                     return (
-                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4' }}>
+                      <div key={s.id} onClick={() => abrirSesion(s)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#f8f7f4', cursor: s.token_publico ? 'pointer' : 'default' }}>
                         <div style={{ textAlign: 'center', minWidth: 32 }}>
                           <strong style={{ display: 'block', fontSize: 13, color: '#333' }}>{format(parseISO(s.fecha), 'd')}</strong>
                           <span style={{ fontSize: 9, color: '#aaa' }}>{format(parseISO(s.fecha), 'MMM', { locale: es })}</span>
