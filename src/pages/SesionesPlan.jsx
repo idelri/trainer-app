@@ -588,7 +588,8 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
               )
             })}
             <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
-            <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlace(sesionAbierta)}>🔗 Compartir</button>
+            {sesionAbierta.pack_id && (() => { const pack = packs.find(p => p.id === sesionAbierta.pack_id); return pack ? <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlacePack(pack)}>📦 Compartir pack</button> : null })()}
+            <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlace(sesionAbierta)}>🔗 Compartir sesión</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha, tipo_sesion: sesionAbierta.tipo_sesion || 'programada', tipo_actividad: sesionAbierta.tipo_actividad || 'fuerza', tipos_actividad: sesionAbierta.tipos_actividad?.length > 0 ? sesionAbierta.tipos_actividad : [sesionAbierta.tipo_actividad || 'fuerza'] }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>
           </div>
