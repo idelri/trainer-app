@@ -460,7 +460,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                           {format(new Date(pack.fecha_inicio + 'T12:00:00'), 'dd MMM', { locale: es })} – {format(new Date(pack.fecha_fin + 'T12:00:00'), 'dd MMM yyyy', { locale: es })} · {packSesiones.length} sesiones
                         </div>
                       </div>
-                      <button className="btn btn-ghost btn-sm" title="Compartir con cliente" onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }}>🔗</button>
+                      <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 12 }}>🔗 Compartir</button>
                       <button className="btn btn-ghost btn-sm" title="Editar pack" onClick={e => { e.stopPropagation(); setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }}>✏️</button>
                       <button className="btn btn-ghost btn-sm" title="Eliminar pack" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); eliminarPack(pack) }}>🗑️</button>
                       <span style={{ color: 'var(--text3)', fontSize: 12 }}>{abierto ? '▲' : '▼'}</span>
