@@ -107,6 +107,9 @@ export default function VistaSemanalCliente() {
   const [cliente, setCliente] = useState(null)
   const [sesiones, setSesiones] = useState([])
   const [packsConSesiones, setPacksConSesiones] = useState([])
+  const [notasCliente, setNotasCliente] = useState([])
+  const [competicionesCliente, setCompeticionesCliente] = useState([])
+  const [controlesCliente, setControlesCliente] = useState([])
   const [loading, setLoading] = useState(true)
   const [seccionAbierta, setSeccionAbierta] = useState(null)
   const [checkinEnviado, setCheckinEnviado] = useState(false)
@@ -181,6 +184,14 @@ export default function VistaSemanalCliente() {
         })
       }
       setSesiones(filtradas)
+
+      // Notas, competiciones y controles visibles al cliente en esta semana
+      const { data: notasSem } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
+      setNotasCliente(notasSem || [])
+      const { data: compsSem } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
+      setCompeticionesCliente(compsSem || [])
+      const { data: ctrlsSem } = await supabase.from('controles').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
+      setControlesCliente(ctrlsSem || [])
 
       const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
       if (existing) setYaRespondido(true)
@@ -317,6 +328,33 @@ export default function VistaSemanalCliente() {
             </div>
           )}
         </div>
+
+        {/* Competiciones visibles al cliente */}
+        {competicionesCliente.map(c => (
+          <div key={c.id} style={{ margin: '0 12px 10px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 12, padding: '12px 16px' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#be123c', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏆 Competición</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: '#9f1239', margin: '0 0 2px' }}>{c.nombre}</p>
+            {c.fecha && <p style={{ fontSize: 12, color: '#be123c', margin: 0 }}>{format(new Date(c.fecha + 'T12:00:00'), 'EEEE dd MMM yyyy', { locale: es })}</p>}
+            {c.objetivo && <p style={{ fontSize: 13, color: '#9f1239', margin: '6px 0 0', lineHeight: 1.45 }}>{c.objetivo}</p>}
+          </div>
+        ))}
+
+        {/* Controles/valoraciones visibles al cliente */}
+        {controlesCliente.map(c => (
+          <div key={c.id} style={{ margin: '0 12px 10px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '12px 16px' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#15803d', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>📋 {c.tipo || 'Valoración'}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: '#14532d', margin: '0 0 2px' }}>{c.nombre}</p>
+            {c.fecha && <p style={{ fontSize: 12, color: '#15803d', margin: 0 }}>{format(new Date(c.fecha + 'T12:00:00'), 'EEEE dd MMM yyyy', { locale: es })}</p>}
+          </div>
+        ))}
+
+        {/* Notas visibles al cliente */}
+        {notasCliente.map(n => (
+          <div key={n.id} style={{ margin: '0 12px 10px', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', borderLeft: '3px solid rgba(255,255,255,0.3)' }}>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>📝 Nota</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>{n.texto}</p>
+          </div>
+        ))}
 
         {/* Sesiones programadas */}
         {sesionesProgramadas.length > 0 && (
