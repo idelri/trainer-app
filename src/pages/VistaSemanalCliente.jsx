@@ -350,9 +350,9 @@ export default function VistaSemanalCliente() {
 
         {/* Notas visibles al cliente */}
         {notasCliente.map(n => (
-          <div key={n.id} style={{ margin: '0 12px 10px', background: '#f0fdf4', borderRadius: 10, padding: '10px 14px', borderLeft: '3px solid #86efac' }}>
-            <p style={{ fontSize: 10, color: '#15803d', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>📝 Nota</p>
-            <p style={{ fontSize: 13, color: '#14532d', margin: 0, lineHeight: 1.5 }}>{n.texto}</p>
+          <div key={n.id} style={{ margin: '0 12px 10px', background: '#fffbeb', borderRadius: 10, padding: '10px 14px', borderLeft: '3px solid #fbbf24' }}>
+            <p style={{ fontSize: 10, color: '#92400e', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>📝 Nota de tu entrenadora</p>
+            <p style={{ fontSize: 13, color: '#78350f', margin: 0, lineHeight: 1.5 }}>{n.texto}</p>
           </div>
         ))}
 
