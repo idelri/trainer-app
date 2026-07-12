@@ -9,6 +9,27 @@ function iconoSesion(s) {
   return tipos.map(t => ICONO[t] || '💪').join(' ')
 }
 
+const TIPO_CONFIG = {
+  nota:        { icono: '📝', label: 'Nota',        bg: '#F1EFE8', color: '#5F5E5A' },
+  competicion: { icono: '🏆', label: 'Competición', bg: '#FAEEDA', color: '#633806' },
+  control:     { icono: '📊', label: 'Valoración',  bg: '#E6F1FB', color: '#0C447C' },
+}
+
+function ItemExtra({ item, compact }) {
+  const cfg = TIPO_CONFIG[item._tipo] || TIPO_CONFIG.nota
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: compact ? '7px 10px' : '9px 12px', borderRadius: 8, background: cfg.bg, border: `1px solid ${cfg.color}33` }}>
+      <span style={{ fontSize: 16, flexShrink: 0 }}>{cfg.icono}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: cfg.color }}>{item.nombre || item.texto}</div>
+        {item.objetivo && <div style={{ fontSize: 11, color: cfg.color, opacity: 0.8 }}>{item.objetivo}</div>}
+        {item.notas && !item.nombre && <div style={{ fontSize: 11, color: cfg.color, opacity: 0.8 }}>{item.notas}</div>}
+      </div>
+      {item.fecha && <span style={{ fontSize: 10, color: cfg.color, opacity: 0.7, flexShrink: 0 }}>{format(parseISO(item.fecha), 'd MMM', { locale: es })}</span>}
+    </div>
+  )
+}
+
 function badgeEstado(e) {
   if (e === 'completed') return { label: '✓ Completada', bg: '#E1F5EE', color: '#0F6E56' }
   if (e === 'partial') return { label: '◐ Parcial', bg: '#FAEEDA', color: '#633806' }
@@ -43,6 +64,9 @@ export default function ClientePortal({ token }) {
   const [subbloques, setSubbloques] = useState([])
   const [semanas, setSemanas] = useState([])
   const [sesiones, setSesiones] = useState([])
+  const [notas, setNotas] = useState([])
+  const [competiciones, setCompeticiones] = useState([])
+  const [controles, setControles] = useState([])
   const [tab, setTab] = useState('hoy')
   const [vista, setVista] = useState(window.innerWidth >= 768 ? 'desktop' : 'movil')
   const [calMes, setCalMes] = useState(new Date())
@@ -79,8 +103,14 @@ export default function ClientePortal({ token }) {
     const { data: ses } = await supabase.from('sesiones').select('*, sesion_feedback(submitted_at)').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
     setSesiones((ses || []).map(s => ({
       ...s,
-      estado_efectivo: s.estado_efectivo || (s.sesion_feedback?.submitted_at ? 'completed' : null)
+      estado_efectivo: s.estado_manual || (s.sesion_feedback?.submitted_at ? 'completed' : null)
     })))
+    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').not('fecha', 'is', null).order('fecha')
+    setNotas(nts || [])
+    const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').order('fecha')
+    setCompeticiones(comps || [])
+    const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').order('fecha')
+    setControles(ctrls || [])
     setLoading(false)
   }
 
@@ -133,6 +163,27 @@ export default function ClientePortal({ token }) {
   }
 
   function getTotalSemanas() { return bloques.reduce((a, b) => a + (b.semanas || 0), 0) }
+
+  function getItemsSemanaActual() {
+    const { lun, dom } = getCurrentWeekRange()
+    const enSemana = arr => (arr || []).filter(x => { const f = parseISO(x.fecha); return f >= lun && f <= dom })
+    return [
+      ...enSemana(notas).map(x => ({ ...x, _tipo: 'nota' })),
+      ...enSemana(competiciones).map(x => ({ ...x, _tipo: 'competicion' })),
+      ...enSemana(controles).map(x => ({ ...x, _tipo: 'control' })),
+    ].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }
+
+  function getItemsCalMes() {
+    const ini = startOfMonth(calMes)
+    const fin = endOfMonth(calMes)
+    const enMes = arr => (arr || []).filter(x => { if (!x.fecha) return false; const f = parseISO(x.fecha); return f >= ini && f <= fin })
+    return [
+      ...enMes(notas).map(x => ({ ...x, _tipo: 'nota' })),
+      ...enMes(competiciones).map(x => ({ ...x, _tipo: 'competicion' })),
+      ...enMes(controles).map(x => ({ ...x, _tipo: 'control' })),
+    ].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  }
 
   function abrirSesion(s) {
     if (s.token_publico) window.location.href = `/sesion/${s.token_publico}`
@@ -334,6 +385,21 @@ export default function ClientePortal({ token }) {
             </div>
           </div>
 
+          {!isDesktop && (() => {
+            const extras = getItemsSemanaActual()
+            if (!extras.length) return null
+            return (
+              <div style={S.card}>
+                <div style={S.cardPad}>
+                  <div style={S.secLabel}>Esta semana · notas y eventos</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {extras.map(x => <ItemExtra key={x.id} item={x} />)}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {!isDesktop && semanaActual?.nota_cliente && (
             <div style={{ ...S.card, borderLeft: '3px solid #1D9E75', borderRadius: '0 10px 10px 0' }}>
               <div style={S.cardPad}>
@@ -354,6 +420,21 @@ export default function ClientePortal({ token }) {
                 </div>
               </div>
             )}
+
+            {(() => {
+              const extras = getItemsSemanaActual()
+              if (!extras.length) return null
+              return (
+                <div style={S.card}>
+                  <div style={S.cardPad}>
+                    <div style={S.secLabel}>Notas y eventos esta semana</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {extras.map(x => <ItemExtra key={x.id} item={x} />)}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             <div style={S.card}>
               <div style={S.cardPad}>
@@ -468,6 +549,21 @@ export default function ClientePortal({ token }) {
               </div>
             </div>
           </div>
+
+          {(() => {
+            const extMes = getItemsCalMes()
+            if (!extMes.length) return null
+            return (
+              <div style={{ ...S.card, marginTop: 14 }}>
+                <div style={S.cardPad}>
+                  <div style={S.secLabel}>Notas y eventos de {format(calMes, 'MMMM', { locale: es })}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {extMes.map(x => <ItemExtra key={x.id} item={x} compact />)}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {sesMes.length > 0 && (
             <div style={{ ...S.card, marginTop: 14 }}>

@@ -60,6 +60,20 @@ function InlineInput({ value, onSave, placeholder, style, textarea, fontSize }) 
 
 const EMPTY_PACK = { nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }
 
+function ToggleVisibilidad({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
+      <span style={{ fontSize: 12, color: 'var(--text2)' }}>Visible para:</span>
+      {[['entrenadora', '🔒 Solo yo'], ['cliente', '👁 Entrenadora + cliente']].map(([v, label]) => (
+        <button key={v} type="button" onClick={() => onChange(v)}
+          style={{ fontSize: 12, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${value === v ? 'var(--accent)' : 'var(--border)'}`, background: value === v ? 'var(--accent)' : 'transparent', color: value === v ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: value === v ? 600 : 400 }}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, clientes = [] }) {
   const [sesiones, setSesiones] = useState([])
   const [packs, setPacks] = useState([])
@@ -109,11 +123,11 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
   const [modalComp, setModalComp] = useState(false)
-  const [formComp, setFormComp] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '' })
+  const [formComp, setFormComp] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '', visibilidad: 'entrenadora' })
   const [modalControl, setModalControl] = useState(false)
-  const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '' })
+  const [formControl, setFormControl] = useState({ nombre: '', fecha: '', tipo: '', notas: '', visibilidad: 'entrenadora' })
   const [modalNota, setModalNota] = useState(false)
-  const [formNota, setFormNota] = useState({ texto: '', fecha: '' })
+  const [formNota, setFormNota] = useState({ texto: '', fecha: '', visibilidad: 'entrenadora' })
   useEffect(() => { if (clienteId) { cargarSesiones(); setSesionAbierta(null) } }, [clienteId])
   useEffect(() => {
     if (!sesionAbierta) return
@@ -549,9 +563,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             subbloquesPlan={subbloquesPlan || {}}
             onAbrirSesion={setSesionAbierta}
          onNuevaSesion={(fecha) => { setFormSesion({ ...EMPTY_SESION, fecha }); setModalSesion('nueva') }}
-            onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '' }); setModalComp(true) }}
-            onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '' }); setModalControl(true) }}
-            onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha }); setModalNota(true) }}
+            onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '', visibilidad: 'entrenadora' }); setModalComp(true) }}
+            onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '', visibilidad: 'entrenadora' }); setModalControl(true) }}
+            onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha, visibilidad: 'entrenadora' }); setModalNota(true) }}
             onEliminar={eliminarItem}
             onMoverSesion={moverItem}
             clipboard={clipboard}
@@ -840,12 +854,13 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             </div>
             <div className="form-group"><label className="form-label">Objetivo</label><input className="form-input" value={formComp.objetivo} onChange={e => setFormComp(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ej: Bajar de 1h45min" /></div>
             <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formComp.notas} onChange={e => setFormComp(f => ({ ...f, notas: e.target.value }))} /></div>
+            <ToggleVisibilidad value={formComp.visibilidad} onChange={v => setFormComp(f => ({ ...f, visibilidad: v }))} />
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalComp(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={async () => {
                 if (!formComp.nombre || !formComp.fecha) return
-                await supabase.from('competiciones').insert({ cliente_id: clienteId, nombre: formComp.nombre, fecha: formComp.fecha, tipo: formComp.tipo || null, objetivo: formComp.objetivo || null, notas: formComp.notas || null })
-                setModalComp(false)
+                await supabase.from('competiciones').insert({ cliente_id: clienteId, nombre: formComp.nombre, fecha: formComp.fecha, tipo: formComp.tipo || null, objetivo: formComp.objetivo || null, notas: formComp.notas || null, visibilidad: formComp.visibilidad })
+                setModalComp(false); cargarSesiones()
               }}>Añadir competición</button>
             </div>
           </div>
@@ -875,12 +890,13 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
               </div>
             </div>
             <div className="form-group"><label className="form-label">Notas</label><textarea className="form-textarea" value={formControl.notas} onChange={e => setFormControl(f => ({ ...f, notas: e.target.value }))} placeholder="Protocolo, resultados, observaciones..." /></div>
+            <ToggleVisibilidad value={formControl.visibilidad} onChange={v => setFormControl(f => ({ ...f, visibilidad: v }))} />
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalControl(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={async () => {
                 if (!formControl.nombre || !formControl.fecha) return
-                await supabase.from('controles').insert({ cliente_id: clienteId, nombre: formControl.nombre, fecha: formControl.fecha, tipo: formControl.tipo || null, notas: formControl.notas || null })
-                setModalControl(false)
+                await supabase.from('controles').insert({ cliente_id: clienteId, nombre: formControl.nombre, fecha: formControl.fecha, tipo: formControl.tipo || null, notas: formControl.notas || null, visibilidad: formControl.visibilidad })
+                setModalControl(false); cargarSesiones()
               }}>Añadir control</button>
             </div>
           </div>
@@ -896,12 +912,13 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             </div>
             <div className="form-group"><label className="form-label">Fecha</label><input className="form-input" type="date" value={formNota.fecha} onChange={e => setFormNota(f => ({ ...f, fecha: e.target.value }))} /></div>
             <div className="form-group"><label className="form-label">Nota *</label><textarea className="form-textarea" style={{ minHeight: 100 }} value={formNota.texto} onChange={e => setFormNota(f => ({ ...f, texto: e.target.value }))} placeholder="Ej: Semana de viaje, ajustar volumen..." autoFocus /></div>
+            <ToggleVisibilidad value={formNota.visibilidad} onChange={v => setFormNota(f => ({ ...f, visibilidad: v }))} />
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalNota(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={async () => {
                 if (!formNota.texto) return
-                await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: formNota.texto, fecha: formNota.fecha || null })
-                setModalNota(false)
+                await supabase.from('sesion_notas').insert({ cliente_id: clienteId, texto: formNota.texto, fecha: formNota.fecha || null, visibilidad: formNota.visibilidad })
+                setModalNota(false); cargarSesiones()
               }}>Guardar nota</button>
             </div>
           </div>
