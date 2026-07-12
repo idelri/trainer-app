@@ -292,11 +292,11 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           con_feedback: item?.con_feedback !== false,
         }
       case 'comp':
-        return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', objetivo: item?.objetivo || '', notas: item?.notas || '' }
+        return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', objetivo: item?.objetivo || '', notas: item?.notas || '', visibilidad: item?.visibilidad || 'entrenadora' }
       case 'control':
-        return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', notas: item?.notas || '' }
+        return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', notas: item?.notas || '', visibilidad: item?.visibilidad || 'entrenadora' }
       case 'nota':
-        return { texto: item?.texto || '', fecha: item?.fecha || format(new Date(), 'yyyy-MM-dd') }
+        return { texto: item?.texto || '', fecha: item?.fecha || format(new Date(), 'yyyy-MM-dd'), visibilidad: item?.visibilidad || 'entrenadora' }
       default:
         return {}
     }
@@ -444,7 +444,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
         case 'comp': {
           if (!formData.nombre || !formData.fecha) break
-          const datos = { nombre: formData.nombre, fecha: formData.fecha, tipo: formData.tipo || null, objetivo: formData.objetivo || null, notas: formData.notas || null }
+          const datos = { nombre: formData.nombre, fecha: formData.fecha, tipo: formData.tipo || null, objetivo: formData.objetivo || null, notas: formData.notas || null, visibilidad: formData.visibilidad || 'entrenadora' }
           if (modalItem?.id) await supabase.from('competiciones').update(datos).eq('id', modalItem.id)
           else await supabase.from('competiciones').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -453,7 +453,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
         case 'control': {
           if (!formData.nombre || !formData.fecha) break
-          const datos = { nombre: formData.nombre, fecha: formData.fecha, tipo: formData.tipo || null, notas: formData.notas || null }
+          const datos = { nombre: formData.nombre, fecha: formData.fecha, tipo: formData.tipo || null, notas: formData.notas || null, visibilidad: formData.visibilidad || 'entrenadora' }
           if (modalItem?.id) await supabase.from('controles').update(datos).eq('id', modalItem.id)
           else await supabase.from('controles').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -462,7 +462,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
         case 'nota': {
           if (!formData.texto) break
-          const datos = { texto: formData.texto, fecha: formData.fecha || null }
+          const datos = { texto: formData.texto, fecha: formData.fecha || null, visibilidad: formData.visibilidad || 'entrenadora' }
           if (modalItem?.id) await supabase.from('sesion_notas').update(datos).eq('id', modalItem.id)
           else await supabase.from('sesion_notas').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
@@ -1117,6 +1117,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <label className="form-label">Notas</label>
               <textarea className="form-textarea" value={formData.notas || ''} onChange={e => fd('notas', e.target.value)} />
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Visible para:</span>
+              {[['entrenadora', '🔒 Solo yo'], ['cliente', '👁 Entrenadora + cliente']].map(([v, label]) => (
+                <button key={v} type="button" onClick={() => fd('visibilidad', v)}
+                  style={{ fontSize: 12, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${(formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'var(--border)'}`, background: (formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'transparent', color: (formData.visibilidad || 'entrenadora') === v ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: (formData.visibilidad || 'entrenadora') === v ? 600 : 400 }}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
                 <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar competición</button>
@@ -1155,6 +1164,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <label className="form-label">Notas</label>
               <textarea className="form-textarea" value={formData.notas || ''} onChange={e => fd('notas', e.target.value)} placeholder="Protocolo, resultados, observaciones..." />
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Visible para:</span>
+              {[['entrenadora', '🔒 Solo yo'], ['cliente', '👁 Entrenadora + cliente']].map(([v, label]) => (
+                <button key={v} type="button" onClick={() => fd('visibilidad', v)}
+                  style={{ fontSize: 12, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${(formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'var(--border)'}`, background: (formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'transparent', color: (formData.visibilidad || 'entrenadora') === v ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: (formData.visibilidad || 'entrenadora') === v ? 600 : 400 }}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
                 <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar control</button>
@@ -1174,6 +1192,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             <div className="form-group">
               <label className="form-label">Nota *</label>
               <textarea className="form-textarea" value={formData.texto || ''} onChange={e => fd('texto', e.target.value)} style={{ minHeight: 100 }} autoFocus />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>Visible para:</span>
+              {[['entrenadora', '🔒 Solo yo'], ['cliente', '👁 Entrenadora + cliente']].map(([v, label]) => (
+                <button key={v} type="button" onClick={() => fd('visibilidad', v)}
+                  style={{ fontSize: 12, padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${(formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'var(--border)'}`, background: (formData.visibilidad || 'entrenadora') === v ? 'var(--accent)' : 'transparent', color: (formData.visibilidad || 'entrenadora') === v ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: (formData.visibilidad || 'entrenadora') === v ? 600 : 400 }}>
+                  {label}
+                </button>
+              ))}
             </div>
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
