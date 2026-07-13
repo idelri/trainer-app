@@ -289,7 +289,7 @@ export default function SesionPublica({ token }) {
           {sesion.objetivo && (
             <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.13)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>🎯 Objetivo</div>
-              <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.9)' }}>{sesion.objetivo}</p>
+              <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.9)', whiteSpace: 'pre-wrap' }}>{sesion.objetivo}</p>
             </div>
           )}
         </header>
@@ -304,14 +304,14 @@ export default function SesionPublica({ token }) {
         {sesion.material && (
           <div style={{ marginTop: 16, background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.ink3, marginBottom: 7 }}>🎒 Material necesario</div>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: T.ink2 }}>{sesion.material}</p>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: T.ink2, whiteSpace: 'pre-wrap' }}>{sesion.material}</p>
           </div>
         )}
 
         {sesion.indicaciones && (
           <div style={{ marginTop: 16, background: T.accent + '10', border: `1px solid ${T.accent}33`, borderRadius: 14, padding: '14px 18px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <span style={{ flexShrink: 0, color: T.accent }}>✏️</span>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: T.accentD, fontWeight: 500 }}>{sesion.indicaciones}</p>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: T.accentD, fontWeight: 500, whiteSpace: 'pre-wrap' }}>{sesion.indicaciones}</p>
           </div>
         )}
 
