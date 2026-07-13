@@ -342,7 +342,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones({ clienteInicial, sesionInicialId, setPage, setClientePlanificacion }) {
+export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla, setPage, setClientePlanificacion }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
@@ -363,6 +363,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, setPage, set
   const [menuVariablePos, setMenuVariablePos] = useState({ x: 0, y: 0 })
   const [modalBiblioteca, setModalBiblioteca] = useState(null) // { bloqueId, variablesDefault }
   const [biblioteca, setBiblioteca] = useState(null) // null = no cargada aún
+  const [panelBiblioteca, setPanelBiblioteca] = useState(false)
+  const [guardandoEnBib, setGuardandoEnBib] = useState(false)
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
   const [bibFiltros, setBibFiltros] = useState({}) // { [campo]: subvariable | null } — campos activos
   const [guardadoOk, setGuardadoOk] = useState(false)
@@ -383,6 +385,14 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
   useEffect(() => { if (sesionAbierta) { cargarDetalle(sesionAbierta.id); setDirty(false); setAvisoSinGuardar(false) } }, [sesionAbierta])
+  useEffect(() => {
+    if (esPlantilla && sesionInicialId && !sesionInicialCargada.current) {
+      sesionInicialCargada.current = true
+      supabase.from('sesiones').select('*').eq('id', sesionInicialId).single().then(({ data }) => {
+        if (data) setSesionAbierta(data)
+      })
+    }
+  }, [esPlantilla, sesionInicialId])
   useEffect(() => {
     if (!menuVariableAbierto) return
     function handler(ev) {
@@ -487,6 +497,28 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   function abrirEditarSesion(s) {
     setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '' })
     setModalSesion(s)
+  }
+
+  async function guardarEnBiblioteca(sesion) {
+    if (!sesion) return
+    setGuardandoEnBib(true)
+    const { data: nueva } = await supabase.from('sesiones').insert({
+      titulo: sesion.titulo, objetivo: sesion.objetivo, duracion_min: sesion.duracion_min,
+      icono: sesion.icono, tipo_editor: sesion.tipo_editor || 'fuerza',
+      es_plantilla: true, cliente_id: null,
+    }).select().single()
+    if (nueva) {
+      const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesion.id).order('orden')
+      for (const b of bls || []) {
+        const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
+        const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
+        for (const e of ejs || []) {
+          await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
+        }
+      }
+    }
+    setGuardandoEnBib(false)
+    alert('✅ Sesión guardada en la biblioteca.')
   }
 
 async function guardarSesion() {
@@ -599,8 +631,10 @@ async function guardarSesion() {
     }
   }
 
-  async function añadirDesdeBiblioteca(item) {
-    const { bloqueId, variablesDefault } = modalBiblioteca
+  async function añadirDesdeBiblioteca(item, bloqueIdOverride, variablesDefaultOverride) {
+    const bloqueId = bloqueIdOverride || modalBiblioteca?.bloqueId
+    const variablesDefault = variablesDefaultOverride !== undefined ? variablesDefaultOverride : (modalBiblioteca?.variablesDefault || [])
+    if (!bloqueId) return
     const lista = ejercicios[bloqueId] || []
     const { data: e } = await supabase.from('sesion_ejercicios').insert({
       bloque_id: bloqueId,
@@ -613,7 +647,7 @@ async function guardarSesion() {
       variables_activas: variablesDefault,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
-    setModalBiblioteca(null)
+    if (!bloqueIdOverride) setModalBiblioteca(null)
   }
 
   async function actualizarEjercicio(bloqueId, id, campo, valor) {
@@ -724,8 +758,12 @@ async function guardarSesion() {
         {sesionAbierta && (
           <div className="flex gap-2">
             <button className="btn btn-ghost btn-sm" onClick={() => setVistaPrevia(v => !v)}>{vistaPrevia ? '✏️ Editor' : '👁 Vista cliente'}</button>
+            <button className="btn btn-ghost btn-sm" style={{ color: panelBiblioteca ? 'var(--accent)' : undefined }} onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } setPanelBiblioteca(v => !v) }}>📚 Biblioteca</button>
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => guardarEnBiblioteca(sesionAbierta)} disabled={guardandoEnBib} title="Guardar una copia en la biblioteca de sesiones">
+              {guardandoEnBib ? '⏳' : '📚'} {guardandoEnBib ? 'Guardando...' : 'Guardar en biblioteca'}
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
               if (dirty) { setAvisoSinGuardar(true) }
@@ -1731,6 +1769,47 @@ async function guardarSesion() {
               </div>{/* fin columna derecha */}
               </div>{/* fin dos columnas */}
             </div>
+          </div>
+        )
+      })()}
+
+      {/* Panel lateral biblioteca de ejercicios (fixed) */}
+      {panelBiblioteca && sesionAbierta && (() => {
+        const bibFiltrada = !biblioteca ? [] : biblioteca.filter(item => {
+          if (busquedaBiblioteca && !item.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())) return false
+          return true
+        })
+        return (
+          <div style={{ position: 'fixed', top: 0, right: 0, width: 290, height: '100vh', background: 'var(--bg)', borderLeft: '1px solid var(--border)', zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)', padding: '16px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>📚 Biblioteca de ejercicios</span>
+              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setPanelBiblioteca(false)}>✕</button>
+            </div>
+            <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} style={{ marginBottom: 10, fontSize: 12 }} />
+            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>Haz clic para añadir al primer bloque</p>
+            {!biblioteca ? (
+              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Cargando...</p>
+            ) : (
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {bibFiltrada.map(item => (
+                  <div key={item.id}
+                    onClick={() => {
+                      const primerBloque = bloques[0]
+                      if (!primerBloque) return
+                      añadirDesdeBiblioteca(item, primerBloque.id, [])
+                    }}
+                    style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: 'var(--text)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light,#e8f5f0)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}>
+                    <div style={{ fontWeight: 500 }}>{item.nombre}</div>
+                    {item.patron_movimiento?.length > 0 && (
+                      <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{item.patron_movimiento.slice(0, 2).join(' · ')}</div>
+                    )}
+                  </div>
+                ))}
+                {bibFiltrada.length === 0 && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '12px 0' }}>Sin resultados</p>}
+              </div>
+            )}
           </div>
         )
       })()}

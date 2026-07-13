@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check } from 'lucide-react'
+import BibliotecaSesiones from './BibliotecaSesiones'
 
 function ytId(url) {
   if (!url) return null
@@ -178,7 +179,8 @@ function InlineTagsPanel({ ej, onChange }) {
   )
 }
 
-export default function Biblioteca() {
+export default function Biblioteca({ setPage, setSesionesContext }) {
+  const [tabPrincipal, setTabPrincipal] = useState('ejercicios')
   const [ejercicios, setEjercicios] = useState([])
   const [busquedaTexto, setBusquedaTexto] = useState('')
   const [filtros, setFiltros] = useState({})
@@ -343,7 +345,27 @@ export default function Biblioteca() {
 
       <div className="page-header">
         <div>
-          <h2 className="page-title">Biblioteca de ejercicios</h2>
+          <h2 className="page-title">Biblioteca</h2>
+        </div>
+      </div>
+
+      {/* Tabs principales */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+        {[['ejercicios', '🏋️ Ejercicios'], ['sesiones', '📋 Sesiones']].map(([id, label]) => (
+          <button key={id} onClick={() => setTabPrincipal(id)}
+            style={{ fontSize: 14, padding: '8px 22px', border: 'none', background: 'transparent', borderBottom: `2px solid ${tabPrincipal === id ? 'var(--accent)' : 'transparent'}`, color: tabPrincipal === id ? 'var(--accent)' : 'var(--text2)', fontWeight: tabPrincipal === id ? 600 : 400, cursor: 'pointer', marginBottom: -1 }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tabPrincipal === 'sesiones' && (
+        <BibliotecaSesiones setPage={setPage} setSesionesContext={setSesionesContext} />
+      )}
+
+      {tabPrincipal === 'ejercicios' && (<>
+      <div className="page-header" style={{ marginTop: 0, paddingTop: 0 }}>
+        <div>
           <p className="page-subtitle">{filtrados.length} de {ejercicios.length} ejercicios</p>
         </div>
         <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo ejercicio</button>
@@ -734,6 +756,7 @@ export default function Biblioteca() {
           </div>
         </div>
       )}
+      </>)}
     </div>
   )
 }
