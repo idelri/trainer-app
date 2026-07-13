@@ -16,36 +16,7 @@ const T = {
   warningLight: '#fffbeb',
 }
 
-const ICONO_ACTIVIDAD = {
-  fuerza: '💪', correr: '🏃', caminar: '🚶', bicicleta: '🚴',
-  nadar: '🏊', movilidad: '🤸', futbol: '⚽', padel: '🎾',
-}
-function getTipos(s) {
-  return s?.tipos_actividad?.length > 0 ? s.tipos_actividad : (s?.tipo_actividad ? [s.tipo_actividad] : ['fuerza'])
-}
-function iconoSesion(s) { return getTipos(s).map(t => ICONO_ACTIVIDAD[t] || '💪').join(' ') }
-
-function IconosSesion({ sesion, color }) {
-  const tipos = getTipos(sesion)
-  const bg = color + '22'
-  if (tipos.length === 1) {
-    return (
-      <div style={{ width: 40, height: 40, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 19 }}>
-        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
-      </div>
-    )
-  }
-  return (
-    <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center' }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, position: 'relative', zIndex: 2 }}>
-        {ICONO_ACTIVIDAD[tipos[0]] || '💪'}
-      </div>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', background: bg, border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, marginLeft: -10, position: 'relative', zIndex: 1 }}>
-        {ICONO_ACTIVIDAD[tipos[1]] || '💪'}
-      </div>
-    </div>
-  )
-}
+function iconoSesion(s) { return s?.icono || '💪' }
 
 function ScaleButtons({ labels, selected, onSelect, color }) {
   return (
@@ -259,9 +230,8 @@ export default function VistaSemanalCliente() {
   const fechaInicio = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1), 'dd MMM', { locale: es }) : ''
   const fechaFin = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1 + 1), 'dd MMM yyyy', { locale: es }) : ''
 
-  const sesionesProgramadas = sesiones.filter(s => s.tipo_sesion === 'programada' || !s.tipo_sesion)
-  const sesionesFlexibles = sesiones.filter(s => s.tipo_sesion === 'flexible')
   const sesionesOpcionales = sesiones.filter(s => s.tipo_sesion === 'opcional')
+  const sesionesNormales = sesiones.filter(s => s.tipo_sesion !== 'opcional')
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -356,25 +326,38 @@ export default function VistaSemanalCliente() {
           </div>
         ))}
 
-        {/* Sesiones programadas */}
-        {sesionesProgramadas.length > 0 && (
-          <div style={{ margin: '0 12px 12px' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: T.text3, margin: '0 0 8px', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0 4px' }}>Sesiones</p>
-            {sesionesProgramadas.map(s => (
-              <SesionCard key={s.id} sesion={s} bloque={bloque} />
-            ))}
-          </div>
-        )}
-
-        {/* Sesiones flexibles */}
-        {sesionesFlexibles.length > 0 && (
-          <div style={{ margin: '0 12px 12px' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: T.text3, margin: '0 0 8px', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0 4px' }}>Sesiones flexibles</p>
-            {sesionesFlexibles.map(s => (
-              <SesionCard key={s.id} sesion={s} bloque={bloque} flexible />
-            ))}
-          </div>
-        )}
+        {/* Sesiones agrupadas por día */}
+        {sesionesNormales.length > 0 && (() => {
+          const porDia = {}
+          sesionesNormales.forEach(s => {
+            const key = s.fecha || '__flexible__'
+            if (!porDia[key]) porDia[key] = []
+            porDia[key].push(s)
+          })
+          const dias = Object.keys(porDia).sort((a, b) => {
+            if (a === '__flexible__') return 1
+            if (b === '__flexible__') return -1
+            return a.localeCompare(b)
+          })
+          return dias.map(dia => (
+            <div key={dia} style={{ margin: '0 12px 12px' }}>
+              <div style={{ background: bloque?.color || T.accent, borderRadius: '10px 10px 0 0', padding: '8px 14px', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                {dia === '__flexible__'
+                  ? <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>🔄 Cuando mejor te encaje</span>
+                  : <>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', textTransform: 'capitalize' }}>{format(new Date(dia + 'T12:00:00'), 'EEEE', { locale: es })}</span>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{format(new Date(dia + 'T12:00:00'), 'dd MMM', { locale: es })}</span>
+                  </>
+                }
+              </div>
+              <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                {porDia[dia].map((s, i) => (
+                  <SesionCard key={s.id} sesion={s} bloque={bloque} sinFecha primeroDia={i === 0} ultimoDia={i === porDia[dia].length - 1} />
+                ))}
+              </div>
+            </div>
+          ))
+        })()}
 
         {/* Sesiones opcionales */}
         {sesionesOpcionales.length > 0 && (
@@ -383,6 +366,20 @@ export default function VistaSemanalCliente() {
             {sesionesOpcionales.map(s => (
               <SesionCard key={s.id} sesion={s} bloque={bloque} />
             ))}
+          </div>
+        )}
+
+        {/* Sesiones opcionales */}
+        {sesionesOpcionales.length > 0 && (
+          <div style={{ margin: '0 12px 12px' }}>
+            <div style={{ background: '#6b7280', borderRadius: '10px 10px 0 0', padding: '8px 14px' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Opcional</span>
+            </div>
+            <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+              {sesionesOpcionales.map((s, i) => (
+                <SesionCard key={s.id} sesion={s} bloque={bloque} sinFecha primeroDia={i === 0} ultimoDia={i === sesionesOpcionales.length - 1} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -536,50 +533,34 @@ const ESTADO_COLOR = {
   missed: { color: '#e34948', label: '✕ No realizada' },
 }
 
-function SesionCard({ sesion, bloque, flexible }) {
+function SesionCard({ sesion, bloque, sinFecha, primeroDia, ultimoDia }) {
   const estado = ESTADO_COLOR[sesion._estado] || null
   const color = estado ? estado.color : (bloque?.color || '#2d6a4f')
-  const fechaStr = sesion.fecha ? format(parseISO(sesion.fecha), 'EEEE dd MMM', { locale: es }) : null
 
   function abrirSesion() {
-    if (sesion.token_publico) {
-      window.location.href = `/sesion/${sesion.token_publico}`
-    }
+    if (sesion.token_publico) window.location.href = `/sesion/${sesion.token_publico}`
   }
 
+  const borderBottom = ultimoDia ? 'none' : '1px solid #e8e5e0'
+
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: `1px solid #e8e5e0`, marginBottom: 8, overflow: 'hidden', borderLeft: `4px solid ${color}` }}>
-      {fechaStr && (
-        <div style={{ padding: '5px 12px', background: '#f8f7f4', borderBottom: '1px solid #e8e5e0' }}>
-          <p style={{ fontSize: 10, color: '#9b9b9b', margin: 0, textTransform: 'capitalize', fontWeight: 500 }}>{fechaStr}</p>
-        </div>
-      )}
-      {flexible && !fechaStr && (
-        <div style={{ padding: '5px 12px', background: '#eff6ff', borderBottom: '1px solid #bfdbfe' }}>
-          <p style={{ fontSize: 10, color: '#1d4ed8', margin: 0, fontWeight: 500 }}>🔄 Cuando mejor te encaje esta semana</p>
-        </div>
-      )}
-      <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <IconosSesion sesion={sesion} color={color} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sesion.titulo}</p>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {sesion.duracion_min && <span style={{ fontSize: 11, color: '#9b9b9b' }}>{sesion.duracion_min} min</span>}
-            <TipoChip tipo={sesion.tipo_sesion || 'programada'} />
-            {estado && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: estado.color + '20', color: estado.color, fontWeight: 500 }}>{estado.label}</span>}
-          </div>
-        </div>
-        {sesion.token_publico && (
-          <button onClick={abrirSesion}
-            style={{ background: color, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
-            Ver
-          </button>
-        )}
+    <div style={{ borderBottom, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12, borderLeft: `4px solid ${color}` }}>
+      <div style={{ width: 36, height: 36, borderRadius: '50%', background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+        {iconoSesion(sesion)}
       </div>
-      {sesion.objetivo && (
-        <div style={{ padding: '0 14px 12px 66px' }}>
-          <p style={{ fontSize: 12, color: '#6b6b6b', margin: 0, lineHeight: 1.5 }}>{sesion.objetivo}</p>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', margin: '0 0 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sesion.titulo}</p>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {sesion.duracion_min && <span style={{ fontSize: 11, color: '#9b9b9b' }}>{sesion.duracion_min} min</span>}
+          <TipoChip tipo={sesion.tipo_sesion || 'programada'} />
+          {estado && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: estado.color + '20', color: estado.color, fontWeight: 500 }}>{estado.label}</span>}
         </div>
+      </div>
+      {sesion.token_publico && (
+        <button onClick={abrirSesion}
+          style={{ background: color, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
+          Ver
+        </button>
       )}
     </div>
   )
