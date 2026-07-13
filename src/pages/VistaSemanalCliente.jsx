@@ -230,8 +230,8 @@ export default function VistaSemanalCliente() {
   const fechaInicio = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1), 'dd MMM', { locale: es }) : ''
   const fechaFin = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1 + 1), 'dd MMM yyyy', { locale: es }) : ''
 
-  const sesionesOpcionales = sesiones.filter(s => s.tipo_sesion === 'opcional')
-  const sesionesNormales = sesiones.filter(s => s.tipo_sesion !== 'opcional')
+  const sesionesConFecha = sesiones.filter(s => s.fecha)
+  const sesionesOpcionales = sesiones.filter(s => !s.fecha)
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -327,57 +327,36 @@ export default function VistaSemanalCliente() {
         ))}
 
         {/* Sesiones agrupadas por día */}
-        {sesionesNormales.length > 0 && (() => {
+        {sesionesConFecha.length > 0 && (() => {
           const porDia = {}
-          sesionesNormales.forEach(s => {
-            const key = s.fecha || '__flexible__'
-            if (!porDia[key]) porDia[key] = []
-            porDia[key].push(s)
+          sesionesConFecha.forEach(s => {
+            if (!porDia[s.fecha]) porDia[s.fecha] = []
+            porDia[s.fecha].push(s)
           })
-          const dias = Object.keys(porDia).sort((a, b) => {
-            if (a === '__flexible__') return 1
-            if (b === '__flexible__') return -1
-            return a.localeCompare(b)
-          })
-          return dias.map(dia => (
+          return Object.keys(porDia).sort().map(dia => (
             <div key={dia} style={{ margin: '0 12px 12px' }}>
               <div style={{ background: bloque?.color || T.accent, borderRadius: '10px 10px 0 0', padding: '8px 14px', display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                {dia === '__flexible__'
-                  ? <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>🔄 Cuando mejor te encaje</span>
-                  : <>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', textTransform: 'capitalize' }}>{format(new Date(dia + 'T12:00:00'), 'EEEE', { locale: es })}</span>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{format(new Date(dia + 'T12:00:00'), 'dd MMM', { locale: es })}</span>
-                  </>
-                }
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', textTransform: 'capitalize' }}>{format(new Date(dia + 'T12:00:00'), 'EEEE', { locale: es })}</span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{format(new Date(dia + 'T12:00:00'), 'dd MMM', { locale: es })}</span>
               </div>
               <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
                 {porDia[dia].map((s, i) => (
-                  <SesionCard key={s.id} sesion={s} bloque={bloque} sinFecha primeroDia={i === 0} ultimoDia={i === porDia[dia].length - 1} />
+                  <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={i === 0} ultimoDia={i === porDia[dia].length - 1} />
                 ))}
               </div>
             </div>
           ))
         })()}
 
-        {/* Sesiones opcionales */}
-        {sesionesOpcionales.length > 0 && (
-          <div style={{ margin: '0 12px 12px' }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: T.text3, margin: '0 0 8px', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0 4px' }}>Opcional</p>
-            {sesionesOpcionales.map(s => (
-              <SesionCard key={s.id} sesion={s} bloque={bloque} />
-            ))}
-          </div>
-        )}
-
-        {/* Sesiones opcionales */}
+        {/* Sesiones sin fecha (flexibles/opcionales) */}
         {sesionesOpcionales.length > 0 && (
           <div style={{ margin: '0 12px 12px' }}>
             <div style={{ background: '#6b7280', borderRadius: '10px 10px 0 0', padding: '8px 14px' }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Opcional</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>🔄 Cuando mejor te encaje</span>
             </div>
             <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
               {sesionesOpcionales.map((s, i) => (
-                <SesionCard key={s.id} sesion={s} bloque={bloque} sinFecha primeroDia={i === 0} ultimoDia={i === sesionesOpcionales.length - 1} />
+                <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={i === 0} ultimoDia={i === sesionesOpcionales.length - 1} />
               ))}
             </div>
           </div>
