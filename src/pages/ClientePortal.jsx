@@ -131,6 +131,9 @@ export default function ClientePortal({ token }) {
   const [notas, setNotas] = useState([])
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
+  const [packs, setPacks] = useState([])
+  const [packSesiones, setPackSesiones] = useState([])
+  const [checkins, setCheckins] = useState([])
   const [tab, setTab] = useState('semana')
   const [calMes, setCalMes] = useState(new Date())
   const [bloquesAbiertos, setBloquesAbiertos] = useState(new Set())
@@ -169,6 +172,18 @@ export default function ClientePortal({ token }) {
     setCompeticiones(comps || [])
     const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', cli.id).order('fecha')
     setControles(ctrls || [])
+
+    const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', cli.id).order('fecha_inicio')
+    setPacks(pks || [])
+    if (pks?.length) {
+      const ids = pks.map(p => p.id)
+      const { data: pkSes } = await supabase.from('sesiones').select('*').in('pack_id', ids).order('orden')
+      setPackSesiones(pkSes || [])
+    }
+
+    const { data: chks } = await supabase.from('checkin_semanal').select('*').eq('cliente_id', cli.id)
+    setCheckins(chks || [])
+
     setLoading(false)
   }
 
@@ -284,9 +299,23 @@ export default function ClientePortal({ token }) {
   /* ---- TAB: ESTA SEMANA ---- */
   function TabSemana() {
     const lun = startOfWeek(new Date(), { weekStartsOn: 1 })
+    const dom = endOfWeek(new Date(), { weekStartsOn: 1 })
     const diasSemana = Array.from({ length: 7 }, (_, i) => addDays(lun, i))
     const extras = getItemsSemanaActual()
     const hechas = sesActuales.filter(s => s.estado_efectivo === 'completed' || s.estado_efectivo === 'partial').length
+
+    const packsSemana = packs.filter(p => {
+      if (!p.fecha_inicio || !p.fecha_fin) return false
+      const pi = parseISO(p.fecha_inicio + 'T12:00:00')
+      const pf = parseISO(p.fecha_fin + 'T12:00:00')
+      return pi <= dom && pf >= lun
+    })
+
+    const checkinActual = checkins.find(c => c.semana_id === semanaActualData?.id)
+
+    const ENERGIA_LABEL = { 1: '😴 Muy baja', 2: '😕 Baja', 3: '😐 Normal', 4: '😊 Buena', 5: '🔥 Muy alta' }
+    const DESCANSO_LABEL = { 1: '😴 Muy malo', 2: '😕 Malo', 3: '😐 Regular', 4: '😊 Bueno', 5: '⭐ Muy bueno' }
+    const TOLERANCIA_LABEL = { 1: 'Muy baja', 2: 'Baja', 3: 'Normal', 4: 'Buena', 5: 'Muy alta' }
 
     return (
       <div style={{ padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -389,6 +418,108 @@ export default function ClientePortal({ token }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {extras.map(x => <ItemExtra key={x.id} item={x} />)}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Packs flexibles que solapan con esta semana */}
+        {packsSemana.map(pack => {
+          const pi = parseISO(pack.fecha_inicio + 'T12:00:00')
+          const pf = parseISO(pack.fecha_fin + 'T12:00:00')
+          const inicioVisible = pi < lun ? lun : pi
+          const finVisible = pf > dom ? dom : pf
+          const sesPack = packSesiones.filter(s => s.pack_id === pack.id)
+          return (
+            <div key={pack.id} style={{ ...card, border: `1px solid ${colA}55`, borderLeft: `4px solid ${colA}` }}>
+              <div style={{ padding: '11px 13px', borderBottom: `1px solid ${T.bg2}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase', color: colA, marginBottom: 3 }}>📦 Pack flexible</div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{pack.nombre}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{format(inicioVisible, 'd MMM', { locale: es })} → {format(finVisible, 'd MMM', { locale: es })}</div>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, marginTop: 2 }}>{sesPack.length} sesiones</div>
+                  </div>
+                </div>
+                {pack.descripcion && <div style={{ fontSize: 12, color: T.ink2, marginTop: 6, lineHeight: 1.4 }}>{pack.descripcion}</div>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {sesPack.map((s, si) => (
+                  <div key={s.id} onClick={() => abrirSesion(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', borderBottom: si < sesPack.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 7, background: `${colA}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                      {iconoSesion(s)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
+                      {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Check-in semanal */}
+        {semanaActualData && (
+          <div style={card}>
+            <div style={{ padding: '12px 14px' }}>
+              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Check-in semanal</div>
+              {checkinActual ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {checkinActual.energia && (
+                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinActual.energia] || checkinActual.energia}</div>
+                      </div>
+                    )}
+                    {checkinActual.descanso && (
+                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinActual.descanso] || checkinActual.descanso}</div>
+                      </div>
+                    )}
+                    {checkinActual.horas_sueno && (
+                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinActual.horas_sueno}h/noche</div>
+                      </div>
+                    )}
+                    {checkinActual.tolerancia_carga && (
+                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinActual.tolerancia_carga] || checkinActual.tolerancia_carga}</div>
+                      </div>
+                    )}
+                  </div>
+                  {checkinActual.molestias && checkinActual.molestias !== 'No' && (
+                    <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
+                      <div style={{ fontSize: 12, color: '#633806' }}>{checkinActual.molestias}</div>
+                    </div>
+                  )}
+                  {checkinActual.comentario_libre && (
+                    <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
+                      <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinActual.comentario_libre}</div>
+                    </div>
+                  )}
+                  <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el check-in de esta semana.</div>
+                  {semanaActualData.token_publico && (
+                    <a href={`/checkin/${semanaActualData.token_publico}`}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, textDecoration: 'none' }}>
+                      📋 Hacer check-in
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
