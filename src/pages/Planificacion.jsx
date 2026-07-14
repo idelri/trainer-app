@@ -225,16 +225,21 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         return { cliente_id: clienteSeleccionado || '', nombre: '', fecha_inicio: '', fecha_fin: '', notas: '', tipo: 'deportiva' }
       case 'plan_editar':
         return { nombre: planificacion?.nombre || '', fecha_inicio: planificacion?.fecha_inicio || '', fecha_fin: planificacion?.fecha_fin || '', notas: planificacion?.notas || '', tipo: planificacion?.tipo || 'deportiva' }
-      case 'bloque':
+      case 'bloque': {
+        const fechaInicioDefault = item?.fecha_inicio || (
+          bloques.length > 0
+            ? format(addWeeks(parseISO(bloques[bloques.length - 1].fecha_inicio), bloques[bloques.length - 1].semanas), 'yyyy-MM-dd')
+            : planificacion?.fecha_inicio || ''
+        )
+        const semanasDefault = item?.semanas || 4
+        const fechaFinDefault = item?.fecha_inicio
+          ? format(addWeeks(parseISO(item.fecha_inicio), item.semanas), 'yyyy-MM-dd')
+          : (fechaInicioDefault ? format(addWeeks(parseISO(fechaInicioDefault), semanasDefault), 'yyyy-MM-dd') : '')
         return {
           nombre:             item?.nombre             || '',
           color:              item?.color              || '#2d6a4f',
-          fecha_inicio:       item?.fecha_inicio       || (
-            bloques.length > 0
-              ? format(addWeeks(parseISO(bloques[bloques.length - 1].fecha_inicio), bloques[bloques.length - 1].semanas), 'yyyy-MM-dd')
-              : planificacion?.fecha_inicio || ''
-          ),
-          semanas:            item?.semanas            || 4,
+          fecha_inicio:       fechaInicioDefault,
+          fecha_fin:          fechaFinDefault,
           objetivo:           item?.objetivo           || '',
           sesiones_min:       item?.sesiones_min       || '',
           sesiones_max:       item?.sesiones_max       || '',
@@ -243,6 +248,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           enfoque_prioridad:  item?.enfoque_prioridad  || {},
           enfoque:            item?.enfoque            || [],
         }
+      }
       case 'subbloque':
         return {
           bloque_id:          item?.bloque_id          || bloques[0]?.id || '',
@@ -367,9 +373,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         }
 
         case 'bloque': {
-          if (!formData.nombre || !formData.fecha_inicio) break
+          if (!formData.nombre || !formData.fecha_inicio || !formData.fecha_fin) break
+          const semanasCalculadas = Math.max(1, differenceInWeeks(parseISO(formData.fecha_fin), parseISO(formData.fecha_inicio)))
           const esSaludGuardar = planificacion?.tipo === 'salud'
-          const datos = { planificacion_id: planificacion.id, nombre: formData.nombre, color: formData.color || '#2d6a4f', fecha_inicio: formData.fecha_inicio, semanas: parseInt(formData.semanas) || 4, objetivo: formData.objetivo || null, orden: modalItem?.orden ?? bloques.length,
+          const datos = { planificacion_id: planificacion.id, nombre: formData.nombre, color: formData.color || '#2d6a4f', fecha_inicio: formData.fecha_inicio, semanas: semanasCalculadas, objetivo: formData.objetivo || null, orden: modalItem?.orden ?? bloques.length,
             ...(esSaludGuardar ? {
               sesiones_min:       formData.sesiones_min       ? parseInt(formData.sesiones_min)       : null,
               sesiones_max:       formData.sesiones_max       ? parseInt(formData.sesiones_max)       : null,
@@ -620,10 +627,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 <input className="form-input" type="date" value={formData.fecha_inicio || ''} onChange={e => fd('fecha_inicio', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Semanas *</label>
-                <input className="form-input" type="number" min="1" max="52" value={formData.semanas || 4} onChange={e => fd('semanas', e.target.value)} />
+                <label className="form-label">Fecha fin *</label>
+                <input className="form-input" type="date" value={formData.fecha_fin || ''} onChange={e => fd('fecha_fin', e.target.value)} />
               </div>
             </div>
+            {formData.fecha_inicio && formData.fecha_fin && parseISO(formData.fecha_fin) > parseISO(formData.fecha_inicio) && (
+              <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 500, marginTop: -8, marginBottom: 12 }}>
+                → {Math.max(1, differenceInWeeks(parseISO(formData.fecha_fin), parseISO(formData.fecha_inicio)))} semanas
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Objetivo</label>
               <textarea className="form-textarea" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} placeholder="Ej: Desarrollar base aeróbica" />
