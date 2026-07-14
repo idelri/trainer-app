@@ -1,41 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
+import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
-const EMOJI_CATS = [
-  { label: '⭐ Recientes', emojis: ['💪','🏃','🏋️','🧘','🚴','🏊','🔥','⚡','🎯','🌟','🦵','🫀','🧠','🩺','🏆','🥇','⏱️'] },
-  { label: '⚽ Deportes', emojis: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🏓','🏸','🥊','🥋','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏆','🥇','🥈','🥉','🎖️','🏅','🎣','🤿','🏹','⛳','🥅','🎿','🎽','🧢','👟'] },
-  { label: '🏃 Actividad', emojis: ['🏃','🚶','🧍','🧎','🏋️','🤸','🧘','🤼','🤺','🏇','🧗','🏄','🚣','🤽','🚴','🏊','🤾','🏌️','⛹️','🥊','🪃','🧗','🪁','🤺'] },
-  { label: '💪 Cuerpo', emojis: ['💪','🦾','🦵','🦶','🖐️','👟','🩺','🩻','❤️','🫀','🫁','🧠','👁️','🦷','🦴','🩹','💉','💊','🌡️','🧬','🔬'] },
-  { label: '⚡ Energía', emojis: ['🔥','⚡','💥','💫','✨','🌟','⭐','🌊','🌬️','❄️','☀️','🌙','🌈','🎆','💢','🔆','🌀'] },
-  { label: '🎯 Objetos', emojis: ['🎯','⏱️','⏰','🕐','📊','📈','📉','🗓️','📋','✅','🔁','💡','🧩','🎲','🪙','🧰','⚙️','🔩','🪛','🔧','🩺','🌡️','🧪','📝','🗒️','📌','🗂️','📁'] },
-  { label: '😊 Caras', emojis: ['😤','😅','😓','🥵','🥶','😵','🤯','😤','💪','🦸','🧑‍⚕️','🧑‍🏫','😎','🤩','😁','😊','🙂','😶','😴','🥱','🤒','😷','🤕'] },
-  { label: '🌿 Naturaleza', emojis: ['🌿','🌱','🌾','🍃','🌲','🌳','🌴','🍀','🌻','🌺','🌸','🌼','🍎','🍊','🍋','🥑','🥦','🫐','🍓'] },
-  { label: '🎵 Varios', emojis: ['🎵','🎶','🎸','🥁','🎺','🎻','🎹','🎤','🎧','🎬','🎮','🕹️','🎭','🎨','✏️','📚','💻','📱','🖥️','⌚','🔋','💡','🕯️','🔦'] },
-]
-
-const EMOJI_SEARCH = {
-  '💪': 'fuerza brazos musculo','🏃': 'correr carrera run','🏋️': 'pesas gym peso','🧘': 'yoga meditacion stretching','🚴': 'bici ciclismo spinning',
-  '🏊': 'nadar natacion piscina','🔥': 'fuego calor intensidad','⚡': 'rayo energia electrico','🎯': 'diana objetivo meta','🌟': 'estrella brillo',
-  '⚽': 'futbol balon','🏀': 'baloncesto basket','🎾': 'tenis padel','🥊': 'boxeo puñetazo','🧗': 'escalada trepar',
-  '🤸': 'gimnasia acrobacia','🏄': 'surf ola playa','🤽': 'waterpolo agua','🚣': 'remo kayak','🤼': 'lucha combate',
-  '⛹️': 'baloncesto saltar','🏇': 'equitacion caballo','🤺': 'esgrima espada','🏌️': 'golf','🏹': 'arco flecha',
-  '🎣': 'pesca pescar','🤿': 'buceo snorkel agua','💥': 'explosion impacto','💫': 'mareo energía','🦵': 'pierna cuadriceps',
-  '🦶': 'pie tobillo','🫀': 'corazon cardio','🧠': 'cerebro mental','🦴': 'hueso estructura','🩺': 'medico salud',
-  '🩻': 'rayos X hueso','⏱️': 'tiempo cronometro','📊': 'grafica datos','🏆': 'trofeo campeon','🥇': 'oro primero podio',
-  '❤️': 'corazon amor','🌊': 'ola agua mar','❄️': 'frio hielo','☀️': 'sol calor','🎿': 'ski nieve invierno',
-  '⛷️': 'esqui nieve montana','🏂': 'snowboard','🪂': 'paracaidas salto','🏅': 'medalla premio','🛹': 'skateboard',
-  '⛸️': 'patinaje hielo','🏸': 'badminton','🏓': 'ping pong tenis mesa','🥋': 'karate judo artes marciales',
-  '🎽': 'ropa deportiva camiseta','👟': 'zapatillas running','😤': 'esfuerzo concentracion','🥵': 'calor agotado',
-  '💊': 'pastilla medicina','🩹': 'herida recuperacion','🧬': 'biologia genetica','🔬': 'ciencia laboratorio',
-  '✅': 'completado hecho ok','🔁': 'repeticion ciclo','💡': 'idea plan','🗓️': 'calendario fecha',
-}
-
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -392,9 +364,6 @@ export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla,
   const [biblioteca, setBiblioteca] = useState(null) // null = no cargada aún
   const [panelBiblioteca, setPanelBiblioteca] = useState(false)
   const [guardandoEnBib, setGuardandoEnBib] = useState(false)
-  const [emojiPickerAbierto, setEmojiPickerAbierto] = useState(false)
-  const [emojiCat, setEmojiCat] = useState(0)
-  const [emojiBusqueda, setEmojiBusqueda] = useState('')
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
   const [bibFiltros, setBibFiltros] = useState({}) // { [campo]: subvariable | null } — campos activos
   const [guardadoOk, setGuardadoOk] = useState(false)
@@ -1442,58 +1411,7 @@ async function guardarSesion() {
             </div>
             <div className="form-group">
               <label className="form-label">Icono(s)</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ fontSize: 26, minWidth: 36, textAlign: 'center' }}>{formSesion.icono || '💪'}</div>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setEmojiPickerAbierto(v => !v); setEmojiBusqueda(''); setEmojiCat(0) }}>
-                  {emojiPickerAbierto ? 'Cerrar' : '😊 Elegir icono'}
-                </button>
-                {formSesion.icono && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--text3)' }} onClick={() => setFormSesion(f => ({ ...f, icono: '' }))}>✕ Quitar</button>}
-              </div>
-              {emojiPickerAbierto && (() => {
-                const todosEmojis = [...new Set(EMOJI_CATS.flatMap(c => c.emojis))]
-                const q = emojiBusqueda.toLowerCase().trim()
-                const emojisFiltrados = q
-                  ? todosEmojis.filter(e => (EMOJI_SEARCH[e] || '').includes(q) || e === q)
-                  : null
-                const catActiva = EMOJI_CATS[emojiCat]
-                const lista = emojisFiltrados || catActiva.emojis
-                return (
-                  <div style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg)', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-                    {/* Buscador */}
-                    <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid var(--border)' }}>
-                      <input className="form-input" placeholder="Buscar emoji..." value={emojiBusqueda} onChange={e => setEmojiBusqueda(e.target.value)} style={{ fontSize: 13 }} autoFocus />
-                    </div>
-                    {/* Tabs categorías */}
-                    {!emojiBusqueda && (
-                      <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--border)', padding: '4px 8px', gap: 2 }}>
-                        {EMOJI_CATS.map((cat, i) => (
-                          <button key={i} type="button" onClick={() => setEmojiCat(i)}
-                            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, border: 'none', background: emojiCat === i ? 'var(--accent-light,#e8f5f0)' : 'transparent', color: emojiCat === i ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: emojiCat === i ? 600 : 400 }}>
-                            {cat.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {/* Grid emojis */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: '10px 10px', maxHeight: 220, overflowY: 'auto' }}>
-                      {lista.map((ico, idx) => {
-                        const selected = (formSesion.icono || '') === ico
-                        return (
-                          <button key={ico + idx} type="button"
-                            onClick={() => { setFormSesion(f => ({ ...f, icono: f.icono === ico ? '' : ico })); setEmojiPickerAbierto(false) }}
-                            title={ico}
-                            style={{ fontSize: 22, width: 38, height: 38, borderRadius: 8, border: `2px solid ${selected ? 'var(--accent)' : 'transparent'}`, background: selected ? 'var(--accent-light,#e8f5f0)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg2)' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = selected ? 'var(--accent-light,#e8f5f0)' : 'transparent' }}>
-                            {ico}
-                          </button>
-                        )
-                      })}
-                      {lista.length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)', padding: '8px 4px' }}>Sin resultados</span>}
-                    </div>
-                  </div>
-                )
-              })()}
+              <EmojiPicker value={formSesion.icono || ''} onChange={v => setFormSesion(f => ({ ...f, icono: v }))} />
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
             <div className="form-group">

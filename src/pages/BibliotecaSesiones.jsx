@@ -3,8 +3,7 @@ import { supabase } from '../lib/supabase'
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, Search } from 'lucide-react'
-
-const ICONOS = ['💪','🏃','🚶','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🔥','⚡','🌟','🎽','🦵','🫀','🧠','🎯']
+import EmojiPicker from '../components/EmojiPicker'
 const ETIQUETAS_SESION = ['Fuerza', 'Resistencia', 'Movilidad', 'Activación', 'HIIT', 'Recuperación', 'Core', 'Potencia', 'Técnica', 'Preventivo', 'Evaluación / Test']
 
 async function copiarPlantillaASesion({ plantilla, clienteId, fecha }) {
@@ -467,14 +466,7 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
             </div>
             <div className="form-group">
               <label className="form-label">Icono</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {ICONOS.map(ic => (
-                  <button key={ic} type="button" onClick={() => setForm(f => ({ ...f, icono: f.icono === ic ? '' : ic }))}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: `2px solid ${form.icono === ic ? 'var(--accent)' : 'var(--border)'}`, background: form.icono === ic ? 'var(--accent-light,#e8f5f0)' : 'var(--bg)', fontSize: 17, cursor: 'pointer' }}>
-                    {ic}
-                  </button>
-                ))}
-              </div>
+              <EmojiPicker value={form.icono || ''} onChange={v => setForm(f => ({ ...f, icono: v }))} />
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -525,14 +517,7 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
             </div>
             <div className="form-group">
               <label className="form-label">Icono</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {ICONOS.slice(0, 10).map(ic => (
-                  <button key={ic} type="button" onClick={() => setFormNueva(f => ({ ...f, icono: f.icono === ic ? '' : ic }))}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: `2px solid ${formNueva.icono === ic ? 'var(--accent)' : 'var(--border)'}`, background: formNueva.icono === ic ? 'var(--accent-light,#e8f5f0)' : 'var(--bg)', fontSize: 17, cursor: 'pointer' }}>
-                    {ic}
-                  </button>
-                ))}
-              </div>
+              <EmojiPicker value={formNueva.icono || ''} onChange={v => setFormNueva(f => ({ ...f, icono: v }))} />
             </div>
             <div className="form-row">
               <div className="form-group">
