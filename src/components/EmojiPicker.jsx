@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const EMOJI_CATS = [
   { label: '⭐ Recientes', emojis: ['💪','🏃','🏋️','🧘','🚴','🏊','🔥','⚡','🎯','🌟','🦵','🫀','🧠','🩺','🏆','🥇','⏱️'] },
@@ -29,17 +29,20 @@ const EMOJI_SEARCH = {
   '✅': 'completado hecho ok','🔁': 'repeticion ciclo','💡': 'idea plan','🗓️': 'calendario fecha',
 }
 
-/**
- * EmojiPicker — selector de emojis con buscador y categorías.
- *
- * Props:
- *   value   string   — emoji actual
- *   onChange fn(emoji) — callback al seleccionar
- */
 export default function EmojiPicker({ value, onChange }) {
   const [abierto, setAbierto] = useState(false)
   const [cat, setCat] = useState(0)
   const [busqueda, setBusqueda] = useState('')
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setAbierto(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [abierto])
 
   function seleccionar(ico) {
     onChange(value === ico ? '' : ico)
@@ -53,8 +56,8 @@ export default function EmojiPicker({ value, onChange }) {
     : EMOJI_CATS[cat].emojis
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ fontSize: 26, minWidth: 36, textAlign: 'center' }}>{value || '💪'}</div>
         <button type="button" className="btn btn-ghost btn-sm"
           onClick={() => { setAbierto(v => !v); setBusqueda(''); setCat(0) }}>
@@ -69,10 +72,25 @@ export default function EmojiPicker({ value, onChange }) {
       </div>
 
       {abierto && (
-        <div style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg)', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+        <div style={{
+          position: 'fixed',
+          zIndex: 9999,
+          width: 320,
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          background: 'var(--bg)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          overflow: 'hidden',
+          top: ref.current ? (() => {
+            const r = ref.current.getBoundingClientRect()
+            const spaceBelow = window.innerHeight - r.bottom
+            return spaceBelow > 300 ? r.bottom + 4 : r.top - 304
+          })() : 100,
+          left: ref.current ? Math.min(ref.current.getBoundingClientRect().left, window.innerWidth - 328) : 0,
+        }}>
           {/* Buscador */}
           <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid var(--border)' }}>
-            <input className="form-input" placeholder="Buscar emoji... (fuerza, cardio, yoga...)"
+            <input className="form-input" placeholder="Buscar... (fuerza, cardio, yoga...)"
               value={busqueda} onChange={e => setBusqueda(e.target.value)}
               style={{ fontSize: 13 }} autoFocus />
           </div>
@@ -95,9 +113,7 @@ export default function EmojiPicker({ value, onChange }) {
               const sel = value === ico
               return (
                 <button key={ico + idx} type="button" onClick={() => seleccionar(ico)} title={EMOJI_SEARCH[ico] || ico}
-                  style={{ fontSize: 22, width: 38, height: 38, borderRadius: 8, border: `2px solid ${sel ? 'var(--accent)' : 'transparent'}`, background: sel ? 'var(--accent-light,#e8f5f0)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg2)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = sel ? 'var(--accent-light,#e8f5f0)' : 'transparent' }}>
+                  style={{ fontSize: 22, width: 38, height: 38, borderRadius: 8, border: `2px solid ${sel ? 'var(--accent)' : 'transparent'}`, background: sel ? 'var(--accent-light,#e8f5f0)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {ico}
                 </button>
               )
