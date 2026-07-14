@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Search } from 'lucide-react'
 
 const ICONOS = ['💪','🏃','🚶','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🔥','⚡','🌟','🎽','🦵','🫀','🧠','🎯']
-const ETIQUETAS_SESION = ['Fuerza', 'Resistencia', 'Movilidad', 'Activación', 'HIIT', 'Recuperación', 'Core', 'Potencia', 'Técnica', 'Preventivo']
+const ETIQUETAS_SESION = ['Fuerza', 'Resistencia', 'Movilidad', 'Activación', 'HIIT', 'Recuperación', 'Core', 'Potencia', 'Técnica', 'Preventivo', 'Evaluación / Test']
 
 async function copiarPlantillaASesion({ plantilla, clienteId, fecha }) {
   const { data: nueva } = await supabase.from('sesiones').insert({
