@@ -1410,7 +1410,7 @@ async function guardarSesion() {
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Icono(s)</label>
+              <label className="form-label">Icono de sesión</label>
               <EmojiPicker value={formSesion.icono || ''} onChange={v => setFormSesion(f => ({ ...f, icono: v }))} />
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
