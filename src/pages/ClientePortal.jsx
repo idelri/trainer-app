@@ -505,7 +505,7 @@ export default function ClientePortal({ token }) {
         {semanaActualData && (
           <div style={card}>
             <div style={{ padding: '12px 14px' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Check-in semanal</div>
+              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
               {checkinActual ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -550,11 +550,11 @@ export default function ClientePortal({ token }) {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el check-in de esta semana.</div>
+                  <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
                   {semanaActualData.token_publico && (
                     <a href={`/checkin/${semanaActualData.token_publico}`}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, textDecoration: 'none' }}>
-                      📋 Hacer check-in
+                      📋 Enviar feedback de semana
                     </a>
                   )}
                 </div>

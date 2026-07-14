@@ -136,13 +136,13 @@ function BloqueCheckin({ checkin }) {
   if (!checkin) {
     return (
       <div className="card" style={{ marginBottom: 12, padding: '14px 16px', background: 'var(--bg)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Sin check-in semanal registrado.</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Sin feedback de semana registrado.</span>
       </div>
     )
   }
   return (
     <div style={{ marginBottom: 12, padding: 16, borderRadius: 'var(--radius)', background: VERDE_BG, border: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Check-in semanal</div>
+      <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Feedback de semana</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4 }}>Energía</div>
@@ -408,7 +408,7 @@ function SubvistaTabla({ semanasPorMes, semanasEnriquecidas, clienteData }) {
         </select>
         <select className="form-select" style={{ maxWidth: 180 }} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
           <option value="todo">Todo</option>
-          <option value="checkins">Solo check-ins</option>
+          <option value="checkins">Solo feedback de semana</option>
           <option value="sesiones">Solo sesiones</option>
         </select>
       </div>
@@ -426,7 +426,7 @@ function SubvistaTabla({ semanasPorMes, semanasEnriquecidas, clienteData }) {
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer', background: 'var(--bg2)', borderBottom: abierto ? '1px solid var(--border)' : 'none' }}>
                 {abierto ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                 <span style={{ fontSize: 14, fontWeight: 600, textTransform: 'capitalize' }}>{mes.label}</span>
-                <span style={{ fontSize: 11.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{numCheckins} check-ins · {numSesionesFb} sesiones con feedback</span>
+                <span style={{ fontSize: 11.5, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{numCheckins} feedback de semana · {numSesionesFb} sesiones con feedback</span>
               </div>
               {abierto && mes.semanas.map(semana => {
                 const semAbierta = semanasAbiertas[semana.id] ?? false

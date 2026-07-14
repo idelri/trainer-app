@@ -412,11 +412,11 @@ export default function VistaSemanalCliente() {
               <div style={{ padding: '24px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
                 <p style={{ fontSize: 15, fontWeight: 500, color: T.text, margin: '0 0 6px' }}>¡Gracias!</p>
-                <p style={{ fontSize: 13, color: T.text2, margin: 0 }}>Tu check-in se ha enviado correctamente.</p>
+                <p style={{ fontSize: 13, color: T.text2, margin: 0 }}>Tu feedback de semana se ha enviado correctamente.</p>
               </div>
             ) : yaRespondido ? (
               <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-                <p style={{ fontSize: 13, color: T.text2, margin: 0 }}>Ya enviaste el check-in de esta semana. ¡Gracias!</p>
+                <p style={{ fontSize: 13, color: T.text2, margin: 0 }}>Ya enviaste el feedback de semana. ¡Gracias!</p>
               </div>
             ) : (
               <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -494,7 +494,7 @@ export default function VistaSemanalCliente() {
 
                 <button onClick={enviarCheckin} disabled={enviando}
                   style={{ width: '100%', padding: 16, borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 15, fontWeight: 500, cursor: enviando ? 'not-allowed' : 'pointer', opacity: enviando ? 0.7 : 1, fontFamily: 'inherit' }}>
-                  {enviando ? 'Enviando...' : 'Enviar check-in semanal'}
+                  {enviando ? 'Enviando...' : 'Enviar feedback de semana'}
                 </button>
                 <p style={{ fontSize: 12, color: T.text3, textAlign: 'center', margin: '-10px 0 0' }}>Tu entrenadora lo recibirá antes de planificar la siguiente semana.</p>
               </div>

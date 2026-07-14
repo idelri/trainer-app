@@ -146,7 +146,7 @@ export default function CheckinSemanal() {
       <div style={{ textAlign: 'center', maxWidth: 320 }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 28 }}>✓</div>
         <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>¡Gracias!</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>Tu check-in semanal se ha enviado correctamente. Tu entrenadora lo revisará antes de planificar la siguiente semana.</p>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>Tu feedback de semana se ha enviado correctamente. Tu entrenadora lo revisará antes de planificar la siguiente semana.</p>
       </div>
     </div>
   )
@@ -155,8 +155,8 @@ export default function CheckinSemanal() {
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center', maxWidth: 320 }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-        <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>Ya respondiste este check-in</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>El check-in de esta semana ya fue enviado correctamente.</p>
+        <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>Ya enviaste el feedback de semana</h2>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>El feedback de semana ya fue enviado correctamente.</p>
       </div>
     </div>
   )
@@ -262,7 +262,7 @@ export default function CheckinSemanal() {
             style={{ width: '100%', padding: 16, borderRadius: 12, border: 'none', background: T.accent, color: '#fff', fontSize: 15, fontWeight: 500, cursor: enviando ? 'not-allowed' : 'pointer', opacity: enviando ? 0.7 : 1, fontFamily: 'inherit' }}>
             {enviando ? 'Enviando...' : 'Enviar respuestas'}
           </button>
-          <p style={{ fontSize: 12, color: T.text3, textAlign: 'center', margin: '10px 0 0' }}>Tu entrenadora recibirá este check-in antes de planificar la siguiente semana.</p>
+          <p style={{ fontSize: 12, color: T.text3, textAlign: 'center', margin: '10px 0 0' }}>Tu entrenadora recibirá este feedback antes de planificar la siguiente semana.</p>
         </div>
 
       </div>
