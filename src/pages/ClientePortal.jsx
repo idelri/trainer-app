@@ -137,6 +137,7 @@ export default function ClientePortal({ token }) {
   const [tab, setTab] = useState('semana')
   const [calMes, setCalMes] = useState(new Date())
   const [bloquesAbiertos, setBloquesAbiertos] = useState(new Set())
+  const [vista, setVista] = useState(() => window.innerWidth >= 768 ? 'escritorio' : 'movil')
 
   useEffect(() => { cargar() }, [token])
 
@@ -293,6 +294,7 @@ export default function ClientePortal({ token }) {
   const sesActuales = getSesionesSemanaActual()
   const colA = bloqueActivo?.color || T.green
 
+  const isDesktop = vista === 'escritorio'
   const card = { background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden' }
   const DIAS_SEM = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
@@ -317,42 +319,110 @@ export default function ClientePortal({ token }) {
     const DESCANSO_LABEL = { 1: '😴 Muy malo', 2: '😕 Malo', 3: '😐 Regular', 4: '😊 Bueno', 5: '⭐ Muy bueno' }
     const TOLERANCIA_LABEL = { 1: 'Muy baja', 2: 'Baja', 3: 'Normal', 4: 'Buena', 5: 'Muy alta' }
 
-    return (
-      <div style={{ padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-        {/* Hero: semana actual */}
-        <div style={{ ...card, borderLeft: `4px solid ${colA}` }}>
-          <div style={{ padding: '13px 14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: colA }}>● {bloqueActivo ? bloqueActivo.nombre : 'Esta semana'}</div>
-              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{format(new Date(), 'dd MMM yyyy', { locale: es })}</div>
+    /* Hero + nota + feedback — reutilizados en sidebar (desktop) o inline (móvil) */
+    const HeroSemana = () => (
+      <div style={{ ...card, borderLeft: `4px solid ${colA}` }}>
+        <div style={{ padding: '13px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: colA }}>● {bloqueActivo ? bloqueActivo.nombre : 'Esta semana'}</div>
+            <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{format(new Date(), 'dd MMM yyyy', { locale: es })}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 7 }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Semana {semanaNum}</div>
+            {subbloqueActivo && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3 }}>· {subbloqueActivo.nombre}</div>}
+          </div>
+          {semanaActualData?.objetivo && (
+            <div style={{ fontSize: 12.5, color: T.ink2, marginTop: 5, lineHeight: 1.45 }}>{semanaActualData.objetivo}</div>
+          )}
+          <div style={{ marginTop: 10 }}>
+            <div style={{ height: 5, background: T.bg2, borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progreso}%`, background: colA, borderRadius: 3 }} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 7 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Semana {semanaNum}</div>
-              {subbloqueActivo && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3 }}>· {subbloqueActivo.nombre}</div>}
-            </div>
-            {semanaActualData?.objetivo && (
-              <div style={{ fontSize: 12.5, color: T.ink2, marginTop: 5, lineHeight: 1.45 }}>{semanaActualData.objetivo}</div>
-            )}
-            <div style={{ marginTop: 10 }}>
-              <div style={{ height: 5, background: T.bg2, borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progreso}%`, background: colA, borderRadius: 3 }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{semanaNum} de {totalSem} · {hechas}/{sesActuales.length} sesiones</span>
-                <span style={{ fontFamily: T.mono, fontSize: 9, color: colA, fontWeight: 600 }}>{progreso}%</span>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+              <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{semanaNum} de {totalSem} · {hechas}/{sesActuales.length} sesiones</span>
+              <span style={{ fontFamily: T.mono, fontSize: 9, color: colA, fontWeight: 600 }}>{progreso}%</span>
             </div>
           </div>
         </div>
+      </div>
+    )
 
-        {/* Nota de la entrenadora */}
-        {semanaActualData?.nota_cliente && (
-          <div style={{ background: '#fffbe6', borderRadius: 10, padding: '10px 13px', border: '1px solid #f0e5a0' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 600, color: '#8a7200', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 4 }}>📌 Nota de tu entrenadora</div>
-            <div style={{ fontSize: 12.5, color: '#5a4e00', lineHeight: 1.5 }}>{semanaActualData.nota_cliente}</div>
-          </div>
-        )}
+    const NotaEntrenadora = () => semanaActualData?.nota_cliente ? (
+      <div style={{ background: '#fffbe6', borderRadius: 10, padding: '10px 13px', border: '1px solid #f0e5a0' }}>
+        <div style={{ fontFamily: T.mono, fontSize: 9, fontWeight: 600, color: '#8a7200', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 4 }}>📌 Nota de tu entrenadora</div>
+        <div style={{ fontSize: 12.5, color: '#5a4e00', lineHeight: 1.5 }}>{semanaActualData.nota_cliente}</div>
+      </div>
+    ) : null
+
+    const FeedbackSemana = () => semanaActualData ? (
+      <div style={card}>
+        <div style={{ padding: '12px 14px' }}>
+          <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
+          {checkinActual ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {checkinActual.energia && (
+                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinActual.energia] || checkinActual.energia}</div>
+                  </div>
+                )}
+                {checkinActual.descanso && (
+                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinActual.descanso] || checkinActual.descanso}</div>
+                  </div>
+                )}
+                {checkinActual.horas_sueno && (
+                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinActual.horas_sueno}h/noche</div>
+                  </div>
+                )}
+                {checkinActual.tolerancia_carga && (
+                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinActual.tolerancia_carga] || checkinActual.tolerancia_carga}</div>
+                  </div>
+                )}
+              </div>
+              {checkinActual.molestias && checkinActual.molestias !== 'No' && (
+                <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
+                  <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
+                  <div style={{ fontSize: 12, color: '#633806' }}>{checkinActual.molestias}</div>
+                </div>
+              )}
+              {checkinActual.comentario_libre && (
+                <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
+                  <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
+                  <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinActual.comentario_libre}</div>
+                </div>
+              )}
+              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
+              {semanaActualData.token_publico && (
+                <a href={`/checkin/${semanaActualData.token_publico}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, textDecoration: 'none' }}>
+                  📋 Enviar feedback de semana
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    ) : null
+
+    return (
+      <div style={isDesktop
+        ? { display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, padding: '20px 0 60px', alignItems: 'start' }
+        : { padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* SIDEBAR derecha en desktop — inline al inicio en móvil */}
+        {!isDesktop && <HeroSemana />}
+        {!isDesktop && <NotaEntrenadora />}
 
         {/* Sesiones por día + packs flexibles integrados cronológicamente */}
         <div>
@@ -488,8 +558,8 @@ export default function ClientePortal({ token }) {
           </div>
         </div>
 
-        {/* Notas y eventos de la semana */}
-        {extras.length > 0 && (
+        {/* Notas y eventos — en móvil van inline al final de las sesiones */}
+        {!isDesktop && extras.length > 0 && (
           <div style={card}>
             <div style={{ padding: '12px 14px' }}>
               <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>Notas y eventos</div>
@@ -499,67 +569,24 @@ export default function ClientePortal({ token }) {
             </div>
           </div>
         )}
+        {!isDesktop && <FeedbackSemana />}
 
-
-        {/* Check-in semanal */}
-        {semanaActualData && (
-          <div style={card}>
-            <div style={{ padding: '12px 14px' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
-              {checkinActual ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {checkinActual.energia && (
-                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinActual.energia] || checkinActual.energia}</div>
-                      </div>
-                    )}
-                    {checkinActual.descanso && (
-                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinActual.descanso] || checkinActual.descanso}</div>
-                      </div>
-                    )}
-                    {checkinActual.horas_sueno && (
-                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinActual.horas_sueno}h/noche</div>
-                      </div>
-                    )}
-                    {checkinActual.tolerancia_carga && (
-                      <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                        <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinActual.tolerancia_carga] || checkinActual.tolerancia_carga}</div>
-                      </div>
-                    )}
+        {/* SIDEBAR — solo en desktop */}
+        {isDesktop && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <HeroSemana />
+            <NotaEntrenadora />
+            {extras.length > 0 && (
+              <div style={card}>
+                <div style={{ padding: '12px 14px' }}>
+                  <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>Notas y eventos</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {extras.map(x => <ItemExtra key={x.id} item={x} />)}
                   </div>
-                  {checkinActual.molestias && checkinActual.molestias !== 'No' && (
-                    <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
-                      <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
-                      <div style={{ fontSize: 12, color: '#633806' }}>{checkinActual.molestias}</div>
-                    </div>
-                  )}
-                  {checkinActual.comentario_libre && (
-                    <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
-                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
-                      <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinActual.comentario_libre}</div>
-                    </div>
-                  )}
-                  <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
-                  {semanaActualData.token_publico && (
-                    <a href={`/checkin/${semanaActualData.token_publico}`}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, textDecoration: 'none' }}>
-                      📋 Enviar feedback de semana
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+            <FeedbackSemana />
           </div>
         )}
       </div>
@@ -576,7 +603,9 @@ export default function ClientePortal({ token }) {
     const extras = getItemsCalMes()
 
     return (
-      <div style={{ padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={isDesktop
+        ? { display: 'grid', gridTemplateColumns: '360px 1fr', gap: 20, padding: '20px 0 60px', alignItems: 'start' }
+        : { padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={card}>
           <div style={{ padding: '13px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -614,46 +643,46 @@ export default function ClientePortal({ token }) {
           </div>
         </div>
 
-        {/* Detalle del día seleccionado */}
-        <div style={card}>
-          <div style={{ padding: '12px 14px' }}>
-            <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>
-              {format(diaSelec, "EEEE d 'de' MMMM", { locale: es })}
-            </div>
-            {sesDia.length === 0 ? (
-              <div style={{ fontSize: 12, color: T.ink3, padding: '8px 0' }}>Sin sesiones este día</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {sesDia.map((s, si) => {
-                  const bd = badgeEstado(s.estado_efectivo)
-                  return (
-                    <div key={s.id} onClick={() => abrirSesion(s)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: si < sesDia.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colA}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{iconoSesion(s)}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
-                        {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
-                      </div>
-                      <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, flexShrink: 0 }}>{bd.label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Notas y eventos del mes */}
-        {extras.length > 0 && (
+        {/* Columna derecha en desktop: detalle día + notas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={card}>
             <div style={{ padding: '12px 14px' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>Notas y eventos · {format(calMes, 'MMMM', { locale: es })}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {extras.map(x => <ItemExtra key={x.id} item={x} />)}
+              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>
+                {format(diaSelec, "EEEE d 'de' MMMM", { locale: es })}
               </div>
+              {sesDia.length === 0 ? (
+                <div style={{ fontSize: 12, color: T.ink3, padding: '8px 0' }}>Sin sesiones este día</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {sesDia.map((s, si) => {
+                    const bd = badgeEstado(s.estado_efectivo)
+                    return (
+                      <div key={s.id} onClick={() => abrirSesion(s)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: si < sesDia.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colA}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{iconoSesion(s)}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
+                          {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
+                        </div>
+                        <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, flexShrink: 0 }}>{bd.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
-        )}
+          {extras.length > 0 && (
+            <div style={card}>
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 8 }}>Notas y eventos · {format(calMes, 'MMMM', { locale: es })}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {extras.map(x => <ItemExtra key={x.id} item={x} />)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -663,7 +692,9 @@ export default function ClientePortal({ token }) {
     const inicio = plan?.fecha_inicio ? parseISO(plan.fecha_inicio + 'T12:00:00') : null
 
     return (
-      <div style={{ padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={isDesktop
+        ? { display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 0 60px' }
+        : { padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         {/* Resumen del plan */}
         {plan && (
@@ -789,23 +820,32 @@ export default function ClientePortal({ token }) {
 
       {/* HEADER sticky */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', borderBottom: `1px solid ${T.border}` }}>
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '13px 16px 0' }}>
+        <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '13px 24px 0' : '13px 16px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, paddingBottom: 10 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3 }}>Planificación</div>
               <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-.3px', marginTop: 2 }}>{cliente?.nombre}</div>
               <div style={{ fontSize: 11, color: T.ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plan?.nombre || 'Sin plan activo'}</div>
             </div>
-            <div style={{ flexShrink: 0, textAlign: 'right' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 600, color: colA }}>{semanaNum > 0 ? <>S{semanaNum}<span style={{ color: T.ink3, fontWeight: 400 }}>/{totalSem}</span></> : `${totalSem} sem`}</div>
-              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, marginTop: 1 }}>{progreso}% completado</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: T.mono, fontSize: 14, fontWeight: 600, color: colA }}>{semanaNum > 0 ? <>S{semanaNum}<span style={{ color: T.ink3, fontWeight: 400 }}>/{totalSem}</span></> : `${totalSem} sem`}</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, marginTop: 1 }}>{progreso}% completado</div>
+              </div>
+              {/* Toggle vista */}
+              <div style={{ display: 'flex', gap: 3 }}>
+                <button onClick={() => setVista('movil')} title="Vista móvil"
+                  style={{ width: 28, height: 26, borderRadius: 6, border: `1px solid ${!isDesktop ? colA : T.border}`, background: !isDesktop ? T.greenL : 'transparent', cursor: 'pointer', fontSize: 13, color: !isDesktop ? colA : T.ink3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📱</button>
+                <button onClick={() => setVista('escritorio')} title="Vista escritorio"
+                  style={{ width: 28, height: 26, borderRadius: 6, border: `1px solid ${isDesktop ? colA : T.border}`, background: isDesktop ? T.greenL : 'transparent', cursor: 'pointer', fontSize: 13, color: isDesktop ? colA : T.ink3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🖥</button>
+              </div>
             </div>
           </div>
           {/* TABS */}
           <div style={{ display: 'flex', borderTop: `1px solid ${T.bg2}` }}>
             {[['semana', 'Esta semana'], ['calendario', 'Calendario'], ['plan', 'Mi plan']].map(([id, label]) => (
               <div key={id} onClick={() => setTab(id)}
-                style={{ flex: 1, textAlign: 'center', padding: '8px 4px 7px', fontSize: 12, fontWeight: tab === id ? 600 : 400, color: tab === id ? colA : T.ink3, cursor: 'pointer', borderBottom: tab === id ? `2px solid ${colA}` : '2px solid transparent', transition: 'all .15s' }}>
+                style={{ flex: isDesktop ? 0 : 1, padding: isDesktop ? '8px 20px 7px' : '8px 4px 7px', textAlign: 'center', fontSize: 12, fontWeight: tab === id ? 600 : 400, color: tab === id ? colA : T.ink3, cursor: 'pointer', borderBottom: tab === id ? `2px solid ${colA}` : '2px solid transparent', transition: 'all .15s' }}>
                 {label}
               </div>
             ))}
@@ -813,7 +853,7 @@ export default function ClientePortal({ token }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '0 24px' : '0' }}>
         {tab === 'semana' && <TabSemana />}
         {tab === 'calendario' && <TabCalendario />}
         {tab === 'plan' && <TabPlan />}
