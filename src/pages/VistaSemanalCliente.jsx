@@ -209,7 +209,7 @@ export default function VistaSemanalCliente() {
     })
     setEnviando(false)
     if (error) {
-      alert('No se pudo enviar el check-in. Inténtalo de nuevo.')
+      alert('No se pudo enviar el feedback de semana. Inténtalo de nuevo.')
       return
     }
     setCheckinEnviado(true)
@@ -232,6 +232,29 @@ export default function VistaSemanalCliente() {
 
   const sesionesConFecha = sesiones.filter(s => s.fecha)
   const sesionesOpcionales = sesiones.filter(s => !s.fecha)
+
+  const fechaInicioStr = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1), 'yyyy-MM-dd') : ''
+
+  // Construir lista cronológica: días con sesiones + packs interleaved
+  const buildSemanaItems = () => {
+    const porDia = {}
+    sesionesConFecha.forEach(s => {
+      if (!porDia[s.fecha]) porDia[s.fecha] = []
+      porDia[s.fecha].push(s)
+    })
+    const items = []
+    Object.keys(porDia).sort().forEach(dia => items.push({ type: 'dia', dia, sesDia: porDia[dia] }))
+    packsConSesiones.forEach(pack => {
+      const efectiveDate = pack.fecha_inicio < fechaInicioStr ? fechaInicioStr : pack.fecha_inicio
+      items.push({ type: 'pack', pack, efectiveDate })
+    })
+    items.sort((a, b) => {
+      const da = a.type === 'dia' ? a.dia : a.efectiveDate
+      const db = b.type === 'dia' ? b.dia : b.efectiveDate
+      return da.localeCompare(db)
+    })
+    return items
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -326,27 +349,67 @@ export default function VistaSemanalCliente() {
           </div>
         ))}
 
-        {/* Sesiones agrupadas por día */}
-        {sesionesConFecha.length > 0 && (() => {
-          const porDia = {}
-          sesionesConFecha.forEach(s => {
-            if (!porDia[s.fecha]) porDia[s.fecha] = []
-            porDia[s.fecha].push(s)
-          })
-          return Object.keys(porDia).sort().map(dia => (
-            <div key={dia} style={{ margin: '0 12px 12px' }}>
-              <div style={{ background: bloque?.color || T.accent, borderRadius: '10px 10px 0 0', padding: '8px 14px', display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', textTransform: 'capitalize' }}>{format(new Date(dia + 'T12:00:00'), 'EEEE', { locale: es })}</span>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{format(new Date(dia + 'T12:00:00'), 'dd MMM', { locale: es })}</span>
+        {/* Sesiones y packs integrados cronológicamente */}
+        {(sesionesConFecha.length > 0 || packsConSesiones.length > 0) && buildSemanaItems().map((item, i) => {
+          if (item.type === 'dia') {
+            const { dia, sesDia } = item
+            return (
+              <div key={`dia-${dia}`} style={{ margin: '0 12px 12px' }}>
+                <div style={{ background: bloque?.color || T.accent, borderRadius: '10px 10px 0 0', padding: '8px 14px', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#fff', textTransform: 'capitalize' }}>{format(new Date(dia + 'T12:00:00'), 'EEEE', { locale: es })}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>{format(new Date(dia + 'T12:00:00'), 'dd MMM', { locale: es })}</span>
+                </div>
+                <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                  {sesDia.map((s, si) => (
+                    <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={si === 0} ultimoDia={si === sesDia.length - 1} />
+                  ))}
+                </div>
               </div>
-              <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
-                {porDia[dia].map((s, i) => (
-                  <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={i === 0} ultimoDia={i === porDia[dia].length - 1} />
-                ))}
+            )
+          }
+          // Pack flexible
+          const { pack } = item
+          const diasPack = (() => {
+            const dias = []
+            const start = new Date(pack.fecha_inicio + 'T12:00:00')
+            const end = new Date(pack.fecha_fin + 'T12:00:00')
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              dias.push(new Date(d))
+            }
+            return dias
+          })()
+          return (
+            <div key={`pack-${pack.id}`} style={{ margin: '0 12px 16px' }}>
+              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #bae6fd' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>📦 Pack flexible</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: '#0c4a6e', margin: '0 0 4px' }}>{pack.nombre}</p>
+                  {pack.descripcion && <p style={{ fontSize: 13, color: '#075985', margin: '0 0 8px', lineHeight: 1.45 }}>{pack.descripcion}</p>}
+                  <p style={{ fontSize: 11, color: '#0369a1', margin: '0 0 8px' }}>Haz las sesiones cuando puedas · {format(new Date(pack.fecha_inicio + 'T12:00:00'), 'dd MMM', { locale: es })} – {format(new Date(pack.fecha_fin + 'T12:00:00'), 'dd MMM', { locale: es })}</p>
+                  {/* Pills de días */}
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    {diasPack.map((d, di) => {
+                      const dStr = format(d, 'yyyy-MM-dd')
+                      const esHoy = dStr === format(new Date(), 'yyyy-MM-dd')
+                      return (
+                        <span key={di} style={{ fontSize: 10, padding: '3px 9px', borderRadius: 20, background: esHoy ? '#0369a1' : '#e0f2fe', color: esHoy ? '#fff' : '#0369a1', fontWeight: esHoy ? 600 : 400 }}>
+                          {format(d, 'EEE d', { locale: es })}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+                {pack.sesiones.length > 0 && (
+                  <div>
+                    {pack.sesiones.map(s => (
+                      <SesionCard key={s.id} sesion={s} bloque={bloque} flexible />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))
-        })()}
+          )
+        })}
 
         {/* Sesiones sin fecha (flexibles/opcionales) */}
         {sesionesOpcionales.length > 0 && (
@@ -355,8 +418,8 @@ export default function VistaSemanalCliente() {
               <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>🔄 Cuando mejor te encaje</span>
             </div>
             <div style={{ background: '#fff', border: `1px solid ${T.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
-              {sesionesOpcionales.map((s, i) => (
-                <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={i === 0} ultimoDia={i === sesionesOpcionales.length - 1} />
+              {sesionesOpcionales.map((s, si) => (
+                <SesionCard key={s.id} sesion={s} bloque={bloque} primeroDia={si === 0} ultimoDia={si === sesionesOpcionales.length - 1} />
               ))}
             </div>
           </div>
@@ -367,34 +430,6 @@ export default function VistaSemanalCliente() {
             <p style={{ fontSize: 13, color: T.text3, margin: 0 }}>No hay sesiones asignadas esta semana.</p>
           </div>
         )}
-
-        {/* Packs flexibles */}
-        {packsConSesiones.map(pack => (
-          <div key={pack.id} style={{ margin: '0 12px 16px' }}>
-            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px 10px', borderBottom: pack.descripcion || pack.sesiones.length > 0 ? '1px solid #bae6fd' : 'none' }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>📦 Plan flexible</p>
-                <p style={{ fontSize: 15, fontWeight: 600, color: '#0c4a6e', margin: '0 0 3px' }}>{pack.nombre}</p>
-                <p style={{ fontSize: 11, color: '#0369a1', margin: 0 }}>
-                  {format(new Date(pack.fecha_inicio + 'T12:00:00'), 'dd MMM', { locale: es })} – {format(new Date(pack.fecha_fin + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}
-                </p>
-              </div>
-              {pack.descripcion && (
-                <div style={{ padding: '10px 16px', borderBottom: pack.sesiones.length > 0 ? '1px solid #bae6fd' : 'none' }}>
-                  <p style={{ fontSize: 13, color: '#075985', margin: 0, lineHeight: 1.55 }}>{pack.descripcion}</p>
-                </div>
-              )}
-              {pack.sesiones.length > 0 && (
-                <div style={{ padding: '10px 12px 12px' }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: '#0369a1', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sesiones disponibles</p>
-                  {pack.sesiones.map(s => (
-                    <SesionCard key={s.id} sesion={s} bloque={bloque} flexible />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
 
         {/* Check-in semanal */}
         <div style={{ margin: '16px 12px 0' }}>
