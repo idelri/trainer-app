@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO, addDays } from 'date-fns'
+import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy, GripVertical } from 'lucide-react'
 import CalendarioSesiones from '../components/CalendarioSesiones'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', tipo_actividad: 'fuerza', tipos_actividad: [] }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', tipo_actividad: 'fuerza', tipos_actividad: [], icono: '' }
 
 const TIPOS_ACTIVIDAD = [
   { value: 'fuerza', label: 'Fuerza', icono: '💪' },
@@ -179,7 +180,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     if (!esSinFecha && !formSesion.fecha) return
     setSaving(true)
     const tiposArr = formSesion.tipos_actividad?.length > 0 ? formSesion.tipos_actividad : [formSesion.tipo_actividad || 'fuerza']
-    const datos = { titulo: formSesion.titulo, fecha: esSinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', tipo_actividad: tiposArr[0], tipos_actividad: tiposArr, ...(esSinFecha && !modalSesion?.id ? { orden: await siguienteOrdenSinFecha(clienteId) } : {}), ...(addingToPackId ? { pack_id: addingToPackId } : {}) }
+    const datos = { titulo: formSesion.titulo, fecha: esSinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', tipo_actividad: tiposArr[0], tipos_actividad: tiposArr, icono: formSesion.icono || null, ...(esSinFecha && !modalSesion?.id ? { orden: await siguienteOrdenSinFecha(clienteId) } : {}), ...(addingToPackId ? { pack_id: addingToPackId } : {}) }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
     } else {
@@ -604,7 +605,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
             {sesionAbierta.pack_id && (() => { const pack = packs.find(p => p.id === sesionAbierta.pack_id); return pack ? <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlacePack(pack)}>📦 Compartir pack</button> : null })()}
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlace(sesionAbierta)}>🔗 Compartir sesión</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha, tipo_sesion: sesionAbierta.tipo_sesion || 'programada', tipo_actividad: sesionAbierta.tipo_actividad || 'fuerza', tipos_actividad: sesionAbierta.tipos_actividad?.length > 0 ? sesionAbierta.tipos_actividad : [sesionAbierta.tipo_actividad || 'fuerza'] }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ titulo: sesionAbierta.titulo, fecha: sesionAbierta.fecha || '', objetivo: sesionAbierta.objetivo || '', duracion_min: sesionAbierta.duracion_min || '', sinFecha: !sesionAbierta.fecha, tipo_sesion: sesionAbierta.tipo_sesion || 'programada', tipo_actividad: sesionAbierta.tipo_actividad || 'fuerza', tipos_actividad: sesionAbierta.tipos_actividad?.length > 0 ? sesionAbierta.tipos_actividad : [sesionAbierta.tipo_actividad || 'fuerza'], icono: sesionAbierta.icono || '' }); setModalSesion(sesionAbierta) }}>Fecha / duración</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setSesionAbierta(null)}>← Volver</button>
           </div>
 
@@ -782,6 +783,10 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             <div className="modal-header">
               <span className="modal-title">{modalSesion === 'nueva' ? 'Nueva sesión' : 'Editar sesión'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSesion(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Icono</label>
+              <EmojiPicker value={formSesion.icono || ''} onChange={v => setFormSesion(f => ({ ...f, icono: v }))} />
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
            <div className="form-row">
