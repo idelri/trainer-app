@@ -562,7 +562,16 @@ export default function ClientePortal({ token }) {
 
                   {abierto && (
                     <div style={{ borderTop: `1px solid ${T.bg2}`, padding: '12px 13px', background: T.bg }}>
-                      {b.objetivo && <p style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.55, marginBottom: subsBl.length ? 12 : 0 }}>{b.objetivo}</p>}
+                      {b.objetivo && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: subsBl.length ? 12 : 0 }}>
+                          {b.objetivo.split('\n').filter(l => l.trim()).map((l, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8 }}>
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: col, flexShrink: 0, marginTop: 6 }} />
+                              <span style={{ fontSize: 12.5, color: T.ink2, lineHeight: 1.5 }}>{l}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {activo && semCurr && (
                         <div style={{ marginBottom: subsBl.length ? 12 : 0 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
