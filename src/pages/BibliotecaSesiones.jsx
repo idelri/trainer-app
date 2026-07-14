@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -32,6 +32,56 @@ async function copiarPlantillaASesion({ plantilla, clienteId, fecha }) {
   return nueva
 }
 
+async function guardarSesionComoPlantilla(sesion) {
+  const { data: nueva } = await supabase.from('sesiones').insert({
+    titulo: sesion.titulo, objetivo: sesion.objetivo, duracion_min: sesion.duracion_min,
+    icono: sesion.icono, tipo_editor: sesion.tipo_editor || 'fuerza',
+    es_plantilla: true, cliente_id: null,
+  }).select().single()
+  if (!nueva) return
+  const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesion.id).order('orden')
+  for (const b of bls || []) {
+    const { data: nb } = await supabase.from('sesion_bloques').insert({
+      sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
+    }).select().single()
+    const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
+    for (const e of ejs || []) {
+      await supabase.from('sesion_ejercicios').insert({
+        bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps,
+        rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo,
+        media_url: e.media_url, video_url: e.video_url, orden: e.orden,
+      })
+    }
+  }
+  return nueva
+}
+
+// Menú contextual para sesiones del calendario
+function MenuSesionCal({ sesion, onAbrir, onGuardarBib, onEliminar, onMover, onCerrar }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) onCerrar() }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onCerrar])
+  const btn = (label, onClick, color) => (
+    <button onClick={onClick} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 14px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: color || 'var(--text)' }}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+      {label}
+    </button>
+  )
+  return (
+    <div ref={ref} style={{ position: 'absolute', top: '100%', left: 0, zIndex: 900, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', minWidth: 180, padding: '4px 0', marginTop: 2 }}>
+      {btn('✏️ Abrir en editor', onAbrir)}
+      {btn('📚 Guardar en biblioteca', onGuardarBib)}
+      {btn('📅 Cambiar fecha', onMover)}
+      <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+      {btn('🗑 Eliminar sesión', onEliminar, 'var(--danger)')}
+    </div>
+  )
+}
+
 export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
   const [tab, setTab] = useState('lista')
   const [plantillas, setPlantillas] = useState([])
@@ -47,11 +97,19 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
   const [clienteId, setClienteId] = useState('')
   const [semana, setSemana] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [sesionesCliente, setSesionesCliente] = useState([])
-  const [dragging, setDragging] = useState(null)
+  const [dragging, setDragging] = useState(null)          // plantilla siendo arrastrada
+  const [draggingCal, setDraggingCal] = useState(null)    // sesion del calendario siendo arrastrada
   const [copiando, setCopiando] = useState(false)
   const [dragOver, setDragOver] = useState(null)
+  const [menuCal, setMenuCal] = useState(null)            // { sesion }
+  const [modalNuevaCal, setModalNuevaCal] = useState(null) // fecha para nueva sesión en calendario
+  const [formNueva, setFormNueva] = useState({ titulo: '', icono: '', duracion_min: '', tipo_sesion: 'programada' })
+  const [savingNueva, setSavingNueva] = useState(false)
+  const [modalMover, setModalMover] = useState(null)      // sesion a mover
+  const [fechaMover, setFechaMover] = useState('')
+  const [guardandoBib, setGuardandoBib] = useState(null)  // id sesion siendo guardada
 
-  // Modal copiar
+  // Modal copiar plantilla a cliente
   const [modalCopiar, setModalCopiar] = useState(null)
   const [copiarClienteId, setCopiarClienteId] = useState('')
   const [copiarFecha, setCopiarFecha] = useState('')
@@ -117,12 +175,73 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
     if (clienteId === copiarClienteId) cargarSesionesCliente()
   }
 
+  // Soltar plantilla de biblioteca en día del calendario
   async function soltarEnDia(fecha) {
     if (!dragging || !clienteId) return
     setCopiando(true)
     await copiarPlantillaASesion({ plantilla: dragging, clienteId, fecha })
     setCopiando(false); setDragging(null); setDragOver(null)
     cargarSesionesCliente()
+  }
+
+  // Mover sesión del calendario a otro día
+  async function soltarSesionCalEnDia(fecha) {
+    if (!draggingCal) return
+    if (draggingCal.fecha === fecha) { setDraggingCal(null); setDragOver(null); return }
+    await supabase.from('sesiones').update({ fecha }).eq('id', draggingCal.id)
+    setDraggingCal(null); setDragOver(null)
+    cargarSesionesCliente()
+  }
+
+  // Crear nueva sesión directamente en calendario
+  async function crearSesionEnCal() {
+    if (!formNueva.titulo.trim() || !modalNuevaCal) return
+    setSavingNueva(true)
+    const { data } = await supabase.from('sesiones').insert({
+      cliente_id: clienteId, titulo: formNueva.titulo.trim(), fecha: modalNuevaCal,
+      icono: formNueva.icono || null, duracion_min: formNueva.duracion_min ? parseInt(formNueva.duracion_min) : null,
+      tipo_sesion: formNueva.tipo_sesion || 'programada', tipo_editor: 'fuerza', es_plantilla: false,
+    }).select().single()
+    if (data) {
+      await supabase.from('sesion_bloques').insert([
+        { sesion_id: data.id, nombre: 'Calentamiento', color: '#E29A2E', orden: 0 },
+        { sesion_id: data.id, nombre: 'Bloque principal', color: '#2d6a4f', orden: 1 },
+        { sesion_id: data.id, nombre: 'Vuelta a la calma', color: '#6b7280', orden: 2 },
+      ])
+    }
+    setSavingNueva(false); setModalNuevaCal(null); setFormNueva({ titulo: '', icono: '', duracion_min: '', tipo_sesion: 'programada' })
+    cargarSesionesCliente()
+  }
+
+  // Guardar sesión de cliente en biblioteca
+  async function guardarCalEnBib(sesion) {
+    setGuardandoBib(sesion.id)
+    await guardarSesionComoPlantilla(sesion)
+    setGuardandoBib(null)
+    cargar()
+    setMenuCal(null)
+    alert('✅ Sesión guardada en la biblioteca.')
+  }
+
+  // Mover sesión a nueva fecha
+  async function moverSesion() {
+    if (!fechaMover || !modalMover) return
+    await supabase.from('sesiones').update({ fecha: fechaMover }).eq('id', modalMover.id)
+    setModalMover(null); setFechaMover('')
+    cargarSesionesCliente()
+  }
+
+  // Eliminar sesión del calendario
+  async function eliminarSesionCal(sesion) {
+    if (!window.confirm(`¿Eliminar "${sesion.titulo}"?`)) return
+    await supabase.from('sesiones').delete().eq('id', sesion.id)
+    setMenuCal(null)
+    cargarSesionesCliente()
+  }
+
+  function abrirEditorSesion(p) {
+    if (setSesionesContext) setSesionesContext({ clienteId: p.cliente_id || null, sesionId: p.id, esPlantilla: p.es_plantilla })
+    if (setPage) setPage('sesiones')
   }
 
   const filtradas = plantillas.filter(p => {
@@ -133,11 +252,6 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
 
   const todasEtiquetas = [...new Set(plantillas.flatMap(p => p.etiquetas || []))]
   const diasSemana = Array.from({ length: 7 }, (_, i) => addDays(semana, i))
-
-  function abrirEditorSesion(p) {
-    if (setSesionesContext) setSesionesContext({ clienteId: null, sesionId: p.id, esPlantilla: true })
-    if (setPage) setPage('sesiones')
-  }
 
   return (
     <div>
@@ -228,10 +342,11 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
       {/* ── VISTA CALENDARIO ── */}
       {tab === 'calendario' && (
         <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 200px)', overflow: 'hidden' }}>
-          {/* Calendario */}
+          {/* Lado izquierdo: calendario */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Controles */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-              <select className="form-select" style={{ maxWidth: 220 }} value={clienteId} onChange={e => setClienteId(e.target.value)}>
+              <select className="form-select" style={{ maxWidth: 220 }} value={clienteId} onChange={e => { setClienteId(e.target.value); setSesionesCliente([]) }}>
                 <option value="">Selecciona un cliente...</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
@@ -242,35 +357,69 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
                 </span>
                 <button className="btn btn-ghost btn-sm" onClick={() => setSemana(s => addWeeks(s, 1))}>›</button>
               </div>
-              {copiando && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Copiando sesión...</span>}
+              <button className="btn btn-ghost btn-sm" onClick={() => setSemana(startOfWeek(new Date(), { weekStartsOn: 1 }))}>Hoy</button>
+              {copiando && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Copiando...</span>}
             </div>
 
             {!clienteId ? (
               <div className="empty"><p>Selecciona un cliente para ver su calendario.</p></div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, flex: 1, overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, flex: 1, overflowY: 'auto' }}
+                onClick={() => setMenuCal(null)}>
                 {diasSemana.map(dia => {
                   const fechaStr = format(dia, 'yyyy-MM-dd')
                   const sesionesDia = sesionesCliente.filter(s => s.fecha === fechaStr)
                   const isOver = dragOver === fechaStr
+                  const esHoy = fechaStr === format(new Date(), 'yyyy-MM-dd')
                   return (
                     <div key={fechaStr}
                       onDragOver={e => { e.preventDefault(); setDragOver(fechaStr) }}
-                      onDragLeave={() => setDragOver(null)}
-                      onDrop={() => { soltarEnDia(fechaStr) }}
-                      style={{ background: isOver ? '#e8f5f0' : 'var(--bg2)', borderRadius: 10, padding: '8px 6px', minHeight: 100, border: `1.5px ${isOver ? 'dashed #2d6a4f' : 'solid var(--border)'}`, display: 'flex', flexDirection: 'column', gap: 5, transition: 'background 0.1s, border 0.1s' }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>
-                        {format(dia, 'EEE', { locale: es })}
-                        <span style={{ display: 'block', fontSize: 14, color: 'var(--text)', textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{format(dia, 'd')}</span>
+                      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null) }}
+                      onDrop={() => {
+                        if (draggingCal) soltarSesionCalEnDia(fechaStr)
+                        else soltarEnDia(fechaStr)
+                      }}
+                      style={{ background: isOver ? '#e8f5f0' : 'var(--bg2)', borderRadius: 10, padding: '8px 6px', minHeight: 100, border: `1.5px ${isOver ? 'dashed #2d6a4f' : esHoy ? 'solid var(--accent)' : 'solid var(--border)'}`, display: 'flex', flexDirection: 'column', gap: 4, transition: 'background 0.1s, border 0.1s', position: 'relative' }}>
+                      {/* Cabecera día */}
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <div>
+                          <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>{format(dia, 'EEE', { locale: es })}</span>
+                          <span style={{ fontSize: 15, color: esHoy ? 'var(--accent)' : 'var(--text)', fontWeight: esHoy ? 700 : 500 }}>{format(dia, 'd')}</span>
+                        </div>
+                        <button title="Nueva sesión" onClick={() => { setModalNuevaCal(fechaStr); setFormNueva({ titulo: '', icono: '', duracion_min: '', tipo_sesion: 'programada' }) }}
+                          style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text3)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
                       </div>
+
+                      {/* Sesiones del día */}
                       {sesionesDia.map(s => (
-                        <div key={s.id} style={{ background: '#2d6a4f', color: '#fff', borderRadius: 6, padding: '4px 7px', fontSize: 11, fontWeight: 500, lineHeight: 1.3 }}>
-                          {s.icono || '💪'} {s.titulo}
+                        <div key={s.id}
+                          draggable
+                          onDragStart={() => { setDraggingCal(s); setDragging(null) }}
+                          onDragEnd={() => { setDraggingCal(null); setDragOver(null) }}
+                          style={{ background: '#2d6a4f', color: '#fff', borderRadius: 6, padding: '4px 7px', fontSize: 11, fontWeight: 500, lineHeight: 1.3, cursor: 'grab', position: 'relative', opacity: draggingCal?.id === s.id ? 0.5 : 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{s.icono || '💪'} {s.titulo}</span>
+                            <button onClick={e => { e.stopPropagation(); setMenuCal(menuCal?.sesion?.id === s.id ? null : { sesion: s }) }}
+                              style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 4, padding: '1px 5px', fontSize: 12, flexShrink: 0 }}>⋯</button>
+                          </div>
+                          {s.duracion_min && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>{s.duracion_min} min</div>}
+                          {menuCal?.sesion?.id === s.id && (
+                            <MenuSesionCal
+                              sesion={s}
+                              onAbrir={() => { setMenuCal(null); abrirEditorSesion(s) }}
+                              onGuardarBib={() => guardarCalEnBib(s)}
+                              onEliminar={() => eliminarSesionCal(s)}
+                              onMover={() => { setMenuCal(null); setModalMover(s); setFechaMover(s.fecha) }}
+                              onCerrar={() => setMenuCal(null)}
+                            />
+                          )}
                         </div>
                       ))}
-                      {isOver && dragging && (
-                        <div style={{ background: '#bbf7d0', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#14532d', fontWeight: 500 }}>
-                          {dragging.icono || '💪'} {dragging.titulo}
+
+                      {/* Preview al arrastrar */}
+                      {isOver && (dragging || draggingCal) && (
+                        <div style={{ background: '#bbf7d0', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#14532d', fontWeight: 500, border: '1px dashed #2d6a4f' }}>
+                          {(dragging || draggingCal)?.icono || '💪'} {(dragging || draggingCal)?.titulo}
                         </div>
                       )}
                     </div>
@@ -280,14 +429,14 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
             )}
           </div>
 
-          {/* Panel biblioteca */}
+          {/* Lado derecho: panel biblioteca */}
           <div style={{ width: 268, flexShrink: 0, borderLeft: '1px solid var(--border)', paddingLeft: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Biblioteca · arrastra al calendario</div>
             <input className="form-input" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ marginBottom: 8, fontSize: 12 }} />
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
               {filtradas.map(p => (
                 <div key={p.id} draggable
-                  onDragStart={() => setDragging(p)}
+                  onDragStart={() => { setDragging(p); setDraggingCal(null) }}
                   onDragEnd={() => { setDragging(null); setDragOver(null) }}
                   style={{ background: dragging?.id === p.id ? '#e8f5f0' : 'var(--bg)', border: `1px solid ${dragging?.id === p.id ? '#2d6a4f' : 'var(--border)'}`, borderRadius: 8, padding: '8px 10px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: 8, userSelect: 'none' }}>
                   <span style={{ fontSize: 16, flexShrink: 0 }}>{p.icono || '💪'}</span>
@@ -298,7 +447,7 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
                   <span style={{ color: 'var(--text3)', fontSize: 16, flexShrink: 0 }}>⠿</span>
                 </div>
               ))}
-              {filtradas.length === 0 && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Sin sesiones</p>}
+              {filtradas.length === 0 && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Sin sesiones en la biblioteca</p>}
             </div>
           </div>
         </div>
@@ -362,7 +511,75 @@ export default function BibliotecaSesiones({ setPage, setSesionesContext }) {
         </div>
       )}
 
-      {/* Modal copiar a cliente */}
+      {/* Modal nueva sesión en día del calendario */}
+      {modalNuevaCal && (
+        <div className="modal-backdrop" onClick={() => setModalNuevaCal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <span className="modal-title">Nueva sesión — {format(new Date(modalNuevaCal + 'T12:00:00'), 'EEEE dd MMM', { locale: es })}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalNuevaCal(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Título *</label>
+              <input className="form-input" value={formNueva.titulo} onChange={e => setFormNueva(f => ({ ...f, titulo: e.target.value }))} autoFocus placeholder="Nombre de la sesión" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Icono</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {ICONOS.slice(0, 10).map(ic => (
+                  <button key={ic} type="button" onClick={() => setFormNueva(f => ({ ...f, icono: f.icono === ic ? '' : ic }))}
+                    style={{ width: 34, height: 34, borderRadius: 8, border: `2px solid ${formNueva.icono === ic ? 'var(--accent)' : 'var(--border)'}`, background: formNueva.icono === ic ? 'var(--accent-light,#e8f5f0)' : 'var(--bg)', fontSize: 17, cursor: 'pointer' }}>
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Duración (min)</label>
+                <input className="form-input" type="number" value={formNueva.duracion_min} onChange={e => setFormNueva(f => ({ ...f, duracion_min: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <select className="form-select" value={formNueva.tipo_sesion} onChange={e => setFormNueva(f => ({ ...f, tipo_sesion: e.target.value }))}>
+                  <option value="programada">Programada</option>
+                  <option value="flexible">Flexible</option>
+                  <option value="opcional">Opcional</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalNuevaCal(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={savingNueva || !formNueva.titulo.trim()} onClick={crearSesionEnCal}>
+                {savingNueva ? 'Creando...' : 'Crear sesión'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal mover sesión a otra fecha */}
+      {modalMover && (
+        <div className="modal-backdrop" onClick={() => setModalMover(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <div className="modal-header">
+              <span className="modal-title">Cambiar fecha</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalMover(null)}><X size={14} /></button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 12 }}>Sesión: <strong>{modalMover.titulo}</strong></p>
+            <div className="form-group">
+              <label className="form-label">Nueva fecha</label>
+              <input className="form-input" type="date" value={fechaMover} onChange={e => setFechaMover(e.target.value)} autoFocus />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalMover(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={!fechaMover} onClick={moverSesion}>Mover</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal copiar plantilla a cliente */}
       {modalCopiar && (
         <div className="modal-backdrop" onClick={() => setModalCopiar(null)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
