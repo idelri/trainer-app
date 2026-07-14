@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval,
-  isSameDay, addDays, isToday, addMonths, subMonths, parseISO, differenceInWeeks } from 'date-fns'
+  isSameDay, addDays, isToday, addMonths, subMonths, parseISO, differenceInWeeks, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 /* ---------- tokens de diseño ---------- */
@@ -354,59 +354,137 @@ export default function ClientePortal({ token }) {
           </div>
         )}
 
-        {/* Sesiones por día */}
+        {/* Sesiones por día + packs flexibles integrados cronológicamente */}
         <div>
           <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 7 }}>Sesiones</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {diasSemana.map((dia, idx) => {
-              const sesDia = sesActuales.filter(s => isSameDay(parseISO(s.fecha), dia))
-              const hoyDia = isToday(dia)
-              const nombreDia = DIAS_SEM[idx]
-              const fechaStr = format(dia, 'd MMM', { locale: es })
+            {(() => {
+              // Determinar qué días están cubiertos por un pack
+              const coveredByPack = {}
+              packsSemana.forEach(pack => {
+                const pi = startOfDay(parseISO(pack.fecha_inicio))
+                const pf = startOfDay(parseISO(pack.fecha_fin))
+                diasSemana.forEach((dia, i) => {
+                  if (dia >= pi && dia <= pf) coveredByPack[i] = pack
+                })
+              })
 
-              if (sesDia.length === 0) {
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, padding: '7px 12px', opacity: hoyDia ? 1 : 0.6 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 7, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>😴</div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: hoyDia ? 600 : 400, color: hoyDia ? T.ink : T.ink2 }}>{nombreDia}{hoyDia && <span style={{ marginLeft: 6, fontSize: 9, background: colA, color: '#fff', padding: '1px 6px', borderRadius: 8, fontFamily: T.mono }}>hoy</span>}</div>
-                      <div style={{ fontSize: 10, color: T.ink3 }}>Descanso</div>
+              // Construir lista ordenada cronológicamente: días libres + packs en su posición
+              const renderItems = []
+              const addedPacks = new Set()
+              diasSemana.forEach((dia, idx) => {
+                // Insertar packs cuyo inicio efectivo es este día
+                packsSemana.forEach(pack => {
+                  if (addedPacks.has(pack.id)) return
+                  const pi = startOfDay(parseISO(pack.fecha_inicio))
+                  const effectiveStart = pi < lun ? lun : pi
+                  if (isSameDay(effectiveStart, dia)) {
+                    addedPacks.add(pack.id)
+                    renderItems.push({ type: 'pack', pack })
+                  }
+                })
+                // Añadir el día solo si no está cubierto por un pack
+                if (!coveredByPack[idx]) {
+                  renderItems.push({ type: 'day', idx, dia })
+                }
+              })
+
+              return renderItems.map((item, key) => {
+                if (item.type === 'pack') {
+                  const { pack } = item
+                  const pi = startOfDay(parseISO(pack.fecha_inicio))
+                  const pf = startOfDay(parseISO(pack.fecha_fin))
+                  const sesPack = packSesiones.filter(s => s.pack_id === pack.id)
+                  // Días de la semana que cubre este pack
+                  const diasPack = diasSemana.filter(d => d >= pi && d <= pf)
+                  return (
+                    <div key={`pack-${pack.id}`} style={{ ...card, border: `1px solid ${colA}55`, borderLeft: `4px solid ${colA}` }}>
+                      <div style={{ padding: '10px 13px', borderBottom: `1px solid ${T.bg2}` }}>
+                        <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase', color: colA, marginBottom: 4 }}>📦 Pack flexible</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{pack.nombre}</div>
+                        {pack.descripcion && <div style={{ fontSize: 12, color: T.ink2, marginBottom: 6, lineHeight: 1.4 }}>{pack.descripcion}</div>}
+                        <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginBottom: 8 }}>Haz las sesiones cuando puedas · {format(pi, 'd MMM', { locale: es })}–{format(pf, 'd MMM', { locale: es })}</div>
+                        {/* Pills de días */}
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          {diasPack.map((d, di) => {
+                            const esHoy = isToday(d)
+                            return (
+                              <div key={di} style={{ fontSize: 10, padding: '3px 9px', borderRadius: 20, fontFamily: T.mono, background: esHoy ? colA : T.bg2, color: esHoy ? '#fff' : T.ink2, fontWeight: esHoy ? 600 : 400 }}>
+                                {format(d, 'EEE d', { locale: es })}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        {sesPack.map((s, si) => (
+                          <div key={s.id} onClick={() => abrirSesion(s)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', borderBottom: si < sesPack.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 7, background: `${colA}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                              {iconoSesion(s)}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
+                              {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fechaStr}</div>
+                  )
+                }
+
+                // Día normal
+                const { idx, dia } = item
+                const sesDia = sesActuales.filter(s => s.fecha && isSameDay(parseISO(s.fecha), dia))
+                const hoyDia = isToday(dia)
+                const nombreDia = DIAS_SEM[idx]
+                const fechaStr = format(dia, 'd MMM', { locale: es })
+
+                if (sesDia.length === 0) {
+                  return (
+                    <div key={`day-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, padding: '7px 12px', opacity: hoyDia ? 1 : 0.6 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 7, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>😴</div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: hoyDia ? 600 : 400, color: hoyDia ? T.ink : T.ink2 }}>{nombreDia}{hoyDia && <span style={{ marginLeft: 6, fontSize: 9, background: colA, color: '#fff', padding: '1px 6px', borderRadius: 8, fontFamily: T.mono }}>hoy</span>}</div>
+                        <div style={{ fontSize: 10, color: T.ink3 }}>Descanso</div>
+                      </div>
+                      <div style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fechaStr}</div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={`day-${idx}`} style={{ ...card, border: hoyDia ? `1.5px solid ${colA}` : `1px solid ${T.border}` }}>
+                    <div style={{ background: hoyDia ? `${colA}18` : T.bg, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${hoyDia ? colA + '30' : T.border}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: hoyDia ? colA : T.ink }}>{nombreDia}</span>
+                        {hoyDia && <span style={{ fontSize: 8.5, background: colA, color: '#fff', padding: '1px 6px', borderRadius: 8, fontFamily: T.mono }}>hoy</span>}
+                      </div>
+                      <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fechaStr}</span>
+                    </div>
+                    {sesDia.map((s, si) => {
+                      const bd = badgeEstado(s.estado_efectivo)
+                      return (
+                        <div key={s.id} onClick={() => abrirSesion(s)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: si < sesDia.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colA}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                            {iconoSesion(s)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: T.ink }}>{s.titulo}</div>
+                            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>
+                              {s.duracion_min ? `${s.duracion_min} min` : ''}{s.duracion_min && s.tipo_sesion ? ' · ' : ''}{s.tipo_sesion === 'opcional' ? 'Opcional' : s.tipo_sesion === 'flexible' ? 'Flexible' : s.tipo_sesion === 'programada' ? 'Programada' : ''}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, flexShrink: 0 }}>{bd.label}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )
-              }
-
-              return (
-                <div key={idx} style={{ ...card, border: hoyDia ? `1.5px solid ${colA}` : `1px solid ${T.border}` }}>
-                  <div style={{ background: hoyDia ? `${colA}18` : T.bg, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${hoyDia ? colA + '30' : T.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: hoyDia ? colA : T.ink }}>{nombreDia}</span>
-                      {hoyDia && <span style={{ fontSize: 8.5, background: colA, color: '#fff', padding: '1px 6px', borderRadius: 8, fontFamily: T.mono }}>hoy</span>}
-                    </div>
-                    <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fechaStr}</span>
-                  </div>
-                  {sesDia.map((s, si) => {
-                    const bd = badgeEstado(s.estado_efectivo)
-                    return (
-                      <div key={s.id} onClick={() => abrirSesion(s)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: si < sesDia.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colA}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                          {iconoSesion(s)}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 500, color: T.ink }}>{s.titulo}</div>
-                          <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>
-                            {s.duracion_min ? `${s.duracion_min} min` : ''}{s.duracion_min && s.tipo_sesion ? ' · ' : ''}{s.tipo_sesion === 'opcional' ? 'Opcional' : s.tipo_sesion === 'flexible' ? 'Flexible' : s.tipo_sesion === 'programada' ? 'Programada' : ''}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, flexShrink: 0 }}>{bd.label}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
+              })
+            })()}
           </div>
         </div>
 
@@ -422,45 +500,6 @@ export default function ClientePortal({ token }) {
           </div>
         )}
 
-        {/* Packs flexibles que solapan con esta semana */}
-        {packsSemana.map(pack => {
-          const pi = parseISO(pack.fecha_inicio + 'T12:00:00')
-          const pf = parseISO(pack.fecha_fin + 'T12:00:00')
-          const inicioVisible = pi < lun ? lun : pi
-          const finVisible = pf > dom ? dom : pf
-          const sesPack = packSesiones.filter(s => s.pack_id === pack.id)
-          return (
-            <div key={pack.id} style={{ ...card, border: `1px solid ${colA}55`, borderLeft: `4px solid ${colA}` }}>
-              <div style={{ padding: '11px 13px', borderBottom: `1px solid ${T.bg2}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase', color: colA, marginBottom: 3 }}>📦 Pack flexible</div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{pack.nombre}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{format(inicioVisible, 'd MMM', { locale: es })} → {format(finVisible, 'd MMM', { locale: es })}</div>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, marginTop: 2 }}>{sesPack.length} sesiones</div>
-                  </div>
-                </div>
-                {pack.descripcion && <div style={{ fontSize: 12, color: T.ink2, marginTop: 6, lineHeight: 1.4 }}>{pack.descripcion}</div>}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {sesPack.map((s, si) => (
-                  <div key={s.id} onClick={() => abrirSesion(s)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 13px', borderBottom: si < sesPack.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 7, background: `${colA}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                      {iconoSesion(s)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
-                      {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
 
         {/* Check-in semanal */}
         {semanaActualData && (
