@@ -23,21 +23,28 @@ const STEPS = [
   'Cierre',
 ]
 
+const OTRO = 'Otro (especificar)'
+
 const EMPTY_COMPETICION = { nombre: '', fecha: '', modalidad: '', objetivo_rendimiento: '' }
 const EMPTY_LESION = {
-  zona: '', tipo: '', antiguedad: '', intensidad: null,
+  zona: '', zona_otro: '', tipo: '', tipo_otro: '', antiguedad: '', intensidad: null,
   movimientos: '', diagnostico: '', limitaciones: '',
 }
 
 const EMPTY = {
   nombre: '', email: '', telefono: '', fecha_nacimiento: '', profesion: '', ciudad: '',
   objetivo_principal: '',
+  objetivo_principal_otro: '',
   competiciones: [],
   objetivos_secundarios: [],
+  objetivos_secundarios_otro: '',
   objetivo_3_6_meses: '',
   deportes_actuales: [],
+  deportes_actuales_otro: '',
   actividades_gustan: [],
+  actividades_gustan_otro: '',
   actividades_evitar: [],
+  actividades_evitar_otro: '',
   frecuencia_actual: '',
   duracion_habitual: '',
   experiencia_fuerza: '',
@@ -55,7 +62,9 @@ const EMPTY = {
   tiene_gimnasio: null,
   gimnasio_nombre: '',
   material_gimnasio: [],
+  material_gimnasio_otro: '',
   material_casa: [],
+  material_casa_otro: '',
   tiene_wearable: null,
   wearable_modelo: '',
   lesiones_actuales_yn: null,
@@ -236,7 +245,12 @@ function Step2({ f, set }) {
   return (
     <>
       <Q label="Objetivo principal" required>
-        <Single options={OBJETIVOS} selected={f.objetivo_principal} onChange={s('objetivo_principal')} />
+        <Single options={[...OBJETIVOS, OTRO]} selected={f.objetivo_principal} onChange={v => { s('objetivo_principal')(v); if (v !== OTRO) s('objetivo_principal_otro')('') }} />
+        {f.objetivo_principal === OTRO && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.objetivo_principal_otro} onChange={s('objetivo_principal_otro')} placeholder="Especifica tu objetivo..." />
+          </div>
+        )}
       </Q>
 
       {f.objetivo_principal === 'Preparar una competición o reto deportivo' && (
@@ -266,7 +280,12 @@ function Step2({ f, set }) {
       )}
 
       <Q label="Objetivos secundarios">
-        <Multi options={OBJETIVOS.filter(o => o !== f.objetivo_principal)} selected={f.objetivos_secundarios} onChange={s('objetivos_secundarios')} />
+        <Multi options={[...OBJETIVOS.filter(o => o !== f.objetivo_principal), OTRO]} selected={f.objetivos_secundarios} onChange={v => { s('objetivos_secundarios')(v); if (!v.includes(OTRO)) s('objetivos_secundarios_otro')('') }} />
+        {f.objetivos_secundarios.includes(OTRO) && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.objetivos_secundarios_otro} onChange={s('objetivos_secundarios_otro')} placeholder="Especifica..." />
+          </div>
+        )}
       </Q>
 
       <Q label="¿Qué te gustaría haber conseguido en 3–6 meses?">
@@ -289,13 +308,28 @@ function Step3({ f, set }) {
   return (
     <>
       <Q label="Deportes o actividades que practicas actualmente">
-        <Multi options={DEPORTES} selected={f.deportes_actuales} onChange={s('deportes_actuales')} />
+        <Multi options={[...DEPORTES, OTRO]} selected={f.deportes_actuales} onChange={v => { s('deportes_actuales')(v); if (!v.includes(OTRO)) s('deportes_actuales_otro')('') }} />
+        {f.deportes_actuales.includes(OTRO) && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.deportes_actuales_otro} onChange={s('deportes_actuales_otro')} placeholder="¿Cuáles?" />
+          </div>
+        )}
       </Q>
       <Q label="Actividades o ejercicios que te gustan">
-        <Multi options={GUSTAN} selected={f.actividades_gustan} onChange={s('actividades_gustan')} />
+        <Multi options={[...GUSTAN, OTRO]} selected={f.actividades_gustan} onChange={v => { s('actividades_gustan')(v); if (!v.includes(OTRO)) s('actividades_gustan_otro')('') }} />
+        {f.actividades_gustan.includes(OTRO) && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.actividades_gustan_otro} onChange={s('actividades_gustan_otro')} placeholder="¿Cuáles?" />
+          </div>
+        )}
       </Q>
       <Q label="Ejercicios o actividades que prefieres evitar">
-        <Multi options={EVITAR} selected={f.actividades_evitar} onChange={s('actividades_evitar')} />
+        <Multi options={[...EVITAR, OTRO]} selected={f.actividades_evitar} onChange={v => { s('actividades_evitar')(v); if (!v.includes(OTRO)) s('actividades_evitar_otro')('') }} />
+        {f.actividades_evitar.includes(OTRO) && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.actividades_evitar_otro} onChange={s('actividades_evitar_otro')} placeholder="¿Cuáles?" />
+          </div>
+        )}
       </Q>
       <Q label="Frecuencia actual de entrenamiento">
         <Single options={FRECUENCIA} selected={f.frecuencia_actual} onChange={s('frecuencia_actual')} />
@@ -390,13 +424,23 @@ function Step4({ f, set }) {
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Input value={f.gimnasio_nombre} onChange={s('gimnasio_nombre')} placeholder="¿A cuál?" />
             <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 4 }}>Material disponible en el gimnasio:</div>
-            <Multi options={MAT_GYM} selected={f.material_gimnasio} onChange={s('material_gimnasio')} />
+            <Multi options={[...MAT_GYM, OTRO]} selected={f.material_gimnasio} onChange={v => { s('material_gimnasio')(v); if (!v.includes(OTRO)) s('material_gimnasio_otro')('') }} />
+            {f.material_gimnasio.includes(OTRO) && (
+              <div style={{ marginTop: 8 }}>
+                <Input value={f.material_gimnasio_otro} onChange={s('material_gimnasio_otro')} placeholder="¿Qué otro material?" />
+              </div>
+            )}
           </div>
         )}
       </Q>
 
       <Q label="Material disponible en casa">
-        <Multi options={MAT_CASA} selected={f.material_casa} onChange={s('material_casa')} />
+        <Multi options={[...MAT_CASA, OTRO]} selected={f.material_casa} onChange={v => { s('material_casa')(v); if (!v.includes(OTRO)) s('material_casa_otro')('') }} />
+        {f.material_casa.includes(OTRO) && (
+          <div style={{ marginTop: 8 }}>
+            <Input value={f.material_casa_otro} onChange={s('material_casa_otro')} placeholder="¿Qué otro material?" />
+          </div>
+        )}
       </Q>
 
       <Q label="¿Dispones de algún reloj deportivo o dispositivo wearable para registrar tus entrenamientos, actividad diaria, sueño u otras variables?">
@@ -414,8 +458,8 @@ function Step4({ f, set }) {
 function Step5({ f, set }) {
   const s = (k) => (v) => set(k, v)
 
-  const ZONAS = ['Cabeza / cuello','Hombro derecho','Hombro izquierdo','Codo / antebrazo derecho','Codo / antebrazo izquierdo','Muñeca / mano derecha','Muñeca / mano izquierda','Zona dorsal','Zona lumbar','Zona abdominal / core','Cadera / glúteo derecho','Cadera / glúteo izquierdo','Muslo / cuádriceps derecho','Muslo / cuádriceps izquierdo','Isquiotibiales derecho','Isquiotibiales izquierdo','Rodilla derecha','Rodilla izquierda','Pierna / gemelo derecho','Pierna / gemelo izquierdo','Tobillo / pie derecho','Tobillo / pie izquierdo']
-  const TIPOS = ['Dolor agudo o punzante','Dolor sordo o continuo','Rigidez o tensión muscular','Inflamación o hinchazón','Inestabilidad o sensación de fallo','Hormigueo o entumecimiento','Crepitación o ruido articular','Limitación de movilidad']
+  const ZONAS = ['Cabeza / cuello','Hombro derecho','Hombro izquierdo','Codo / antebrazo derecho','Codo / antebrazo izquierdo','Muñeca / mano derecha','Muñeca / mano izquierda','Zona dorsal','Zona lumbar','Zona abdominal / core','Cadera / glúteo derecho','Cadera / glúteo izquierdo','Muslo / cuádriceps derecho','Muslo / cuádriceps izquierdo','Isquiotibiales derecho','Isquiotibiales izquierdo','Rodilla derecha','Rodilla izquierda','Pierna / gemelo derecho','Pierna / gemelo izquierdo','Tobillo / pie derecho','Tobillo / pie izquierdo', OTRO]
+  const TIPOS = ['Dolor agudo o punzante','Dolor sordo o continuo','Rigidez o tensión muscular','Inflamación o hinchazón','Inestabilidad o sensación de fallo','Hormigueo o entumecimiento','Crepitación o ruido articular','Limitación de movilidad', OTRO]
   const ANTIGUEDAD = ['Hace menos de 1 semana','1–4 semanas','1–3 meses','3–6 meses','Más de 6 meses','Más de 1 año','Crónica (varios años)']
   const SEGUIMIENTO_OPTS = ['No','Sí, fisioterapia','Sí, rehabilitación','Sí, seguimiento médico','Sí, varios']
 
@@ -449,11 +493,21 @@ function Step5({ f, set }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Zona corporal</div>
-                    <Single options={ZONAS} selected={l.zona} onChange={v => setLesion(i, 'zona', v)} />
+                    <Single options={ZONAS} selected={l.zona} onChange={v => { setLesion(i, 'zona', v); if (v !== OTRO) setLesion(i, 'zona_otro', '') }} />
+                    {l.zona === OTRO && (
+                      <div style={{ marginTop: 8 }}>
+                        <Input value={l.zona_otro} onChange={v => setLesion(i, 'zona_otro', v)} placeholder="¿Qué zona?" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Tipo de molestia</div>
-                    <Single options={TIPOS} selected={l.tipo} onChange={v => setLesion(i, 'tipo', v)} />
+                    <Single options={TIPOS} selected={l.tipo} onChange={v => { setLesion(i, 'tipo', v); if (v !== OTRO) setLesion(i, 'tipo_otro', '') }} />
+                    {l.tipo === OTRO && (
+                      <div style={{ marginTop: 8 }}>
+                        <Input value={l.tipo_otro} onChange={v => setLesion(i, 'tipo_otro', v)} placeholder="¿Qué tipo de molestia?" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>¿Desde cuándo?</div>
@@ -710,6 +764,20 @@ export default function CuestionarioInicial({ token }) {
 
   async function submit() {
     setSaving(true)
+
+    // Resolver "Otro (especificar)" → texto libre antes de guardar
+    const resolveS = (val, otro) => val === OTRO ? (otro || OTRO) : (val || null)
+    const resolveM = (arr, otro) => arr.map(v => v === OTRO ? (otro || OTRO) : v)
+    const resolveLesiones = (lesiones) => lesiones.map(l => ({
+      zona: l.zona === OTRO ? (l.zona_otro || OTRO) : l.zona,
+      tipo: l.tipo === OTRO ? (l.tipo_otro || OTRO) : l.tipo,
+      antiguedad: l.antiguedad,
+      intensidad: l.intensidad,
+      movimientos: l.movimientos,
+      diagnostico: l.diagnostico,
+      limitaciones: l.limitaciones,
+    }))
+
     const payload = {
       nombre: form.nombre || null,
       email: form.email || null,
@@ -717,13 +785,13 @@ export default function CuestionarioInicial({ token }) {
       fecha_nacimiento: form.fecha_nacimiento || null,
       profesion: form.profesion || null,
       ciudad: form.ciudad || null,
-      objetivo_principal: form.objetivo_principal || null,
+      objetivo_principal: resolveS(form.objetivo_principal, form.objetivo_principal_otro),
       competiciones: form.objetivo_principal === 'Preparar una competición o reto deportivo' ? form.competiciones : [],
-      objetivos_secundarios: form.objetivos_secundarios,
+      objetivos_secundarios: resolveM(form.objetivos_secundarios, form.objetivos_secundarios_otro),
       objetivo_3_6_meses: form.objetivo_3_6_meses || null,
-      deportes_actuales: form.deportes_actuales,
-      actividades_gustan: form.actividades_gustan,
-      actividades_evitar: form.actividades_evitar,
+      deportes_actuales: resolveM(form.deportes_actuales, form.deportes_actuales_otro),
+      actividades_gustan: resolveM(form.actividades_gustan, form.actividades_gustan_otro),
+      actividades_evitar: resolveM(form.actividades_evitar, form.actividades_evitar_otro),
       frecuencia_actual: form.frecuencia_actual || null,
       duracion_habitual: form.duracion_habitual || null,
       experiencia_fuerza: form.experiencia_fuerza || null,
@@ -740,11 +808,11 @@ export default function CuestionarioInicial({ token }) {
       lugares_entrenamiento: form.lugares_entrenamiento,
       tiene_gimnasio: form.tiene_gimnasio === 'Sí' ? true : form.tiene_gimnasio === 'No' ? false : null,
       gimnasio_nombre: form.tiene_gimnasio === 'Sí' ? (form.gimnasio_nombre || null) : null,
-      material_gimnasio: form.tiene_gimnasio === 'Sí' ? form.material_gimnasio : [],
-      material_casa: form.material_casa,
+      material_gimnasio: form.tiene_gimnasio === 'Sí' ? resolveM(form.material_gimnasio, form.material_gimnasio_otro) : [],
+      material_casa: resolveM(form.material_casa, form.material_casa_otro),
       tiene_wearable: form.tiene_wearable === 'Sí' ? true : form.tiene_wearable === 'No' ? false : null,
       wearable_modelo: form.tiene_wearable === 'Sí' ? (form.wearable_modelo || null) : null,
-      lesiones_actuales: form.lesiones_actuales_yn === 'Sí' ? form.lesiones_actuales : [],
+      lesiones_actuales: form.lesiones_actuales_yn === 'Sí' ? resolveLesiones(form.lesiones_actuales) : [],
       lesiones_anteriores: form.lesiones_anteriores_yn === 'Sí' ? (form.lesiones_anteriores || null) : null,
       operaciones: form.operaciones_yn === 'Sí' ? (form.operaciones || null) : null,
       enfermedades: form.enfermedades_yn === 'Sí' ? (form.enfermedades || null) : null,
