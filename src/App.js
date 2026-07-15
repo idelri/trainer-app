@@ -15,6 +15,7 @@ import Login from './pages/Login'
 import VistaSemanalCliente from './pages/VistaSemanalCliente'
 import PackPublico from './pages/PackPublico'
 import ClientePortal from './pages/ClientePortal'
+import CuestionarioInicial from './pages/CuestionarioInicial'
 import './index.css'
 
 const NAV = [
@@ -37,6 +38,7 @@ export default function App() {
   const [publicSemanaToken, setPublicSemanaToken] = useState(null)
   const [publicPackToken, setPublicPackToken] = useState(null)
   const [publicClienteToken, setPublicClienteToken] = useState(null)
+  const [publicCuestionarioToken, setPublicCuestionarioToken] = useState(null)
   useEffect(() => {
     // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
@@ -76,6 +78,12 @@ export default function App() {
       setAuthLoading(false)
       return
     }
+    const matchCuestionario = path.match(/^\/cuestionario\/(.+)$/)
+    if (matchCuestionario) {
+      setPublicCuestionarioToken(matchCuestionario[1])
+      setAuthLoading(false)
+      return
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
@@ -96,6 +104,7 @@ export default function App() {
   if (publicSemanaToken) return <VistaSemanalCliente />
   if (publicPackToken) return <PackPublico token={publicPackToken} />
   if (publicClienteToken) return <ClientePortal token={publicClienteToken} />
+  if (publicCuestionarioToken) return <CuestionarioInicial token={publicCuestionarioToken} />
   if (!session) return <Login />
 
  return (
