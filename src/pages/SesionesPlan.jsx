@@ -123,6 +123,11 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
+  const [semanasMap, setSemanasMap] = useState({}) // { `${bloqueId}_${num}`: semanaRow }
+  const [semanaSeleccionada, setSemanaSeleccionada] = useState(null)
+  const [notasSemanaText, setNotasSemanaText] = useState('')
+  const [savingNota, setSavingNota] = useState(false)
+  const notasTimer = useRef(null)
   const [modalComp, setModalComp] = useState(false)
   const [formComp, setFormComp] = useState({ nombre: '', fecha: '', tipo: '', objetivo: '', notas: '', visibilidad: 'entrenadora' })
   const [modalControl, setModalControl] = useState(false)
@@ -130,6 +135,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [modalNota, setModalNota] = useState(false)
   const [formNota, setFormNota] = useState({ texto: '', fecha: '', visibilidad: 'entrenadora' })
   useEffect(() => { if (clienteId) { cargarSesiones(); setSesionAbierta(null) } }, [clienteId])
+  useEffect(() => { cargarSemanas() }, [bloquesPlan])
   useEffect(() => {
     if (!sesionAbierta) return
     cargarDetalle(sesionAbierta.id)
@@ -152,6 +158,64 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     setNotas(nts || [])
     const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteId).order('fecha_inicio')
     setPacks(pks || [])
+  }
+
+  async function cargarSemanas() {
+    if (!bloquesPlan || bloquesPlan.length === 0) return
+    const bloqueIds = bloquesPlan.map(b => b.id)
+    const { data } = await supabase.from('semanas').select('id, bloque_id, numero, comentario').in('bloque_id', bloqueIds)
+    const map = {}
+    ;(data || []).forEach(s => { map[`${s.bloque_id}_${s.numero}`] = s })
+    setSemanasMap(map)
+    // Refresca semana seleccionada si sigue abierta
+    setSemanaSeleccionada(sel => {
+      if (!sel) return sel
+      const key = `${sel.bloqueId}_${sel.semanaNum}`
+      return map[key] ? { ...sel, semanaId: map[key].id, comentario: map[key].comentario } : sel
+    })
+  }
+
+  function handleSemanaClick(info, diasSem) {
+    const key = `${info.bloque.id}_${info.semanaNum}`
+    const row = semanasMap[key] || null
+    const nueva = {
+      bloqueId: info.bloque.id,
+      bloqueNombre: info.bloque.nombre,
+      bloqueColor: info.bloque.color,
+      subNombre: info.sub?.nombre || null,
+      bloqueNum: info.bloqueNum,
+      subNum: info.subNum,
+      semanaNum: info.semanaNum,
+      semanaId: row?.id || null,
+      comentario: row?.comentario || '',
+      diasSem,
+    }
+    // Toggle: si es la misma semana, cierra el panel
+    setSemanaSeleccionada(sel => sel && sel.bloqueId === info.bloque.id && sel.semanaNum === info.semanaNum ? null : nueva)
+    setNotasSemanaText(row?.comentario || '')
+  }
+
+  async function guardarNotaSemana(texto) {
+    if (!semanaSeleccionada) return
+    setSavingNota(true)
+    const key = `${semanaSeleccionada.bloqueId}_${semanaSeleccionada.semanaNum}`
+    const existing = semanasMap[key]
+    let semanaId = existing?.id || semanaSeleccionada.semanaId
+    if (semanaId) {
+      await supabase.from('semanas').update({ comentario: texto || null }).eq('id', semanaId)
+    } else {
+      const { data } = await supabase.from('semanas').insert({ bloque_id: semanaSeleccionada.bloqueId, numero: semanaSeleccionada.semanaNum, carga: 'media', comentario: texto || null }).select('id').single()
+      semanaId = data?.id
+    }
+    setSemanasMap(m => ({ ...m, [key]: { ...existing, id: semanaId, bloque_id: semanaSeleccionada.bloqueId, numero: semanaSeleccionada.semanaNum, comentario: texto || null } }))
+    setSemanaSeleccionada(s => s ? { ...s, semanaId, comentario: texto } : s)
+    setSavingNota(false)
+  }
+
+  function handleNotasChange(v) {
+    setNotasSemanaText(v)
+    clearTimeout(notasTimer.current)
+    notasTimer.current = setTimeout(() => guardarNotaSemana(v), 800)
   }
 
   async function cargarDetalle(sesionId) {
@@ -554,30 +618,78 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             <button onClick={() => setClipboardBloque(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, lineHeight: 1 }}>×</button>
           </div>
         )}
-        <CalendarioSesiones
-            sesiones={sesiones}
-            competiciones={competiciones}
-            controles={controles}
-            notas={notas}
-            packs={packs}
-            bloquesPlan={bloquesPlan || []}
-            subbloquesPlan={subbloquesPlan || {}}
-            onAbrirSesion={setSesionAbierta}
-         onNuevaSesion={(fecha) => { setFormSesion({ ...EMPTY_SESION, fecha }); setModalSesion('nueva') }}
-            onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '', visibilidad: 'entrenadora' }); setModalComp(true) }}
-            onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '', visibilidad: 'entrenadora' }); setModalControl(true) }}
-            onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha, visibilidad: 'entrenadora' }); setModalNota(true) }}
-            onEliminar={eliminarItem}
-            onMoverSesion={moverItem}
-            clipboard={clipboard}
-            onCopiar={setClipboard}
-            onPegar={pegarItem}
-            onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd'), sinFecha: false }); setModalPegarOtro(true) }}
-            clipboardSemana={clipboardSemana}
-            onCopiarSemana={copiarSemana}
-            onPegarSemana={pegarSemana}
-            onPegarSemanaOtroCliente={() => { setFormPegarSemanaOtro({ clienteDestino: '', fecha: format(clipboardSemana.lunes, 'yyyy-MM-dd') }); setModalPegarSemanaOtro(true) }}
+        <div style={{ display: 'grid', gridTemplateColumns: semanaSeleccionada ? '1fr 268px' : '1fr', gap: 16, alignItems: 'start' }}>
+          <CalendarioSesiones
+              sesiones={sesiones}
+              competiciones={competiciones}
+              controles={controles}
+              notas={notas}
+              packs={packs}
+              bloquesPlan={bloquesPlan || []}
+              subbloquesPlan={subbloquesPlan || {}}
+              semanasMap={semanasMap}
+              semanaSeleccionada={semanaSeleccionada}
+              onSemanaClick={handleSemanaClick}
+              onAbrirSesion={setSesionAbierta}
+              onNuevaSesion={(fecha) => { setFormSesion({ ...EMPTY_SESION, fecha }); setModalSesion('nueva') }}
+              onNuevaCompeticion={(fecha) => { setFormComp({ nombre: '', fecha, tipo: '', objetivo: '', notas: '', visibilidad: 'entrenadora' }); setModalComp(true) }}
+              onNuevaValoracion={(fecha) => { setFormControl({ nombre: '', fecha, tipo: '', notas: '', visibilidad: 'entrenadora' }); setModalControl(true) }}
+              onNuevaNota={(fecha) => { setFormNota({ texto: '', fecha, visibilidad: 'entrenadora' }); setModalNota(true) }}
+              onEliminar={eliminarItem}
+              onMoverSesion={moverItem}
+              clipboard={clipboard}
+              onCopiar={setClipboard}
+              onPegar={pegarItem}
+              onPegarOtroCliente={() => { setFormPegarOtro({ clienteDestino: '', fecha: format(new Date(), 'yyyy-MM-dd'), sinFecha: false }); setModalPegarOtro(true) }}
+              clipboardSemana={clipboardSemana}
+              onCopiarSemana={copiarSemana}
+              onPegarSemana={pegarSemana}
+              onPegarSemanaOtroCliente={() => { setFormPegarSemanaOtro({ clienteDestino: '', fecha: format(clipboardSemana.lunes, 'yyyy-MM-dd') }); setModalPegarSemanaOtro(true) }}
           />
+          {semanaSeleccionada && (
+            <div style={{ position: 'sticky', top: 16, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Semana {semanaSeleccionada.semanaNum}</div>
+                  {semanaSeleccionada.subNombre && (
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>SB{semanaSeleccionada.bloqueNum}.{semanaSeleccionada.subNum} {semanaSeleccionada.subNombre}</div>
+                  )}
+                  {semanaSeleccionada.diasSem?.length > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
+                      {format(semanaSeleccionada.diasSem[0], 'd MMM', { locale: es })} – {format(semanaSeleccionada.diasSem[6], 'd MMM yyyy', { locale: es })}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {savingNota && <span style={{ fontSize: 10, color: 'var(--text3)' }}>Guardando…</span>}
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: semanaSeleccionada.bloqueColor || 'var(--accent)' }} />
+                  <button onClick={() => setSemanaSeleccionada(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+                </div>
+              </div>
+              {/* Bloque badge */}
+              <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 10, background: (semanaSeleccionada.bloqueColor || '#2d6a4f') + '1a', color: semanaSeleccionada.bloqueColor || '#2d6a4f' }}>
+                  B{semanaSeleccionada.bloqueNum} {semanaSeleccionada.bloqueNombre}
+                </span>
+              </div>
+              {/* Textarea */}
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ fontSize: 10, fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)', marginBottom: 8 }}>
+                  🔒 Observaciones · solo entrenadora
+                </div>
+                <textarea
+                  value={notasSemanaText}
+                  onChange={e => handleNotasChange(e.target.value)}
+                  placeholder={"Disponibilidad, cómo fue la semana, incidencias, contexto..."}
+                  rows={8}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', fontSize: 13, color: 'var(--text)', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55, outline: 'none', boxSizing: 'border-box' }}
+                  onBlur={() => { clearTimeout(notasTimer.current); guardarNotaSemana(notasSemanaText) }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
         </>
       )}
 

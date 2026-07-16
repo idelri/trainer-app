@@ -72,6 +72,7 @@ export default function CalendarioSesiones({
   clipboard, onCopiar, onPegar, onPegarOtroCliente,
   clipboardSemana, onCopiarSemana, onPegarSemana, onPegarSemanaOtroCliente,
   arrastrando: arrastandoExterno, setArrastrando: setArrastrandoExterno,
+  semanasMap = {}, semanaSeleccionada, onSemanaClick,
 }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
@@ -223,10 +224,15 @@ export default function CalendarioSesiones({
           return (
             <div key={semIdx}>
               {info && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg2)', borderTop: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 11.5, color: 'var(--text2)' }}>
+                <div
+                  onClick={() => onSemanaClick && onSemanaClick(info, diasSem)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: semanaSeleccionada && semanaSeleccionada.bloqueId === info.bloque.id && semanaSeleccionada.semanaNum === info.semanaNum ? 'var(--accent-light)' : 'var(--bg2)', borderTop: '1px solid var(--border)', cursor: onSemanaClick ? 'pointer' : 'default' }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <strong style={{ fontWeight: 600, color: 'var(--text)' }}>Semana {info.semanaNum}</strong>
                     {info.sub && <> · SB{info.bloqueNum}.{info.subNum} {info.sub.nombre}</>}
+                    {semanasMap[`${info.bloque.id}_${info.semanaNum}`]?.comentario && (
+                      <span title="Tiene observaciones" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', flexShrink: 0 }} />
+                    )}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: (info.bloque.color || '#2d6a4f') + '1a', color: info.bloque.color || '#2d6a4f' }}>
