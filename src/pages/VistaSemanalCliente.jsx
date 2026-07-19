@@ -148,7 +148,9 @@ export default function VistaSemanalCliente() {
         const estadoPorSesion = {}
         ;(feedbacks || []).forEach(f => { estadoPorSesion[f.sesion_id] = f.data?.completion?.status })
         filtradas.forEach(s => {
+          const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
           if (s.estado_manual) s._estado = s.estado_manual
+          else if (s.estado && s.estado !== 'pendiente') s._estado = estadoMap[s.estado] || s.estado
           else if (estadoPorSesion[s.id]) s._estado = estadoPorSesion[s.id]
           else if (s.completada_el) s._estado = 'completed'
           else s._estado = null

@@ -29,11 +29,16 @@ const EMOJI_SEARCH = {
   '✅': 'completado hecho ok','🔁': 'repeticion ciclo','💡': 'idea plan','🗓️': 'calendario fecha',
 }
 
-export default function EmojiPicker({ value, onChange }) {
+export default function EmojiPicker({ value, onChange, multi = false }) {
   const [abierto, setAbierto] = useState(false)
   const [cat, setCat] = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const ref = useRef(null)
+
+  // multi mode: value is space-joined string "💪 🔥", we work with arrays internally
+  const selected = multi
+    ? (value ? value.split(' ').filter(Boolean) : [])
+    : []
 
   useEffect(() => {
     if (!abierto) return
@@ -45,8 +50,16 @@ export default function EmojiPicker({ value, onChange }) {
   }, [abierto])
 
   function seleccionar(ico) {
-    onChange(value === ico ? '' : ico)
-    setAbierto(false)
+    if (multi) {
+      const next = selected.includes(ico)
+        ? selected.filter(e => e !== ico)
+        : [...selected, ico]
+      onChange(next.join(' '))
+      // stay open for multi
+    } else {
+      onChange(value === ico ? '' : ico)
+      setAbierto(false)
+    }
   }
 
   const todosEmojis = [...new Set(EMOJI_CATS.flatMap(c => c.emojis))]
@@ -55,21 +68,35 @@ export default function EmojiPicker({ value, onChange }) {
     ? todosEmojis.filter(e => (EMOJI_SEARCH[e] || '').includes(q) || e === q)
     : EMOJI_CATS[cat].emojis
 
+  const displayValue = multi ? (selected.length > 0 ? selected.join(' ') : null) : value
+
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ fontSize: 26, minWidth: 36, textAlign: 'center' }}>{value || '💪'}</div>
+        <div style={{ fontSize: 26, minWidth: 36, textAlign: 'center', letterSpacing: 2 }}>
+          {displayValue || '💪'}
+        </div>
         <button type="button" className="btn btn-ghost btn-sm"
           onClick={() => { setAbierto(v => !v); setBusqueda(''); setCat(0) }}>
           {abierto ? 'Cerrar' : '😊 Elegir icono'}
         </button>
-        {value && (
+        {displayValue && (
           <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--text3)' }}
             onClick={() => { onChange(''); setAbierto(false) }}>
             ✕ Quitar
           </button>
         )}
       </div>
+      {multi && selected.length > 0 && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+          {selected.map(ico => (
+            <span key={ico} style={{ fontSize: 20, cursor: 'pointer', padding: '2px 4px', borderRadius: 6, border: '1.5px solid var(--accent)', background: 'var(--accent-light)' }}
+              title="Clic para quitar" onClick={() => seleccionar(ico)}>
+              {ico}
+            </span>
+          ))}
+        </div>
+      )}
 
       {abierto && (
         <div style={{
@@ -110,7 +137,7 @@ export default function EmojiPicker({ value, onChange }) {
           {/* Grid */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: '10px', maxHeight: 220, overflowY: 'auto' }}>
             {lista.map((ico, idx) => {
-              const sel = value === ico
+              const sel = multi ? selected.includes(ico) : value === ico
               return (
                 <button key={ico + idx} type="button" onClick={() => seleccionar(ico)} title={EMOJI_SEARCH[ico] || ico}
                   style={{ fontSize: 22, width: 38, height: 38, borderRadius: 8, border: `2px solid ${sel ? 'var(--accent)' : 'transparent'}`, background: sel ? 'var(--accent-light,#e8f5f0)' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -120,6 +147,11 @@ export default function EmojiPicker({ value, onChange }) {
             })}
             {lista.length === 0 && <span style={{ fontSize: 12, color: 'var(--text3)', padding: '8px 4px' }}>Sin resultados</span>}
           </div>
+          {multi && (
+            <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setAbierto(false)}>Listo</button>
+            </div>
+          )}
         </div>
       )}
     </div>

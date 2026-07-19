@@ -898,7 +898,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             </div>
             <div className="form-group">
               <label className="form-label">Icono</label>
-              <EmojiPicker value={formSesion.icono || ''} onChange={v => setFormSesion(f => ({ ...f, icono: v }))} />
+              <EmojiPicker value={formSesion.icono || ''} onChange={v => setFormSesion(f => ({ ...f, icono: v }))} multi />
             </div>
             <div className="form-group"><label className="form-label">Título *</label><input className="form-input" value={formSesion.titulo} onChange={e => setFormSesion(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus /></div>
            <div className="form-row">
