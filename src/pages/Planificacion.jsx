@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, addWeeks, addDays, parseISO, differenceInWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -85,6 +85,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [packsAbiertos, setPacksAbiertos] = useState(new Set())
   const [arrastrando, setArrastrando] = useState(null)
   const [dropPackId, setDropPackId] = useState(null)
+  const [semanaSeleccionada, setSemanaSeleccionada] = useState(null)
+  const [notasSemanaText, setNotasSemanaText] = useState('')
+  const [savingNotaSemana, setSavingNotaSemana] = useState(false)
+  const notasTimer = useRef(null)
 
   // ── Modal unificado ──
   const [modalTipo, setModalTipo] = useState(null)

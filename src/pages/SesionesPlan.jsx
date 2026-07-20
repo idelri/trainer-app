@@ -120,6 +120,8 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   const [draggingSinFecha, setDraggingSinFecha] = useState(null)
   const [modalPegarListaOtro, setModalPegarListaOtro] = useState(false)
   const [clienteDestinoLista, setClienteDestinoLista] = useState('')
+  const [modalCopiarPack, setModalCopiarPack] = useState(null) // pack a copiar
+  const [copiarPackForm, setCopiarPackForm] = useState({ cliente_id: '', fecha_inicio: '', fecha_fin: '' })
   const [competiciones, setCompeticiones] = useState([])
   const [controles, setControles] = useState([])
   const [notas, setNotas] = useState([])
@@ -494,6 +496,28 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     if (clienteDestino === clienteId) cargarSesiones()
   }
 
+  async function copiarPackAOtroCliente() {
+    const { cliente_id, fecha_inicio, fecha_fin } = copiarPackForm
+    if (!cliente_id || !fecha_inicio || !fecha_fin) return
+    setSaving(true)
+    const pack = modalCopiarPack
+    const { data: nuevoPack } = await supabase.from('packs_flexibles').insert({
+      cliente_id,
+      nombre: pack.nombre,
+      fecha_inicio,
+      fecha_fin,
+      descripcion: pack.descripcion || null,
+    }).select().single()
+    const packSesiones = sesiones.filter(s => s.pack_id === pack.id)
+    for (const s of packSesiones) {
+      await pegarSesion(s, null, cliente_id, false, null, nuevoPack.id)
+    }
+    setSaving(false)
+    setModalCopiarPack(null)
+    const nombreDestino = clientes.find(c => c.id === cliente_id)?.nombre || 'el cliente'
+    alert(`Pack "${pack.nombre}" copiado a ${nombreDestino}`)
+  }
+
   async function reordenarSinFecha(destinoId) {
     if (!draggingSinFecha || draggingSinFecha === destinoId) return
     const sinFecha = sesiones.filter(s => !s.fecha && !s.pack_id)
@@ -540,6 +564,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                         </div>
                       </div>
                       <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 12 }}>🔗 Compartir</button>
+                      <button className="btn btn-ghost btn-sm" title="Copiar pack a otro cliente" onClick={e => { e.stopPropagation(); setModalCopiarPack(pack); setCopiarPackForm({ cliente_id: '', fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin }) }}>📋 Copiar</button>
                       <button className="btn btn-ghost btn-sm" title="Editar pack" onClick={e => { e.stopPropagation(); setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }}>✏️</button>
                       <button className="btn btn-ghost btn-sm" title="Eliminar pack" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); eliminarPack(pack) }}>🗑️</button>
                       <span style={{ color: 'var(--text3)', fontSize: 12 }}>{abierto ? '▲' : '▼'}</span>
@@ -1144,6 +1169,43 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalPack(null)}>Cancelar</button>
               <button className="btn btn-primary" disabled={savingPack || !formPack.nombre || !formPack.fecha_inicio || !formPack.fecha_fin} onClick={guardarPack}>{savingPack ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalCopiarPack && (
+        <div className="modal-backdrop" onClick={() => setModalCopiarPack(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Copiar pack a otro cliente</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCopiarPack(null)}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 14 }}>
+              📦 <strong>{modalCopiarPack.nombre}</strong> · {sesiones.filter(s => s.pack_id === modalCopiarPack.id).length} sesiones
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cliente destino *</label>
+              <select className="form-select" value={copiarPackForm.cliente_id} onChange={e => setCopiarPackForm(f => ({ ...f, cliente_id: e.target.value }))} autoFocus>
+                <option value="">Selecciona un cliente...</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha inicio</label>
+                <input className="form-input" type="date" value={copiarPackForm.fecha_inicio} onChange={e => setCopiarPackForm(f => ({ ...f, fecha_inicio: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha fin</label>
+                <input className="form-input" type="date" value={copiarPackForm.fecha_fin} onChange={e => setCopiarPackForm(f => ({ ...f, fecha_fin: e.target.value }))} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalCopiarPack(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={saving || !copiarPackForm.cliente_id || !copiarPackForm.fecha_inicio || !copiarPackForm.fecha_fin} onClick={copiarPackAOtroCliente}>
+                {saving ? 'Copiando...' : 'Copiar pack'}
+              </button>
             </div>
           </div>
         </div>
