@@ -564,7 +564,6 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                         </div>
                       </div>
                       <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 12 }}>🔗 Compartir</button>
-                      <button className="btn btn-ghost btn-sm" title="Copiar pack a otro cliente" onClick={e => { e.stopPropagation(); setModalCopiarPack(pack); setCopiarPackForm({ cliente_id: '', fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin }) }}>📋 Copiar</button>
                       <button className="btn btn-ghost btn-sm" title="Editar pack" onClick={e => { e.stopPropagation(); setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }}>✏️</button>
                       <button className="btn btn-ghost btn-sm" title="Eliminar pack" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); eliminarPack(pack) }}>🗑️</button>
                       <span style={{ color: 'var(--text3)', fontSize: 12 }}>{abierto ? '▲' : '▼'}</span>
@@ -584,6 +583,9 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => { setFormSesion({ ...EMPTY_SESION }); setAddingToPackId(pack.id); setModalSesion('nueva') }}>
                             <Plus size={12} /> Añadir sesión al pack
+                          </button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setModalCopiarPack(pack); setCopiarPackForm({ cliente_id: '', fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin }) }}>
+                            📋 Copiar a otro cliente
                           </button>
                           {clipboard?._tipo === 'sesion' && (
                             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent)' }}
