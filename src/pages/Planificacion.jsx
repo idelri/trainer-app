@@ -348,6 +348,13 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     alert(`Enlace del pack copiado:\n${url}`)
   }
 
+  async function eliminarPack(pack) {
+    if (!window.confirm(`¿Eliminar el pack "${pack.nombre}" y todas sus sesiones?`)) return
+    await supabase.from('sesiones').delete().eq('pack_id', pack.id)
+    await supabase.from('packs_flexibles').delete().eq('id', pack.id)
+    cargarPlanificacion()
+  }
+
   async function moverAPack(sesion, packId) {
     await supabase.from('sesiones').update({ pack_id: packId, fecha: null }).eq('id', sesion.id)
     cargarPlanificacion()
@@ -1704,6 +1711,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                           <button onClick={e => { e.stopPropagation(); copiarEnlacePack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #0369a1', background: '#0369a1', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>🔗 Compartir</button>
                           <button onClick={e => { e.stopPropagation(); setModalCopiarPack(pack); setCopiarPackForm({ cliente_id: '', fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin }) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #94a3b8', background: 'transparent', color: '#475569', cursor: 'pointer' }}>📋 Copiar</button>
                           <button onClick={e => { e.stopPropagation(); setFormPack({ nombre: pack.nombre, fecha_inicio: pack.fecha_inicio, fecha_fin: pack.fecha_fin, descripcion: pack.descripcion || '' }); setModalPack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #94a3b8', background: 'transparent', color: '#475569', cursor: 'pointer' }}>✏️ Editar</button>
+                          <button onClick={e => { e.stopPropagation(); eliminarPack(pack) }} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', cursor: 'pointer' }}>🗑️ Eliminar</button>
                           {esDrop && <span style={{ fontSize: 11, color: '#0369a1', fontWeight: 600 }}>Suelta aquí</span>}
                         </div>
                         {abierto && (
