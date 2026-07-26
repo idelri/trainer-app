@@ -751,34 +751,41 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
     const lista = []
     const bloquesOrdenados = [...(bloques || [])].sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))
     bloquesOrdenados.forEach(b => {
-      const sems = (semanas?.[b.id] || []).slice().sort((a, z) => a.numero - z.numero)
-      sems.forEach(s => {
-        const inicio = addWeeks(parseISO(b.fecha_inicio), s.numero - 1)
+      if (!b.fecha_inicio || !b.semanas) return
+      const semsDB = (semanas?.[b.id] || [])
+      const semsDBPorNumero = {}
+      semsDB.forEach(s => { semsDBPorNumero[s.numero] = s })
+
+      // Generar todas las semanas del bloque, con o sin fila en DB
+      for (let num = 1; num <= b.semanas; num++) {
+        const s = semsDBPorNumero[num] || null
+        const inicio = addWeeks(parseISO(b.fecha_inicio + 'T12:00:00'), num - 1)
         const fin = addDays(inicio, 6)
         const sesionesSemana = sesionesCliente
           .filter(se => se.fecha && isWithinInterval(parseISO(se.fecha), { start: inicio, end: fin }))
           .map(se => ({ ...se, feedback: feedbacks[se.id] || null }))
-        const subPlan = (subbloques?.[b.id] || []).find(sb => s.numero >= sb.semana_inicio && s.numero <= sb.semana_fin)
+        const subPlan = (subbloques?.[b.id] || []).find(sb => num >= sb.semana_inicio && num <= sb.semana_fin)
         lista.push({
-          id: s.id,
+          id: s?.id || `virtual-${b.id}-${num}`,
+          virtual: !s,
           bloqueId: b.id,
           bloqueNombre: b.nombre,
-          numero: s.numero,
+          numero: num,
           inicio, fin,
-          checkin: checkinPorSemana[s.id] || null,
+          checkin: s ? (checkinPorSemana[s.id] || null) : null,
           sesiones: sesionesSemana,
-          kmReal:      s.km_real      ?? null,
-          kmObjetivo:  s.km_objetivo  ?? null,
+          kmReal:      s?.km_real      ?? null,
+          kmObjetivo:  s?.km_objetivo  ?? null,
           kmMin:       subPlan?.km_min ?? null,
           kmMax:       subPlan?.km_max ?? null,
           zona1_2Obj:  subPlan?.zona1_2  ?? null,
           zona3_4Obj:  subPlan?.zona3_4  ?? null,
           zona5Obj:    subPlan?.zona5    ?? null,
-          zona1_2Real: s.zona1_2_real   ?? null,
-          zona3_4Real: s.zona3_4_real   ?? null,
-          zona5Real:   s.zona5_real     ?? null,
+          zona1_2Real: s?.zona1_2_real   ?? null,
+          zona3_4Real: s?.zona3_4_real   ?? null,
+          zona5Real:   s?.zona5_real     ?? null,
         })
-      })
+      }
     })
     return lista
   }, [bloques, semanas, subbloques, checkins, sesionesCliente, feedbacks])
