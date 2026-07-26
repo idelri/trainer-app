@@ -368,6 +368,33 @@ export default function ClientePortal({ token }) {
       const semanaRef = getSemanaActual(bloqueRef)
       const checkinRef = checkins.find(c => c.semana_id === semanaRef?.id)
 
+      // Semana anterior: visible lun-mié si no tiene checkin
+      const diaSemana = new Date().getDay() // 0=dom,1=lun,...,6=sab
+      const esInicioSemana = diaSemana >= 1 && diaSemana <= 3
+      const getSemanaAnterior = (bloque) => {
+        if (!bloque?.fecha_inicio) return null
+        const hoy = new Date()
+        return semanas.filter(s => s.bloque_id === bloque.id).find(s => {
+          const ini = addDays(parseISO(bloque.fecha_inicio + 'T12:00:00'), (s.numero - 1) * 7)
+          const fin = addDays(ini, 7)
+          const semPasada = addDays(hoy, -7)
+          return semPasada >= ini && semPasada < fin
+        }) || null
+      }
+      const semanaAnt = esInicioSemana ? getSemanaAnterior(bloqueRef) : null
+      const checkinAnt = semanaAnt ? checkins.find(c => c.semana_id === semanaAnt.id) : null
+      const mostrarAvisoAnt = esInicioSemana && semanaAnt && !checkinAnt
+
+      async function abrirCheckinAnt() {
+        let token = semanaAnt?.token_publico
+        if (!token && semanaAnt?.id) {
+          const uuid = crypto.randomUUID()
+          await supabase.from('semanas').update({ token_publico: uuid }).eq('id', semanaAnt.id)
+          token = uuid
+        }
+        if (token) window.location.href = `/checkin/${token}`
+      }
+
       async function abrirCheckin() {
         let token = semanaRef?.token_publico
         if (!token) {
@@ -402,6 +429,16 @@ export default function ClientePortal({ token }) {
       }
 
       return (
+        <>
+        {mostrarAvisoAnt && (
+          <div style={{ background: '#fffbe6', border: '1px solid #f0e5a0', borderRadius: 10, padding: '10px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ fontSize: 12, color: '#5a4e00' }}>¿Olvidaste el feedback de la semana pasada?</div>
+            <button onClick={abrirCheckinAnt}
+              style={{ flexShrink: 0, background: '#e6c200', color: '#3a3000', fontSize: 11, fontWeight: 600, padding: '6px 11px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Rellenarlo
+            </button>
+          </div>
+        )}
         <div style={card}>
           <div style={{ padding: '12px 14px' }}>
             <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
@@ -458,6 +495,7 @@ export default function ClientePortal({ token }) {
             )}
           </div>
         </div>
+        </>
       )
     }
 
