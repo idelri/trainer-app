@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check } from 'lucide-react'
+import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check, Filter } from 'lucide-react'
 import BibliotecaSesiones from './BibliotecaSesiones'
 
 function ytId(url) {
@@ -179,6 +179,61 @@ function InlineTagsPanel({ ej, onChange }) {
   )
 }
 
+function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios }) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef(null)
+  const activos = filtros[campo] || []
+
+  // valores que realmente existen en los datos
+  const valoresUsados = new Set()
+  ejercicios.forEach(e => (e[campo] || []).forEach(v => valoresUsados.add(v)))
+  const items = ETIQUETAS[campo].grupos.flatMap(g => g.items).filter(v => valoresUsados.has(v))
+
+  useEffect(() => {
+    if (!abierto) return
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [abierto])
+
+  if (items.length === 0) return null
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); setAbierto(v => !v) }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', borderRadius: 4, color: activos.length ? TAG_COLORS[campo] : 'var(--text3)', display: 'flex', alignItems: 'center' }}
+        title="Filtrar por esta columna"
+      >
+        <Filter size={10} style={{ fill: activos.length ? TAG_COLORS[campo] : 'none' }} />
+        {activos.length > 0 && <span style={{ fontSize: 9, marginLeft: 1, fontWeight: 700 }}>{activos.length}</span>}
+      </button>
+      {abierto && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, minWidth: 200, maxWidth: 280, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.14)', padding: 10, marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em' }}>{ETIQUETAS[campo].label}</span>
+            {activos.length > 0 && (
+              <button type="button" onClick={() => clearFiltro(campo)} style={{ fontSize: 10, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer' }}>✕ limpiar</button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 260, overflowY: 'auto' }}>
+            {items.map(item => {
+              const sel = activos.includes(item)
+              return (
+                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '3px 4px', borderRadius: 5, background: sel ? TAG_COLORS[campo] + '14' : 'transparent' }}>
+                  <input type="checkbox" checked={sel} onChange={() => toggleFiltro(campo, item)} style={{ accentColor: TAG_COLORS[campo], cursor: 'pointer', width: 13, height: 13 }} />
+                  <span style={{ fontSize: 11.5, color: sel ? TAG_COLORS[campo] : 'var(--text2)', fontWeight: sel ? 600 : 400 }}>{item}</span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Biblioteca({ setPage, setSesionesContext }) {
   const [tabPrincipal, setTabPrincipal] = useState('ejercicios')
   const [ejercicios, setEjercicios] = useState([])
@@ -292,6 +347,10 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       const next = prev.includes(valor) ? prev.filter(v => v !== valor) : [...prev, valor]
       return { ...f, [campo]: next }
     })
+  }
+
+  function clearFiltro(campo) {
+    setFiltros(f => ({ ...f, [campo]: [] }))
   }
 
   function toggleSort(campo) {
@@ -623,9 +682,14 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                   { campo: 'tipo_contraccion', label: 'Contracción' },
                   { campo: 'material', label: 'Material' },
                 ].map(({ campo, label }) => (
-                  <th key={campo} onClick={() => toggleSort(campo)}
-                    style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' }}>
-                    {label} <SortArrow campo={campo} />
+                  <th key={campo}
+                    style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span onClick={() => toggleSort(campo)} style={{ cursor: 'pointer' }}>{label} <SortArrow campo={campo} /></span>
+                      {campo !== 'nombre' && (
+                        <ColumnFilter campo={campo} filtros={filtros} toggleFiltro={toggleFiltro} clearFiltro={clearFiltro} ejercicios={ejercicios} />
+                      )}
+                    </div>
                   </th>
                 ))}
                 <th style={{ padding: '8px 10px', width: 80 }}></th>
