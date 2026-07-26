@@ -360,66 +360,106 @@ export default function ClientePortal({ token }) {
       </div>
     ) : null
 
-    const FeedbackSemana = () => semanaActualData ? (
-      <div style={card}>
-        <div style={{ padding: '12px 14px' }}>
-          <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
-          {checkinActual ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {checkinActual.energia && (
-                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinActual.energia] || checkinActual.energia}</div>
+    const FeedbackSemana = () => {
+      // Usa el bloque activo o, si no hay ninguno, el último bloque disponible
+      const bloqueRef = bloqueActivo || (bloques.length > 0 ? bloques[bloques.length - 1] : null)
+      if (!bloqueRef) return null
+
+      const semanaRef = getSemanaActual(bloqueRef)
+      const checkinRef = checkins.find(c => c.semana_id === semanaRef?.id)
+
+      async function abrirCheckin() {
+        let token = semanaRef?.token_publico
+        if (!token) {
+          // Calcular número de semana actual dentro del bloque
+          const hoy = new Date()
+          const ini = parseISO(bloqueRef.fecha_inicio + 'T12:00:00')
+          const numSem = Math.max(1, Math.floor((hoy - ini) / (7 * 24 * 3600 * 1000)) + 1)
+
+          if (semanaRef?.id) {
+            // Semana existe pero sin token: actualizamos
+            const { data: updated } = await supabase
+              .from('semanas').update({ token_publico: crypto.randomUUID() })
+              .eq('id', semanaRef.id).select('token_publico').single()
+            token = updated?.token_publico
+          } else {
+            // Semana no existe: la creamos (DB genera token_publico si tiene DEFAULT)
+            const { data: nueva } = await supabase
+              .from('semanas').insert({ bloque_id: bloqueRef.id, numero: numSem, carga: 'media' })
+              .select().single()
+            token = nueva?.token_publico
+            if (!token && nueva?.id) {
+              // Sin DEFAULT en DB: asignamos manualmente
+              const uuid = crypto.randomUUID()
+              await supabase.from('semanas').update({ token_publico: uuid }).eq('id', nueva.id)
+              token = uuid
+            }
+            if (nueva) setSemanas(s => [...s, nueva])
+          }
+        }
+        if (token) window.location.href = `/checkin/${token}`
+        else alert('No se pudo generar el enlace de feedback. Inténtalo de nuevo.')
+      }
+
+      return (
+        <div style={card}>
+          <div style={{ padding: '12px 14px' }}>
+            <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
+            {checkinRef ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {checkinRef.energia && (
+                    <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinRef.energia] || checkinRef.energia}</div>
+                    </div>
+                  )}
+                  {checkinRef.descanso && (
+                    <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinRef.descanso] || checkinRef.descanso}</div>
+                    </div>
+                  )}
+                  {checkinRef.horas_sueno && (
+                    <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinRef.horas_sueno}h/noche</div>
+                    </div>
+                  )}
+                  {checkinRef.tolerancia_carga && (
+                    <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinRef.tolerancia_carga] || checkinRef.tolerancia_carga}</div>
+                    </div>
+                  )}
+                </div>
+                {checkinRef.molestias && checkinRef.molestias !== 'No' && (
+                  <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
+                    <div style={{ fontSize: 12, color: '#633806' }}>{checkinRef.molestias}</div>
                   </div>
                 )}
-                {checkinActual.descanso && (
-                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinActual.descanso] || checkinActual.descanso}</div>
+                {checkinRef.comentario_libre && (
+                  <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
+                    <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinRef.comentario_libre}</div>
                   </div>
                 )}
-                {checkinActual.horas_sueno && (
-                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinActual.horas_sueno}h/noche</div>
-                  </div>
-                )}
-                {checkinActual.tolerancia_carga && (
-                  <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinActual.tolerancia_carga] || checkinActual.tolerancia_carga}</div>
-                  </div>
-                )}
+                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
               </div>
-              {checkinActual.molestias && checkinActual.molestias !== 'No' && (
-                <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
-                  <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
-                  <div style={{ fontSize: 12, color: '#633806' }}>{checkinActual.molestias}</div>
-                </div>
-              )}
-              {checkinActual.comentario_libre && (
-                <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
-                  <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
-                  <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinActual.comentario_libre}</div>
-                </div>
-              )}
-              <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
-              {semanaActualData.token_publico && (
-                <a href={`/checkin/${semanaActualData.token_publico}`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, textDecoration: 'none' }}>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
+                <button onClick={abrirCheckin}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   📋 Enviar feedback de semana
-                </a>
-              )}
-            </div>
-          )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    ) : null
+      )
+    }
 
     return (
       <div style={isDesktop

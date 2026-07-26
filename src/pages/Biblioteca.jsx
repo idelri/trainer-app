@@ -36,7 +36,14 @@ const ETIQUETAS = {
   objetivo: {
     label: 'Objetivo',
     grupos: [
-      { grupo: '', items: ['Fuerza base', 'Fuerza específica', 'Potencia / Velocidad', 'Técnica / Control motor', 'Movilidad / Flexibilidad'] },
+      { grupo: '', items: ['Fuerza', 'Potencia / Velocidad', 'Técnica / Control motor', 'Movilidad / Flexibilidad', 'Resistencia muscular'] },
+    ],
+  },
+  nivel_aproximacion: {
+    label: 'Nivel de aproximación',
+    single: true,
+    grupos: [
+      { grupo: '', items: ['0− · Complementario', '0+ · General orientado', 'I · Fundamental', 'II · Dirigido', 'III · Específico cerrado', 'IV · Reactivo', 'V · Competitivo'] },
     ],
   },
   tipo_contraccion: {
@@ -58,21 +65,23 @@ const ETIQUETAS = {
   },
 }
 
-const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', tipo_contraccion: '#be185d', material: '#475569' }
+const TAG_COLORS = { zona_corporal: '#0369a1', patron_movimiento: '#7c3aed', lateralidad_apoyo: '#065f46', objetivo: '#b45309', nivel_aproximacion: '#0f766e', tipo_contraccion: '#be185d', material: '#475569' }
 
 const SORT_OPTIONS = [
   { value: 'nombre', label: 'Nombre' },
   { value: 'zona_corporal', label: 'Zona corporal' },
   { value: 'patron_movimiento', label: 'Patrón' },
   { value: 'objetivo', label: 'Objetivo' },
+  { value: 'nivel_aproximacion', label: 'Nivel' },
   { value: 'tipo_contraccion', label: 'Contracción' },
   { value: 'material', label: 'Material' },
 ]
 
-const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [], material: [] }
+const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], nivel_aproximacion: [], tipo_contraccion: [], material: [] }
 
 function TagSelector({ campo, value = [], onChange }) {
   const config = ETIQUETAS[campo]
+  const isSingle = config.single || false
   return (
     <div>
       {config.grupos.map(({ grupo, items }) => (
@@ -83,7 +92,7 @@ function TagSelector({ campo, value = [], onChange }) {
               const activo = value.includes(item)
               return (
                 <button key={item} type="button"
-                  onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+                  onClick={() => onChange(isSingle ? (activo ? [] : [item]) : (activo ? value.filter(v => v !== item) : [...value, item]))}
                   style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, background: activo ? 'var(--accent-light)' : 'transparent', color: activo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
                   {item}
                 </button>
@@ -110,10 +119,12 @@ function MiniChips({ values = [], color }) {
 // Etiquetas editables: con × para quitar y + para añadir
 function InlineTags({ campo, values = [], onChange }) {
   const color = TAG_COLORS[campo]
+  const config = ETIQUETAS[campo]
+  const isSingle = config.single || false
   const [abierto, setAbierto] = useState(false)
   const ref = useRef()
-  const todosItems = ETIQUETAS[campo].grupos.flatMap(g => g.items)
-  const disponibles = todosItems.filter(i => !values.includes(i))
+  const todosItems = config.grupos.flatMap(g => g.items)
+  const disponibles = isSingle ? todosItems : todosItems.filter(i => !values.includes(i))
 
   useEffect(() => {
     if (!abierto) return
@@ -150,7 +161,7 @@ function InlineTags({ campo, values = [], onChange }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {disp.map(item => (
                     <button key={item} type="button"
-                      onClick={() => { onChange([...values, item]); setAbierto(false) }}
+                      onClick={() => { onChange(isSingle ? [item] : [...values, item]); setAbierto(false) }}
                       style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
                       {item}
                     </button>
@@ -276,6 +287,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       video_url: e.video_url || '', notas: e.notas || '',
       zona_corporal: e.zona_corporal || [], patron_movimiento: e.patron_movimiento || [],
       lateralidad_apoyo: e.lateralidad_apoyo || [], objetivo: e.objetivo || [],
+      nivel_aproximacion: e.nivel_aproximacion || [],
       tipo_contraccion: e.tipo_contraccion || [], material: e.material || [],
     })
     setModal(e)
@@ -286,6 +298,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       id: e.id, nombre: e.nombre || '',
       zona_corporal: [...(e.zona_corporal || [])], patron_movimiento: [...(e.patron_movimiento || [])],
       lateralidad_apoyo: [...(e.lateralidad_apoyo || [])], objetivo: [...(e.objetivo || [])],
+      nivel_aproximacion: [...(e.nivel_aproximacion || [])],
       tipo_contraccion: [...(e.tipo_contraccion || [])], material: [...(e.material || [])],
     })
   }
@@ -303,6 +316,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       video_url: form.video_url || null, notas: form.notas || null,
       zona_corporal: form.zona_corporal, patron_movimiento: form.patron_movimiento,
       lateralidad_apoyo: form.lateralidad_apoyo, objetivo: form.objetivo,
+      nivel_aproximacion: form.nivel_aproximacion,
       tipo_contraccion: form.tipo_contraccion, material: form.material,
     }
     const { error } = modal === 'nuevo'
@@ -324,6 +338,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       patron_movimiento: inlineEj.patron_movimiento,
       lateralidad_apoyo: inlineEj.lateralidad_apoyo,
       objetivo: inlineEj.objetivo,
+      nivel_aproximacion: inlineEj.nivel_aproximacion,
       tipo_contraccion: inlineEj.tipo_contraccion,
       material: inlineEj.material,
     }).eq('id', inlineEj.id)
@@ -679,6 +694,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                   { campo: 'patron_movimiento', label: 'Patrón' },
                   { campo: 'lateralidad_apoyo', label: 'Apoyo' },
                   { campo: 'objetivo', label: 'Objetivo' },
+                  { campo: 'nivel_aproximacion', label: 'Nivel' },
                   { campo: 'tipo_contraccion', label: 'Contracción' },
                   { campo: 'material', label: 'Material' },
                 ].map(({ campo, label }) => (
@@ -715,7 +731,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                         </>
                       )}
                     </td>
-                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'tipo_contraccion', 'material'].map(campo => (
+                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'nivel_aproximacion', 'tipo_contraccion', 'material'].map(campo => (
                       <td key={campo} style={{ padding: '8px 10px', maxWidth: 180 }}>
                         {editando
                           ? <InlineTags campo={campo} values={inlineEj[campo] || []} onChange={v => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
