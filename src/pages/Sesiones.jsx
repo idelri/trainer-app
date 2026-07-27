@@ -348,6 +348,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla,
   const [loading, setLoading] = useState(false)
   const [sesionAbierta, setSesionAbierta] = useState(null)
   const sesionInicialCargada = useRef(false)
+  const registrandoEnBib = useRef(new Set()) // protege contra dobles llamadas al crear en biblioteca
   const [bloques, setBloques] = useState([])
   const [ejercicios, setEjercicios] = useState({})
 
@@ -946,17 +947,29 @@ async function guardarSesion() {
     await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
     setDirty(true)
+
+    // Solo cuando se asigna el PRIMER nombre válido a un ejercicio nuevo (sin biblioteca_id todavía)
+    // En cualquier otro caso (renombre posterior) no tocamos la Biblioteca
     if (campo === 'nombre' && valor?.trim()) {
-      // Guarda en biblioteca (crea si no existe) y vincula biblioteca_id
-      supabase.from('ejercicios_biblioteca')
-        .upsert({ nombre: valor.trim() }, { onConflict: 'nombre', ignoreDuplicates: true })
-        .then(async () => {
-          const { data: bib } = await supabase.from('ejercicios_biblioteca').select('id').eq('nombre', valor.trim()).single()
+      const ejActual = (ejercicios[bloqueId] || []).find(e => e.id === id)
+      const sinVincular = ejActual && !ejActual.biblioteca_id
+      const yaEnProceso = registrandoEnBib.current.has(id)
+      if (sinVincular && !yaEnProceso) {
+        registrandoEnBib.current.add(id)
+        try {
+          const { data: bib } = await supabase
+            .from('ejercicios_biblioteca')
+            .insert({ nombre: valor.trim() })
+            .select('id')
+            .single()
           if (bib) {
             await supabase.from('sesion_ejercicios').update({ biblioteca_id: bib.id }).eq('id', id)
             setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, biblioteca_id: bib.id } : e) }))
           }
-        })
+        } finally {
+          registrandoEnBib.current.delete(id)
+        }
+      }
     }
   }
 
