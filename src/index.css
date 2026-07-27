@@ -369,3 +369,6 @@ tr:hover td { background: var(--bg); }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Tooltip pendiente */
+.tooltip-parent:hover .tooltip-content { display: block !important; }

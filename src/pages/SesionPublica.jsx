@@ -385,6 +385,46 @@ export default function SesionPublica({ token }) {
                       <div style={{ fontSize: 12, fontWeight: 700, color: rpeColor }}>{BORG_RPE[f.rpe]}</div>
                     </div>
                   )}
+                  {(f.pendiente_cualitativa || f.pendiente_pct_min != null) && (() => {
+                    const PEND_CLI = {
+                      llano:      { label: 'Llano',      ref: '0–1 %',   desc: 'Busca un terreno prácticamente plano. La inclinación no debe condicionar tu técnica ni aumentar claramente la exigencia.' },
+                      suave:      { label: 'Suave',      ref: '2–4 %',   desc: 'Pendiente perceptible pero que permite mantener una carrera fluida. Notarás un ligero aumento en la exigencia muscular.' },
+                      moderado:   { label: 'Moderado',   ref: '5–7 %',   desc: 'La cuesta condiciona claramente el desplazamiento. Reduce algo tu ritmo habitual y trabaja con más intensidad de piernas.' },
+                      fuerte:     { label: 'Fuerte',     ref: '8–12 %',  desc: 'Busca una subida claramente pronunciada que te obligue a reducir el ritmo, pero que te permita mantener una técnica estable durante todo el intervalo.' },
+                      muy_fuerte: { label: 'Muy fuerte', ref: '>12 %',   desc: 'Pendiente muy pronunciada. Mantén una técnica estable; es normal ir a trote muy lento o incluso caminando rápido.' },
+                    }
+                    function inferPct(min, max) {
+                      if (min == null) return null
+                      const v = max != null ? (Number(min) + Number(max)) / 2 : Number(min)
+                      if (v <= 1) return 'llano'; if (v <= 4) return 'suave'; if (v <= 7) return 'moderado'; if (v <= 12) return 'fuerte'; return 'muy_fuerte'
+                    }
+                    function inferPctRango(min, max) {
+                      if (min == null || max == null) return inferPct(min, max) ? [inferPct(min, max)] : []
+                      const lo = inferPct(min, null); const hi = inferPct(max, null)
+                      return lo === hi ? [lo] : [lo, hi]
+                    }
+                    const cualLabel = f.pendiente_cualitativa ? PEND_CLI[f.pendiente_cualitativa]?.label : null
+                    const refNiveles = inferPctRango(f.pendiente_pct_min, f.pendiente_pct_max)
+                    const refLabel = refNiveles.map(k => PEND_CLI[k]?.label).filter(Boolean).join('–')
+                    const descKey = f.pendiente_cualitativa || (refNiveles.length === 1 ? refNiveles[0] : null)
+                    const desc = descKey ? PEND_CLI[descKey]?.desc : null
+                    const mostrarCue = f.pendiente_pct_min != null && Number(f.pendiente_pct_min) >= 6
+                    const pctStr = f.pendiente_pct_min != null
+                      ? (f.pendiente_pct_max != null ? `${f.pendiente_pct_min}–${f.pendiente_pct_max} %` : `${f.pendiente_pct_min} %`)
+                      : null
+                    return (
+                      <div style={{ background: '#f5f3ff', border: '1.5px solid #a5b4fc', borderRadius: 10, padding: '10px 14px', minWidth: 120 }}>
+                        <div style={{ fontSize: 10, color: '#6366f1', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Pendiente</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#4338ca', marginBottom: 2 }}>
+                          {cualLabel || (refLabel ? refLabel : pctStr)}
+                        </div>
+                        {pctStr && <div style={{ fontSize: 12, color: '#6366f1', fontWeight: 600, marginBottom: 4 }}>{pctStr}</div>}
+                        {!f.pendiente_cualitativa && refLabel && <div style={{ fontSize: 11, color: '#6366f1', fontStyle: 'italic', marginBottom: 4 }}>Ref. orientativa: {refLabel.toLowerCase()}</div>}
+                        {desc && <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5, marginTop: 4 }}>{desc}</div>}
+                        {mostrarCue && <div style={{ marginTop: 8, fontSize: 11, color: '#6b7280', fontStyle: 'italic', lineHeight: 1.4 }}>Selecciona una pendiente que puedas mantener con técnica estable y sin agarrarte a la cinta.</div>}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             )

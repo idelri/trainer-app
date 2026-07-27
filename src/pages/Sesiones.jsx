@@ -1158,6 +1158,117 @@ async function guardarSesion() {
                       {f.rpe && <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: rColor }}>{f.rpe} – {BORG_RPE[f.rpe]}</div>}
                     </div>
                   </div>
+
+                  {/* ── PENDIENTE / DESNIVEL ── */}
+                  {(() => {
+                    const PEND = {
+                      llano:      { label: 'Llano',      ref: '0–1 %',   desc: 'Desplazamiento prácticamente natural. La inclinación apenas condiciona la técnica ni aumenta la exigencia respecto al llano.' },
+                      suave:      { label: 'Suave',      ref: '2–4 %',   desc: 'Perceptible pero fluida. Aumenta ligeramente la exigencia muscular y cardiovascular.' },
+                      moderado:   { label: 'Moderado',   ref: '5–7 %',   desc: 'Condiciona claramente el desplazamiento. Obliga a reducir algo el ritmo y aumenta de forma clara el trabajo de piernas.' },
+                      fuerte:     { label: 'Fuerte',     ref: '8–12 %',  desc: 'Subida exigente. El ritmo debe reducirse claramente y aumenta mucho la demanda muscular y cardiovascular.' },
+                      muy_fuerte: { label: 'Muy fuerte', ref: '>12 %',   desc: 'Pendiente muy pronunciada. Adecuada para esfuerzos cortos o trote muy lento. Mantener carrera continua puede ser muy exigente.' },
+                    }
+                    function inferirNivelPct(min, max) {
+                      if (min == null) return null
+                      const v = max != null ? (Number(min) + Number(max)) / 2 : Number(min)
+                      if (v <= 1) return [{ key: 'llano', label: 'Llano' }]
+                      if (v <= 4) return [{ key: 'suave', label: 'Suave' }]
+                      if (v <= 7) return [{ key: 'moderado', label: 'Moderado' }]
+                      if (v <= 12) return [{ key: 'fuerte', label: 'Fuerte' }]
+                      return [{ key: 'muy_fuerte', label: 'Muy fuerte' }]
+                    }
+                    function inferirNivelRango(min, max) {
+                      if (min == null || max == null) return inferirNivelPct(min, max)
+                      const lo = inferirNivelPct(min, null)?.[0]?.key
+                      const hi = inferirNivelPct(max, null)?.[0]?.key
+                      if (lo === hi) return [{ key: lo, label: PEND[lo]?.label }]
+                      return [{ key: lo, label: PEND[lo]?.label }, { key: hi, label: PEND[hi]?.label }]
+                    }
+                    const hasPendiente = f.pendiente_cualitativa || f.pendiente_pct_min != null
+                    const [pendOpen, setPendOpen] = [hasPendiente, () => {}] // always open if has value
+                    const niveles = inferirNivelRango(f.pendiente_pct_min, f.pendiente_pct_max)
+                    const mostrarRefPct = f.pendiente_pct_min != null && niveles
+                    const mostrarCueCinta = f.pendiente_pct_min != null && Number(f.pendiente_pct_min) >= 6
+
+                    const [showPendForm, setShowPendForm] = [hasPendiente, (v) => {
+                      if (!v) {
+                        actualizarBloqueCarrito(f.id, 'pendiente_cualitativa', null, grupoId)
+                        actualizarBloqueCarrito(f.id, 'pendiente_pct_min', null, grupoId)
+                        actualizarBloqueCarrito(f.id, 'pendiente_pct_max', null, grupoId)
+                      }
+                    }]
+
+                    return (
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: hasPendiente ? 8 : 0 }}>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>Pendiente / Desnivel</div>
+                          <div style={{ position: 'relative', display: 'inline-block' }} className="tooltip-parent">
+                            <span style={{ fontSize: 11, color: 'var(--text3)', cursor: 'help', border: '1px solid var(--border)', borderRadius: '50%', width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>i</span>
+                            <div className="tooltip-content" style={{ position: 'absolute', left: 0, top: 18, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: 'var(--text2)', lineHeight: 1.5, width: 240, zIndex: 200, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', display: 'none' }}>
+                              La pendiente indica la inclinación del terreno, no la intensidad total del ejercicio. Una misma pendiente puede resultar muy diferente según el ritmo, la duración y el nivel del deportista. Usa la opción cualitativa para indicar el tipo de terreno y el porcentaje cuando necesites una referencia más precisa, especialmente en cinta.
+                            </div>
+                          </div>
+                          {!hasPendiente && (
+                            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '2px 8px', color: 'var(--text3)', marginLeft: 4 }}
+                              onClick={() => actualizarBloqueCarrito(f.id, 'pendiente_cualitativa', 'moderado', grupoId)}>
+                              + Añadir
+                            </button>
+                          )}
+                          {hasPendiente && (
+                            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10, padding: '2px 6px', color: 'var(--text3)', marginLeft: 'auto' }}
+                              onClick={() => { actualizarBloqueCarrito(f.id, 'pendiente_cualitativa', null, grupoId); actualizarBloqueCarrito(f.id, 'pendiente_pct_min', null, grupoId); actualizarBloqueCarrito(f.id, 'pendiente_pct_max', null, grupoId) }}>
+                              × quitar
+                            </button>
+                          )}
+                        </div>
+
+                        {hasPendiente && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {/* Pills cualitativo */}
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              {Object.entries(PEND).map(([k, p]) => {
+                                const sel = f.pendiente_cualitativa === k
+                                return (
+                                  <button key={k} onClick={() => actualizarBloqueCarrito(f.id, 'pendiente_cualitativa', sel ? null : k, grupoId)}
+                                    style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: sel ? 700 : 400, border: `1.5px solid ${sel ? '#6366f1' : 'var(--border)'}`, background: sel ? '#6366f1' : 'var(--bg)', color: sel ? '#fff' : 'var(--text2)', cursor: 'pointer', transition: 'all 0.12s' }}>
+                                    {p.label}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            {/* Descripción del nivel seleccionado */}
+                            {f.pendiente_cualitativa && PEND[f.pendiente_cualitativa] && (
+                              <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5, fontStyle: 'italic', paddingLeft: 2 }}>
+                                Ref. {PEND[f.pendiente_cualitativa].ref} — {PEND[f.pendiente_cualitativa].desc}
+                              </div>
+                            )}
+                            {/* Porcentaje */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>%</span>
+                              <InlineInput value={f.pendiente_pct_min != null ? String(f.pendiente_pct_min) : ''} placeholder="min" fontSize={12} style={{ width: 38 }}
+                                onSave={v => actualizarBloqueCarrito(f.id, 'pendiente_pct_min', v !== '' && v != null ? parseFloat(v) : null, grupoId)} />
+                              <span style={{ fontSize: 11, color: 'var(--text3)' }}>–</span>
+                              <InlineInput value={f.pendiente_pct_max != null ? String(f.pendiente_pct_max) : ''} placeholder="max" fontSize={12} style={{ width: 38 }}
+                                onSave={v => actualizarBloqueCarrito(f.id, 'pendiente_pct_max', v !== '' && v != null ? parseFloat(v) : null, grupoId)} />
+                              <span style={{ fontSize: 11, color: 'var(--text3)' }}>%</span>
+                            </div>
+                            {/* Referencia orientativa del % */}
+                            {mostrarRefPct && !f.pendiente_cualitativa && (
+                              <div style={{ fontSize: 11, color: '#6366f1', fontStyle: 'italic', paddingLeft: 2 }}>
+                                Referencia orientativa: {niveles.map(n => n.label).join('–').toLowerCase()}
+                              </div>
+                            )}
+                            {/* Cue cinta */}
+                            {mostrarCueCinta && (
+                              <div style={{ fontSize: 10.5, color: 'var(--text3)', lineHeight: 1.5, paddingLeft: 2, borderLeft: '2px solid var(--border)', paddingLeft: 8 }}>
+                                💡 Selecciona una pendiente que puedas mantener con técnica estable y sin agarrarte a la cinta.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             }
