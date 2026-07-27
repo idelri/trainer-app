@@ -426,6 +426,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [bloquesBiblioteca, setBloquesBiblioteca] = useState(null)
   const [libDragActive, setLibDragActive] = useState(false)
   const [dragOverBloqueId, setDragOverBloqueId] = useState(null)
+  const [draggingBloqueId, setDraggingBloqueId] = useState(null)
 
   // ── PORTAPAPELES DE BLOQUES ──
   function guardarEnPortapapeles(data) {
@@ -548,6 +549,20 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     }
     setBloques(bs => [...bs, nb])
     setEjercicios(ej => ({ ...ej, [nb.id]: nuevosEjs }))
+    setDirty(true)
+  }
+
+  async function reordenarBloques(fromId, toId) {
+    if (fromId === toId) return
+    const lista = [...bloques]
+    const fromIdx = lista.findIndex(b => b.id === fromId)
+    const toIdx = lista.findIndex(b => b.id === toId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const [moved] = lista.splice(fromIdx, 1)
+    lista.splice(toIdx, 0, moved)
+    const actualizados = lista.map((b, i) => ({ ...b, orden: i }))
+    setBloques(actualizados)
+    await Promise.all(actualizados.map(b => supabase.from('sesion_bloques').update({ orden: b.orden }).eq('id', b.id)))
     setDirty(true)
   }
 
@@ -1611,17 +1626,22 @@ async function guardarSesion() {
               const varsDefault = b.variables_default || []
               const TODAS_VARS = ['Peso','Peso/lado','Duración','RIR','Distancia','Altura','Descanso','Forma de ejecución','Indicaciones']
               return (
-              <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}`, outline: dragOverBloqueId === b.id ? `2px solid ${b.color || 'var(--accent)'}` : 'none', outlineOffset: 2 }}
-                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDragOverBloqueId(b.id) }}
+              <div key={b.id} className="card" draggable
+                onDragStart={e => { setDraggingBloqueId(b.id); e.dataTransfer.effectAllowed = 'move' }}
+                onDragEnd={() => { setDraggingBloqueId(null); setDragOverBloqueId(null) }}
+                style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}`, opacity: draggingBloqueId === b.id ? 0.45 : 1, outline: dragOverBloqueId === b.id ? `2px solid ${b.color || 'var(--accent)'}` : 'none', outlineOffset: 2, transition: 'opacity 0.15s' }}
+                onDragOver={e => { e.preventDefault(); if (libDragActive) { e.dataTransfer.dropEffect = 'copy'; setDragOverBloqueId(b.id) } else if (draggingBloqueId && draggingBloqueId !== b.id) { e.dataTransfer.dropEffect = 'move'; setDragOverBloqueId(b.id) } }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverBloqueId(null) }}
                 onDrop={e => {
                   e.preventDefault(); setDragOverBloqueId(null)
-                  try {
-                    const d = JSON.parse(e.dataTransfer.getData('application/json'))
-                    if (d.tipo === 'ejercicio_bib') insertarEjercicioDesdePanel(d.item, b.id)
-                  } catch {}
+                  if (libDragActive) {
+                    try { const d = JSON.parse(e.dataTransfer.getData('application/json')); if (d.tipo === 'ejercicio_bib') insertarEjercicioDesdePanel(d.item, b.id) } catch {}
+                  } else if (draggingBloqueId && draggingBloqueId !== b.id) {
+                    reordenarBloques(draggingBloqueId, b.id)
+                  }
                 }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ color: 'var(--text3)', cursor: 'grab', fontSize: 14, userSelect: 'none', flexShrink: 0 }}>⠿</span>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {COLORES.map(c => (
                       <div key={c} onClick={() => cambiarColorBloque(b.id, c)}
