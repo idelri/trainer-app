@@ -422,6 +422,10 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     try { return JSON.parse(sessionStorage.getItem('idelri_clipboardBloque') || 'null') } catch { return null }
   })
   const [toastCopiado, setToastCopiado] = useState(null)
+  const [tabBiblioteca, setTabBiblioteca] = useState('ejercicios')
+  const [bloquesBiblioteca, setBloquesBiblioteca] = useState(null)
+  const [libDragActive, setLibDragActive] = useState(false)
+  const [dragOverBloqueId, setDragOverBloqueId] = useState(null)
 
   // ── PORTAPAPELES DE BLOQUES ──
   function guardarEnPortapapeles(data) {
@@ -487,6 +491,64 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       }
       setBloques(bs => [...bs, nb]); setEjercicios(ej => ({ ...ej, [nb.id]: nuevosEjs })); setDirty(true)
     }
+  }
+
+  // ── BIBLIOTECA DE BLOQUES ──────────────────────────────────────────────
+  async function cargarBloquesBiblioteca() {
+    if (bloquesBiblioteca !== null) return
+    const { data } = await supabase.from('bloques_biblioteca').select('*, bloques_biblioteca_ejercicios(*)').order('nombre')
+    setBloquesBiblioteca((data || []).map(b => ({ ...b, ejercicios: (b.bloques_biblioteca_ejercicios || []).sort((a, z) => a.orden - z.orden) })))
+  }
+
+  async function guardarBloqueEnBiblioteca(bloque) {
+    const ejs = ejercicios[bloque.id] || []
+    const { data: nb } = await supabase.from('bloques_biblioteca').insert({
+      nombre: bloque.nombre || 'Bloque sin nombre',
+      descripcion: bloque.nota || null,
+      color: bloque.color || '#2d6a4f',
+    }).select().single()
+    if (!nb) { alert('Error al guardar en biblioteca'); return }
+    for (let i = 0; i < ejs.length; i++) {
+      const { id, bloque_id, valores_reales, ...p } = ejs[i]
+      await supabase.from('bloques_biblioteca_ejercicios').insert({ ...p, bloque_bib_id: nb.id, orden: i })
+    }
+    setBloquesBiblioteca(null) // forzar recarga la próxima vez
+    setToastCopiado('guardado en biblioteca')
+    setTimeout(() => setToastCopiado(null), 2200)
+  }
+
+  async function insertarEjercicioDesdePanel(libEj, bloqueId) {
+    const lista = ejercicios[bloqueId] || []
+    const { data: e } = await supabase.from('sesion_ejercicios').insert({
+      bloque_id: bloqueId, nombre: libEj.nombre,
+      series: '', reps: '', rpe: '', notas: '',
+      media_tipo: libEj.media_tipo || 'youtube',
+      media_url: libEj.media_url || '',
+      video_url: libEj.video_url || '',
+      orden: lista.length, variables_activas: [],
+    }).select().single()
+    if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
+  }
+
+  async function insertarBloqueDesdePanel(bibBloque) {
+    const { data: nb } = await supabase.from('sesion_bloques').insert({
+      sesion_id: sesionAbierta.id,
+      nombre: bibBloque.nombre,
+      color: bibBloque.color || COLORES[0],
+      nota: bibBloque.descripcion || '',
+      orden: bloques.length,
+    }).select().single()
+    if (!nb) return
+    const bibEjs = bibBloque.ejercicios || []
+    const nuevosEjs = []
+    for (let i = 0; i < bibEjs.length; i++) {
+      const { id, bloque_bib_id, ...p } = bibEjs[i]
+      const { data: e } = await supabase.from('sesion_ejercicios').insert({ ...p, bloque_id: nb.id, orden: i, valores_reales: null }).select().single()
+      if (e) nuevosEjs.push(e)
+    }
+    setBloques(bs => [...bs, nb])
+    setEjercicios(ej => ({ ...ej, [nb.id]: nuevosEjs }))
+    setDirty(true)
   }
 
   // Cerrar menú contextual del carrito al hacer clic fuera
@@ -971,7 +1033,7 @@ async function guardarSesion() {
         {sesionAbierta && (
           <div className="flex gap-2">
             <button className="btn btn-ghost btn-sm" onClick={() => setVistaPrevia(v => !v)}>{vistaPrevia ? '✏️ Editor' : '👁 Vista cliente'}</button>
-            <button className="btn btn-ghost btn-sm" style={{ color: panelBiblioteca ? 'var(--accent)' : undefined }} onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } setPanelBiblioteca(v => !v) }}>📚 Biblioteca</button>
+            <button className="btn btn-ghost btn-sm" style={{ color: panelBiblioteca ? 'var(--accent)' : undefined }} onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } if (!panelBiblioteca && bloquesBiblioteca === null) cargarBloquesBiblioteca(); setPanelBiblioteca(v => !v) }}>📚 Biblioteca</button>
             <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => guardarEnBiblioteca(sesionAbierta)} disabled={guardandoEnBib} title="Guardar una copia en la biblioteca de sesiones">
@@ -1116,7 +1178,7 @@ async function guardarSesion() {
       )}
 
       {sesionAbierta && (
-        <div>
+        <div style={{ paddingRight: panelBiblioteca ? 306 : 0, transition: 'padding-right 0.2s' }}>
         <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo general</div>
             <InlineInput
@@ -1549,7 +1611,16 @@ async function guardarSesion() {
               const varsDefault = b.variables_default || []
               const TODAS_VARS = ['Peso','Peso/lado','Duración','RIR','Distancia','Altura','Descanso','Forma de ejecución','Indicaciones']
               return (
-              <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}` }}>
+              <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}`, outline: dragOverBloqueId === b.id ? `2px solid ${b.color || 'var(--accent)'}` : 'none', outlineOffset: 2 }}
+                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDragOverBloqueId(b.id) }}
+                onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverBloqueId(null) }}
+                onDrop={e => {
+                  e.preventDefault(); setDragOverBloqueId(null)
+                  try {
+                    const d = JSON.parse(e.dataTransfer.getData('application/json'))
+                    if (d.tipo === 'ejercicio_bib') insertarEjercicioDesdePanel(d.item, b.id)
+                  } catch {}
+                }}>
                 <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {COLORES.map(c => (
@@ -1562,6 +1633,7 @@ async function guardarSesion() {
                       style={{ fontWeight: 600 }}
                       onSave={v => actualizarBloque(b.id, 'nombre', v)} />
                   </div>
+                  <button className="btn btn-ghost btn-sm" title="Guardar en biblioteca de bloques" onClick={() => guardarBloqueEnBiblioteca(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>🧱</button>
                   <button className="btn btn-ghost btn-sm" title="Copiar bloque a otra sesión" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>📋</button>
                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                 </div>
@@ -1851,6 +1923,22 @@ async function guardarSesion() {
               </div>
               )
             })}
+            {/* Drop zone para bloque completo desde biblioteca */}
+            {libDragActive && (
+              <div
+                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }}
+                onDrop={e => {
+                  e.preventDefault(); setLibDragActive(false)
+                  try {
+                    const d = JSON.parse(e.dataTransfer.getData('application/json'))
+                    if (d.tipo === 'bloque_bib') insertarBloqueDesdePanel(d.item)
+                  } catch {}
+                }}
+                style={{ border: '2px dashed #6ee7b7', borderRadius: 10, padding: '14px', textAlign: 'center', fontSize: 12, color: '#065f46', background: '#ecfdf5', fontWeight: 600 }}>
+                ↓ Suelta aquí para añadir el bloque completo
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
               <button className="btn btn-ghost" onClick={añadirBloque}>
                 <Plus size={13} /> Bloque
@@ -2291,46 +2379,96 @@ async function guardarSesion() {
         )
       })()}
 
-      {/* Panel lateral biblioteca de ejercicios (fixed) */}
-      {panelBiblioteca && sesionAbierta && (() => {
-        const bibFiltrada = !biblioteca ? [] : biblioteca.filter(item => {
-          if (busquedaBiblioteca && !item.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())) return false
-          return true
-        })
-        return (
-          <div style={{ position: 'fixed', top: 0, right: 0, width: 290, height: '100vh', background: 'var(--bg)', borderLeft: '1px solid var(--border)', zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)', padding: '16px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>📚 Biblioteca de ejercicios</span>
+      {/* Panel lateral biblioteca (fixed) */}
+      {panelBiblioteca && sesionAbierta && (
+        <div style={{ position: 'fixed', top: 0, right: 0, width: 294, height: '100vh', background: 'var(--bg)', borderLeft: '1px solid var(--border)', zIndex: 400, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)' }}>
+          {/* Header */}
+          <div style={{ padding: '12px 14px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>📚 Biblioteca</span>
               <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setPanelBiblioteca(false)}>✕</button>
             </div>
-            <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} style={{ marginBottom: 10, fontSize: 12 }} />
-            <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>Haz clic para añadir al primer bloque</p>
-            {!biblioteca ? (
-              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Cargando...</p>
-            ) : (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {bibFiltrada.map(item => (
-                  <div key={item.id}
-                    onClick={() => {
-                      const primerBloque = bloques[0]
-                      if (!primerBloque) return
-                      añadirDesdeBiblioteca(item, primerBloque.id, [])
-                    }}
-                    style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', cursor: 'pointer', fontSize: 12, color: 'var(--text)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light,#e8f5f0)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}>
-                    <div style={{ fontWeight: 500 }}>{item.nombre}</div>
-                    {item.patron_movimiento?.length > 0 && (
-                      <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{item.patron_movimiento.slice(0, 2).join(' · ')}</div>
-                    )}
-                  </div>
-                ))}
-                {bibFiltrada.length === 0 && <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '12px 0' }}>Sin resultados</p>}
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: 0 }}>
+              {[['ejercicios', '🏋️ Ejercicios'], ['bloques', '🧱 Bloques']].map(([id, label]) => (
+                <button key={id} onClick={() => { setTabBiblioteca(id); if (id === 'bloques' && bloquesBiblioteca === null) cargarBloquesBiblioteca() }}
+                  style={{ flex: 1, fontSize: 12, padding: '6px 4px', border: 'none', background: 'transparent', borderBottom: `2px solid ${tabBiblioteca === id ? 'var(--accent)' : 'transparent'}`, color: tabBiblioteca === id ? 'var(--accent)' : 'var(--text2)', fontWeight: tabBiblioteca === id ? 600 : 400, cursor: 'pointer', marginBottom: -1 }}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        )
-      })()}
+
+          {/* Tab ejercicios */}
+          {tabBiblioteca === 'ejercicios' && (
+            <>
+              <div style={{ padding: '10px 14px 0' }}>
+                <input className="form-input" autoFocus placeholder="Buscar ejercicio..." value={busquedaBiblioteca} onChange={e => setBusquedaBiblioteca(e.target.value)} style={{ marginBottom: 6, fontSize: 12 }} />
+                <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 8 }}>Arrastra al bloque destino</p>
+              </div>
+              {!biblioteca ? (
+                <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Cargando...</p>
+              ) : (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {biblioteca.filter(item => !busquedaBiblioteca || item.nombre.toLowerCase().includes(busquedaBiblioteca.toLowerCase())).map(item => (
+                    <div key={item.id} draggable
+                      onDragStart={e => { setLibDragActive(true); e.dataTransfer.setData('application/json', JSON.stringify({ tipo: 'ejercicio_bib', item })); e.dataTransfer.effectAllowed = 'copy' }}
+                      onDragEnd={() => { setLibDragActive(false); setDragOverBloqueId(null) }}
+                      style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', cursor: 'grab', fontSize: 12, color: 'var(--text)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light,#e8f5f0)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}>
+                      <div style={{ fontWeight: 500 }}>{item.nombre}</div>
+                      {item.patron_movimiento?.length > 0 && (
+                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>{item.patron_movimiento.slice(0, 2).join(' · ')}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Tab bloques */}
+          {tabBiblioteca === 'bloques' && (
+            <>
+              <div style={{ padding: '10px 14px 0' }}>
+                <p style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 8 }}>Arrastra a la sesión para insertar</p>
+              </div>
+              {bloquesBiblioteca === null ? (
+                <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 0' }}>Cargando...</p>
+              ) : bloquesBiblioteca.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center', padding: '20px 14px' }}>No hay bloques guardados. Usa 🧱 en un bloque de sesión para guardar.</p>
+              ) : (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {bloquesBiblioteca.map(bb => (
+                    <div key={bb.id} draggable
+                      onDragStart={e => { setLibDragActive(true); e.dataTransfer.setData('application/json', JSON.stringify({ tipo: 'bloque_bib', item: bb })); e.dataTransfer.effectAllowed = 'copy' }}
+                      onDragEnd={() => { setLibDragActive(false) }}
+                      style={{ background: 'var(--bg2)', border: `1.5px solid ${bb.color || 'var(--border)'}22`, borderLeft: `4px solid ${bb.color || 'var(--accent)'}`, borderRadius: 8, padding: '8px 10px', cursor: 'grab', fontSize: 12 }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light,#e8f5f0)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}>
+                      <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{bb.nombre}</div>
+                      {bb.descripcion && <div style={{ fontSize: 10, color: 'var(--text3)' }}>{bb.descripcion}</div>}
+                      {bb.ejercicios?.length > 0 && (
+                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
+                          {bb.ejercicios.slice(0, 3).map(e => e.nombre).filter(Boolean).join(' · ')}
+                          {bb.ejercicios.length > 3 ? ` +${bb.ejercicios.length - 3}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Zona de drop para bloques de biblioteca (cuando la sesión es fuerza) */}
+      {libDragActive && sesionAbierta?.tipo_editor !== 'carrera' && (
+        <div style={{ position: 'fixed', bottom: 24, right: 310, background: '#1e3a2f', color: '#6ee7b7', border: '2px dashed #6ee7b7', borderRadius: 12, padding: '10px 18px', fontSize: 12, fontWeight: 600, zIndex: 500, pointerEvents: 'none' }}>
+          ↓ Suelta sobre un bloque (ejercicio) o aquí (bloque completo)
+        </div>
+      )}
     </div>
   )
 }

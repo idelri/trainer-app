@@ -245,6 +245,190 @@ function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios })
   )
 }
 
+function BibliotecaBloques() {
+  const [bloques, setBloques] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState(null) // null | 'nuevo' | bloque-obj
+  const [form, setForm] = useState({ nombre: '', descripcion: '', foco: '', color: '#2d6a4f' })
+  const [formEjs, setFormEjs] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [expandido, setExpandido] = useState(null)
+  const [confirmEliminar, setConfirmEliminar] = useState(null)
+
+  useEffect(() => { cargar() }, [])
+
+  async function cargar() {
+    setLoading(true)
+    const { data } = await supabase.from('bloques_biblioteca').select('*, bloques_biblioteca_ejercicios(*)').order('nombre')
+    setBloques((data || []).map(b => ({ ...b, ejercicios: (b.bloques_biblioteca_ejercicios || []).sort((a, z) => a.orden - z.orden) })))
+    setLoading(false)
+  }
+
+  function abrirNuevo() {
+    setForm({ nombre: '', descripcion: '', foco: '', color: '#2d6a4f' })
+    setFormEjs([{ nombre: '', series: '', reps: '', rpe: '', notas: '', _key: Date.now() }])
+    setModal('nuevo')
+  }
+
+  function abrirEditar(b) {
+    setForm({ nombre: b.nombre || '', descripcion: b.descripcion || '', foco: b.foco || '', color: b.color || '#2d6a4f' })
+    setFormEjs(b.ejercicios.map(e => ({ ...e, _key: e.id })))
+    setModal(b)
+  }
+
+  function addEjRow() {
+    setFormEjs(ejs => [...ejs, { nombre: '', series: '', reps: '', rpe: '', notas: '', _key: Date.now() }])
+  }
+
+  function removeEjRow(key) {
+    setFormEjs(ejs => ejs.filter(e => e._key !== key))
+  }
+
+  function updateEjRow(key, campo, valor) {
+    setFormEjs(ejs => ejs.map(e => e._key === key ? { ...e, [campo]: valor } : e))
+  }
+
+  async function guardar() {
+    if (!form.nombre.trim()) { alert('El nombre es obligatorio'); return }
+    setSaving(true)
+    if (modal === 'nuevo') {
+      const { data: nb } = await supabase.from('bloques_biblioteca').insert({ nombre: form.nombre.trim(), descripcion: form.descripcion || null, foco: form.foco || null, color: form.color || '#2d6a4f' }).select().single()
+      if (nb) {
+        for (let i = 0; i < formEjs.length; i++) {
+          const { _key, id, bloque_bib_id, ...p } = formEjs[i]
+          if (p.nombre?.trim()) await supabase.from('bloques_biblioteca_ejercicios').insert({ ...p, bloque_bib_id: nb.id, orden: i })
+        }
+      }
+    } else {
+      await supabase.from('bloques_biblioteca').update({ nombre: form.nombre.trim(), descripcion: form.descripcion || null, foco: form.foco || null, color: form.color || '#2d6a4f' }).eq('id', modal.id)
+      // Borrar ejercicios existentes y reinsertar
+      await supabase.from('bloques_biblioteca_ejercicios').delete().eq('bloque_bib_id', modal.id)
+      for (let i = 0; i < formEjs.length; i++) {
+        const { _key, id, bloque_bib_id, ...p } = formEjs[i]
+        if (p.nombre?.trim()) await supabase.from('bloques_biblioteca_ejercicios').insert({ ...p, bloque_bib_id: modal.id, orden: i })
+      }
+    }
+    setSaving(false); setModal(null); cargar()
+  }
+
+  async function eliminar(id) {
+    await supabase.from('bloques_biblioteca').delete().eq('id', id)
+    setConfirmEliminar(null); cargar()
+  }
+
+  const COLORES_BIB = ['#2d6a4f', '#4C82E8', '#E29A2E', '#8B6CE0', '#DD6F97', '#34AEB8']
+
+  if (loading) return <p style={{ fontSize: 12, color: 'var(--text3)', padding: '20px 0' }}>Cargando...</p>
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: 'var(--text3)' }}>{bloques.length} bloques guardados</p>
+        <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo bloque</button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {bloques.map(b => (
+          <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || '#2d6a4f'}` }}>
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setExpandido(expandido === b.id ? null : b.id)}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{b.nombre}</div>
+                {b.descripcion && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{b.descripcion}</div>}
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{b.ejercicios.length} ejercicios{b.foco ? ` · ${b.foco}` : ''}</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); abrirEditar(b) }}><Pencil size={13} /></button>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={e => { e.stopPropagation(); setConfirmEliminar(b) }}><Trash2 size={13} /></button>
+              {expandido === b.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+            {expandido === b.id && b.ejercicios.length > 0 && (
+              <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {b.ejercicios.map((e, i) => (
+                  <div key={e.id} style={{ background: 'var(--bg2)', borderRadius: 8, padding: '8px 12px', fontSize: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 18, marginTop: 1 }}>{i + 1}.</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>{e.nombre || 'Sin nombre'}</div>
+                      <div style={{ color: 'var(--text3)', marginTop: 2 }}>
+                        {[e.series && `${e.series} series`, e.reps && `${e.reps} reps`, e.rpe && `RPE ${e.rpe}`].filter(Boolean).join(' · ')}
+                        {e.notas && <span style={{ marginLeft: 6, fontStyle: 'italic' }}>{e.notas}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {bloques.length === 0 && <p style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>No hay bloques guardados. Usa 🧱 en un bloque de sesión para guardarlo aquí.</p>}
+      </div>
+
+      {/* Modal crear/editar */}
+      {modal && (
+        <div className="modal-backdrop" onClick={() => setModal(null)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modal === 'nuevo' ? 'Nuevo bloque' : 'Editar bloque'}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModal(null)}><X size={14} /></button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre *</label>
+              <input className="form-input" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Activación glútea" autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descripción / foco</label>
+              <input className="form-input" value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Ej: Activación de cadena posterior..." />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Color</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {COLORES_BIB.map(c => (
+                  <div key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
+                    style={{ width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', border: form.color === c ? '3px solid var(--text)' : '2px solid transparent' }} />
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ marginBottom: 8 }}>Ejercicios</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {formEjs.map(e => (
+                  <div key={e._key} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                    <input className="form-input" style={{ flex: 3, fontSize: 12 }} placeholder="Nombre del ejercicio" value={e.nombre} onChange={ev => updateEjRow(e._key, 'nombre', ev.target.value)} />
+                    <input className="form-input" style={{ flex: 1, fontSize: 12 }} placeholder="Series" value={e.series} onChange={ev => updateEjRow(e._key, 'series', ev.target.value)} />
+                    <input className="form-input" style={{ flex: 1, fontSize: 12 }} placeholder="Reps" value={e.reps} onChange={ev => updateEjRow(e._key, 'reps', ev.target.value)} />
+                    <input className="form-input" style={{ flex: 1, fontSize: 12 }} placeholder="RPE" value={e.rpe} onChange={ev => updateEjRow(e._key, 'rpe', ev.target.value)} />
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => removeEjRow(e._key)}><X size={13} /></button>
+                  </div>
+                ))}
+                <button className="btn btn-ghost btn-sm" onClick={addEjRow} style={{ alignSelf: 'flex-start' }}><Plus size={13} /> Ejercicio</button>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardar} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmar eliminar */}
+      {confirmEliminar && (
+        <div className="modal-backdrop" onClick={() => setConfirmEliminar(null)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Eliminar bloque</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setConfirmEliminar(null)}><X size={14} /></button>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>¿Eliminar <strong>{confirmEliminar.nombre}</strong> de la biblioteca? Esta acción no afecta las sesiones existentes.</p>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmEliminar(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => eliminar(confirmEliminar.id)}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Biblioteca({ setPage, setSesionesContext }) {
   const [tabPrincipal, setTabPrincipal] = useState('ejercicios')
   const [ejercicios, setEjercicios] = useState([])
@@ -425,7 +609,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
 
       {/* Tabs principales */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        {[['ejercicios', '🏋️ Ejercicios'], ['sesiones', '📋 Sesiones']].map(([id, label]) => (
+        {[['ejercicios', '🏋️ Ejercicios'], ['bloques', '🧱 Bloques'], ['sesiones', '📋 Sesiones']].map(([id, label]) => (
           <button key={id} onClick={() => setTabPrincipal(id)}
             style={{ fontSize: 14, padding: '8px 22px', border: 'none', background: 'transparent', borderBottom: `2px solid ${tabPrincipal === id ? 'var(--accent)' : 'transparent'}`, color: tabPrincipal === id ? 'var(--accent)' : 'var(--text2)', fontWeight: tabPrincipal === id ? 600 : 400, cursor: 'pointer', marginBottom: -1 }}>
             {label}
@@ -436,6 +620,8 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       {tabPrincipal === 'sesiones' && (
         <BibliotecaSesiones setPage={setPage} setSesionesContext={setSesionesContext} />
       )}
+
+      {tabPrincipal === 'bloques' && <BibliotecaBloques />}
 
       {tabPrincipal === 'ejercicios' && (<>
       <div className="page-header" style={{ marginTop: 0, paddingTop: 0 }}>
