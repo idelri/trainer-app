@@ -418,6 +418,76 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [carritoItems, setCarritoItems] = useState([]) // lista combinada fases sueltas + grupos para editor carrera
   const [draggingCarrito, setDraggingCarrito] = useState(null) // { idx, grupoId?, innerIdx? }
   const [ctxCarrito, setCtxCarrito] = useState(null) // { x, y, item, grupoId?, innerIdx? }
+  const [clipboardBloque, setClipboardBloque] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('idelri_clipboardBloque') || 'null') } catch { return null }
+  })
+  const [toastCopiado, setToastCopiado] = useState(null)
+
+  // ── PORTAPAPELES DE BLOQUES ──
+  function guardarEnPortapapeles(data) {
+    setClipboardBloque(data)
+    try { sessionStorage.setItem('idelri_clipboardBloque', JSON.stringify(data)) } catch {}
+    setToastCopiado(data.nombre)
+    setTimeout(() => setToastCopiado(null), 2200)
+  }
+  function limpiarPortapapeles() {
+    setClipboardBloque(null)
+    try { sessionStorage.removeItem('idelri_clipboardBloque') } catch {}
+  }
+  // Helpers de clonado — excluyen IDs y resultados del cliente
+  function cloneEjercicioPayload(e) {
+    const { id, bloque_id, valores_reales, ...p } = e
+    return p
+  }
+  function cloneBloquePayload(b) {
+    const { id, sesion_id, ...p } = b
+    return p
+  }
+  function cloneFasePayload(f) {
+    const { id, sesion_id, grupo_id, ...p } = f
+    return p
+  }
+  // Copy
+  function copiarFase(fase) {
+    guardarEnPortapapeles({ tipo: 'bloque_carrera', nombre: fase.nombre || 'Bloque', payload: { fase: cloneFasePayload(fase) } })
+  }
+  function copiarGrupo(grupo) {
+    guardarEnPortapapeles({ tipo: 'grupo_carrera', nombre: `${grupo.repeticiones}× grupo`, payload: { grupo: { repeticiones: grupo.repeticiones }, fases: grupo.fases.map(f => cloneFasePayload(f)) } })
+  }
+  function copiarBloqueFuerza(bloque) {
+    const ejs = (ejercicios[bloque.id] || []).map(e => cloneEjercicioPayload(e))
+    guardarEnPortapapeles({ tipo: 'bloque_fuerza', nombre: bloque.nombre || 'Bloque', payload: { bloque: cloneBloquePayload(bloque), ejercicios: ejs } })
+  }
+  // Paste
+  async function pegarDesdePortapapeles() {
+    if (!clipboardBloque || !sesionAbierta) return
+    const { tipo, payload } = clipboardBloque
+    if (tipo === 'bloque_carrera') {
+      const orden = nextCarritoOrden(carritoItems)
+      const { data } = await supabase.from('sesion_fases').insert({ ...payload.fase, sesion_id: sesionAbierta.id, orden, grupo_id: null }).select().single()
+      if (data) { setCarritoItems(ci => [...ci, { type: 'fase', ...data }]); setDirty(true) }
+    } else if (tipo === 'grupo_carrera') {
+      const orden = nextCarritoOrden(carritoItems)
+      const { data: grp } = await supabase.from('sesion_fase_grupos').insert({ sesion_id: sesionAbierta.id, repeticiones: payload.grupo.repeticiones, orden }).select().single()
+      if (!grp) return
+      const fases = []
+      for (let i = 0; i < payload.fases.length; i++) {
+        const { data: f } = await supabase.from('sesion_fases').insert({ ...payload.fases[i], sesion_id: sesionAbierta.id, orden: i, grupo_id: grp.id }).select().single()
+        if (f) fases.push(f)
+      }
+      setCarritoItems(ci => [...ci, { type: 'grupo', ...grp, fases }]); setDirty(true)
+    } else if (tipo === 'bloque_fuerza') {
+      const orden = bloques.length
+      const { data: nb } = await supabase.from('sesion_bloques').insert({ ...payload.bloque, sesion_id: sesionAbierta.id, orden }).select().single()
+      if (!nb) return
+      const nuevosEjs = []
+      for (let i = 0; i < payload.ejercicios.length; i++) {
+        const { data: e } = await supabase.from('sesion_ejercicios').insert({ ...payload.ejercicios[i], bloque_id: nb.id, orden: i }).select().single()
+        if (e) nuevosEjs.push(e)
+      }
+      setBloques(bs => [...bs, nb]); setEjercicios(ej => ({ ...ej, [nb.id]: nuevosEjs })); setDirty(true)
+    }
+  }
 
   // Cerrar menú contextual del carrito al hacer clic fuera
   useEffect(() => {
@@ -1039,6 +1109,12 @@ async function guardarSesion() {
         </>
       )}
 
+      {toastCopiado && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#065f46', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 13, fontWeight: 600, zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', pointerEvents: 'none' }}>
+          📋 Bloque copiado: "{toastCopiado}"
+        </div>
+      )}
+
       {sesionAbierta && (
         <div>
         <div className="card" style={{ marginBottom: 16 }}>
@@ -1337,6 +1413,7 @@ async function guardarSesion() {
                               onSave={v => actualizarBloqueCarrito(item.id, 'nombre', v, null)} />
                           </div>
                           <button className="btn btn-ghost btn-sm" title="Duplicar" onClick={() => duplicarBloqueCarrito(item.id, null)} style={{ color: 'var(--text3)' }}><Copy size={12} /></button>
+                          <button className="btn btn-ghost btn-sm" title="Copiar bloque a otra sesión" onClick={() => copiarFase(item)} style={{ color: 'var(--text3)', fontSize: 11 }}>📋</button>
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloqueCarrito(item.id)}><Trash2 size={12} /></button>
                         </div>
                         {renderFaseFields(item, null)}
@@ -1359,6 +1436,7 @@ async function guardarSesion() {
                           <span style={{ fontSize: 11, color: '#7a98d8', fontWeight: 600 }}>veces</span>
                         </div>
                         <button className="btn btn-ghost btn-sm" title="Duplicar grupo" onClick={() => duplicarGrupoCarrito(item.id)} style={{ color: '#4C82E8' }}><Copy size={12} /></button>
+                        <button className="btn btn-ghost btn-sm" title="Copiar grupo a otra sesión" onClick={() => copiarGrupo(item)} style={{ color: '#4C82E8', fontSize: 11 }}>📋</button>
                         <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarGrupoCarrito(item.id)}><Trash2 size={12} /></button>
                       </div>
                       {/* Fases dentro del grupo */}
@@ -1393,13 +1471,20 @@ async function guardarSesion() {
                 })}
 
                 {/* ── BOTONES AÑADIR ── */}
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button className="btn btn-ghost" onClick={añadirBloqueSuelto} style={{ flex: 1, justifyContent: 'center', border: '1.5px dashed var(--border)' }}>
                     <Plus size={13} /> Añadir bloque
                   </button>
                   <button className="btn btn-ghost" onClick={añadirGrupoCarrera} style={{ flex: 1, justifyContent: 'center', border: '1.5px solid #c8d8f8', background: '#eef2ff', color: '#4C82E8' }}>
                     <Plus size={13} /> Añadir grupo de repeticiones
                   </button>
+                  {clipboardBloque && (
+                    <button className="btn btn-ghost" onClick={pegarDesdePortapapeles} style={{ flex: 1, justifyContent: 'center', border: '1.5px solid #d1fae5', background: '#ecfdf5', color: '#065f46', minWidth: 160 }}
+                      title={`Pegar: "${clipboardBloque.nombre}"`}>
+                      📋 Pegar: <em style={{ marginLeft: 4, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clipboardBloque.nombre}</em>
+                      <button onClick={e => { e.stopPropagation(); limpiarPortapapeles() }} style={{ marginLeft: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#065f46', lineHeight: 1 }}>×</button>
+                    </button>
+                  )}
                 </div>
 
                 {/* ── RESUMEN ── */}
@@ -1477,6 +1562,7 @@ async function guardarSesion() {
                       style={{ fontWeight: 600 }}
                       onSave={v => actualizarBloque(b.id, 'nombre', v)} />
                   </div>
+                  <button className="btn btn-ghost btn-sm" title="Copiar bloque a otra sesión" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>📋</button>
                   <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                 </div>
                 <div style={{ padding: '0 16px 8px', fontSize: 12.5, color: 'var(--text2)' }}>
@@ -1765,9 +1851,19 @@ async function guardarSesion() {
               </div>
               )
             })}
-            <button className="btn btn-ghost" onClick={añadirBloque} style={{ alignSelf: 'flex-start' }}>
-              <Plus size={13} /> Bloque
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
+              <button className="btn btn-ghost" onClick={añadirBloque}>
+                <Plus size={13} /> Bloque
+              </button>
+              {clipboardBloque && clipboardBloque.tipo === 'bloque_fuerza' && (
+                <button className="btn btn-ghost" onClick={pegarDesdePortapapeles}
+                  style={{ border: '1.5px solid #d1fae5', background: '#ecfdf5', color: '#065f46' }}
+                  title={`Pegar: "${clipboardBloque.nombre}"`}>
+                  📋 Pegar: <em style={{ marginLeft: 4 }}>{clipboardBloque.nombre}</em>
+                  <span onClick={e => { e.stopPropagation(); limpiarPortapapeles() }} style={{ marginLeft: 6, cursor: 'pointer' }}>×</span>
+                </button>
+              )}
+            </div>
           </div>}
 
           {/* ── VISTA PREVIA CLIENTE (modo lectura) ── */}
