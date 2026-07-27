@@ -341,7 +341,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla, setPage, setClientePlanificacion }) {
+export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla, setPage, setClientePlanificacion, setRecargarPlan }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
@@ -569,6 +569,7 @@ async function guardarSesion() {
 
   function volverAlCalendario() {
     localStorage.setItem('planVista', 'calendario')
+    if (setRecargarPlan) setRecargarPlan(r => r + 1)
     if (setClientePlanificacion && clienteSeleccionado) setClientePlanificacion(clienteSeleccionado)
     if (setPage) setPage('planificacion')
     else setSesionAbierta(null)

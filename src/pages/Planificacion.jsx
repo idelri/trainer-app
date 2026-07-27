@@ -52,7 +52,7 @@ const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 
-export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext }) {
+export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext, recargarPlan }) {
   // ── Datos ──
   const [clientes,            setClientes]            = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -152,7 +152,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   }, [clientePlanificacion])
   useEffect(() => {
     if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) }
-  }, [clienteSeleccionado])
+  }, [clienteSeleccionado, recargarPlan])
 
   // ─────────────────────────────────────────────────────────────────────────
   // CARGA DE DATOS
