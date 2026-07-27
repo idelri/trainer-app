@@ -446,6 +446,7 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
   const [inlineEj, setInlineEj] = useState(null) // { id, nombre, ...campos } ejercicio en edición inline
   const [inlineSaving, setInlineSaving] = useState(false)
   const [toast, setToast] = useState(null) // 'ok' | 'error'
+  const [videoConflicto, setVideoConflicto] = useState(null) // { nombre, id } del ejercicio con el mismo vídeo
 
   useEffect(() => { cargar() }, [])
 
@@ -461,10 +462,27 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
     setTimeout(() => setToast(null), 2200)
   }
 
-  function abrirNuevo() { setForm(EMPTY); setModal('nuevo') }
+  function extraerYtId(url) {
+    if (!url) return null
+    const m = url.match(/(?:[?&]v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/)
+    return m ? m[1] : null
+  }
+
+  async function comprobarVideoConflicto(url, idActual) {
+    setVideoConflicto(null)
+    const ytId = extraerYtId(url)
+    if (!ytId) return
+    const { data } = await supabase.from('ejercicios_biblioteca').select('id, nombre, media_url').ilike('media_url', `%${ytId}%`)
+    if (!data) return
+    const conflicto = data.find(e => e.id !== idActual)
+    setVideoConflicto(conflicto || null)
+  }
+
+  function abrirNuevo() { setForm(EMPTY); setModal('nuevo'); setVideoConflicto(null) }
 
   function abrirEditar(e) {
     setInlineEj(null)
+    setVideoConflicto(null)
     setForm({
       nombre: e.nombre || '', descripcion: e.descripcion || '',
       media_tipo: e.media_tipo || '', media_url: e.media_url || '',
@@ -978,7 +996,13 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
               <div className="form-group">
                 <label className="form-label">{form.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="form-input" value={form.media_url} onChange={e => fd('media_url', e.target.value)} placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'} style={{ flex: 1 }} />
+                  <input className="form-input" value={form.media_url}
+                    onChange={e => {
+                      fd('media_url', e.target.value)
+                      if (form.media_tipo === 'youtube') comprobarVideoConflicto(e.target.value, modal?.id)
+                    }}
+                    placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
+                    style={{ flex: 1, borderColor: videoConflicto ? '#f59e0b' : undefined }} />
                   {form.media_tipo !== 'youtube' && (
                     <label style={{ cursor: 'pointer', flexShrink: 0 }}>
                       <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
@@ -994,6 +1018,12 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                     </label>
                   )}
                 </div>
+              </div>
+            )}
+            {videoConflicto && (
+              <div style={{ margin: '-8px 0 12px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+                <span>Este vídeo ya está en uso por: <strong>{videoConflicto.nombre}</strong>. Puedes continuar si es un ejercicio diferente.</span>
               </div>
             )}
             {form.media_tipo && form.media_tipo !== 'youtube' && (

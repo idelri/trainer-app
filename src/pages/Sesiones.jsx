@@ -527,6 +527,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       media_url: libEj.media_url || '',
       video_url: libEj.video_url || '',
       orden: lista.length, variables_activas: [],
+      biblioteca_id: libEj.id || null,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
   }
@@ -935,6 +936,7 @@ async function guardarSesion() {
       video_url: item.video_url || '',
       orden: lista.length,
       variables_activas: variablesDefault,
+      biblioteca_id: item.id || null,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
     if (!bloqueIdOverride) setModalBiblioteca(null)
