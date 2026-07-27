@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, parseISO, addWeeks, addDays, startOfWeek } from 'date-fns'
-import { calcWeekStart } from './CheckinPortal'
+import { format, addDays, parseISO, startOfWeek, subWeeks } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 const T = {
-  bg: '#f8f7f4',
-  card: '#ffffff',
-  text: '#1a1a1a',
-  text2: '#6b6b6b',
-  text3: '#9b9b9b',
-  border: '#e8e5e0',
-  accent: '#2d6a4f',
-  accentLight: '#e8f5f0',
-  warning: '#b45309',
-  warningLight: '#fef3c7',
-  mono: 'ui-monospace, monospace',
+  bg: '#f8f7f4', card: '#ffffff', text: '#1a1a1a', text2: '#6b6b6b', text3: '#9b9b9b',
+  border: '#e8e5e0', accent: '#2d6a4f', accentLight: '#e8f5f0',
+  warning: '#b45309', warningLight: '#fef3c7', mono: 'ui-monospace, monospace',
+}
+
+// Calcula el lunes de la semana que contiene `date`, formato 'yyyy-MM-dd'
+export function calcWeekStart(date = new Date()) {
+  return format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')
 }
 
 function ScaleButtons({ labels, selected, onSelect, color = T.accent }) {
@@ -23,12 +19,12 @@ function ScaleButtons({ labels, selected, onSelect, color = T.accent }) {
     <div style={{ display: 'flex', gap: 6 }}>
       {labels.map((label, i) => {
         const n = i + 1
-        const isSelected = selected === n
+        const sel = selected === n
         return (
           <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div onClick={() => onSelect(n)}
-              style={{ width: '100%', aspectRatio: '1', borderRadius: 8, border: `1.5px solid ${isSelected ? color : T.border}`, background: isSelected ? color : T.card, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: isSelected ? '#fff' : T.text2 }}>{n}</span>
+              style={{ width: '100%', aspectRatio: '1', borderRadius: 8, border: `1.5px solid ${sel ? color : T.border}`, background: sel ? color : T.card, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s' }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: sel ? '#fff' : T.text2 }}>{n}</span>
             </div>
             <span style={{ fontSize: 9, color: T.text3, textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
           </div>
@@ -42,12 +38,12 @@ function RadioOptions({ options, selected, onSelect, color = T.accent, bgColor, 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {options.map(op => {
-        const isSelected = selected === op
+        const sel = selected === op
         return (
           <div key={op} onClick={() => onSelect(op)}
-            style={{ padding: '10px 14px', borderRadius: 8, border: `1px solid ${isSelected ? borderColor || color : T.border}`, background: isSelected ? bgColor || T.accentLight : T.card, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
-            <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isSelected ? color : T.border}`, background: isSelected ? color : 'transparent', flexShrink: 0, transition: 'all 0.15s' }} />
-            <span style={{ fontSize: 13, color: isSelected ? color : T.text }}>{op}</span>
+            style={{ padding: '10px 14px', borderRadius: 8, border: `1px solid ${sel ? borderColor || color : T.border}`, background: sel ? bgColor || T.accentLight : T.card, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
+            <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${sel ? color : T.border}`, background: sel ? color : 'transparent', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: sel ? color : T.text }}>{op}</span>
           </div>
         )
       })}
@@ -64,15 +60,26 @@ function SectionHeader({ icon, title, color, bgColor, borderColor }) {
   )
 }
 
-export default function CheckinSemanal() {
-  const token = window.location.pathname.split('/checkin/')[1]
-  const [semana, setSemana] = useState(null)
-  const [bloque, setBloque] = useState(null)
+export default function CheckinPortal() {
+  // Leer clienteToken y week_start de la URL
+  const clienteToken = window.location.pathname.split('/checkin-portal/')[1]
+  const params = new URLSearchParams(window.location.search)
+  const weekParam = params.get('week')
+
+  // week_start: del parámetro URL, o lunes de la semana actual
+  const weekStart = weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam)
+    ? weekParam
+    : calcWeekStart()
+
+  const weekEnd = format(addDays(parseISO(weekStart), 6), 'dd MMM yyyy', { locale: es })
+  const weekStartFmt = format(parseISO(weekStart), 'dd MMM', { locale: es })
+
   const [cliente, setCliente] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [enviado, setEnviado] = useState(false)
+  const [error, setError] = useState(null)
   const [yaRespondido, setYaRespondido] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [enviado, setEnviado] = useState(false)
 
   const [energia, setEnergia] = useState(null)
   const [descanso, setDescanso] = useState(null)
@@ -85,44 +92,47 @@ export default function CheckinSemanal() {
   const [comparativa, setComparativa] = useState(null)
   const [comentario, setComentario] = useState('')
 
-  useEffect(() => { if (token) cargarDatos() }, [token])
+  useEffect(() => { cargar() }, [clienteToken, weekStart])
 
-  async function cargarDatos() {
+  async function cargar() {
     setLoading(true)
-    const { data: sem } = await supabase.from('semanas').select('*, bloques(*, planificaciones(cliente_id))').eq('token_publico', token).single()
-    if (!sem) { setLoading(false); return }
-    setSemana(sem)
-    setBloque(sem.bloques)
-    const clienteId = sem.bloques?.planificaciones?.cliente_id
-    if (clienteId) {
-      const { data: cli } = await supabase.from('clientes').select('nombre').eq('id', clienteId).single()
-      setCliente(cli)
+    setError(null)
+
+    if (!clienteToken) { setError('Enlace no válido.'); setLoading(false); return }
+
+    const { data: cli, error: cliErr } = await supabase
+      .from('clientes').select('id, nombre').eq('token_cliente', clienteToken).maybeSingle()
+
+    if (cliErr || !cli) {
+      console.error('[CheckinPortal] Error cargando cliente:', cliErr)
+      setError('Enlace no válido o cliente no encontrado.')
+      setLoading(false)
+      return
     }
-    const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
+    setCliente(cli)
+
+    // Comprobar si ya existe feedback para esta semana
+    const { data: existing, error: ckErr } = await supabase
+      .from('checkin_semanal')
+      .select('id')
+      .eq('cliente_id', cli.id)
+      .eq('week_start', weekStart)
+      .maybeSingle()
+
+    if (ckErr) console.error('[CheckinPortal] Error comprobando checkin:', ckErr)
     if (existing) setYaRespondido(true)
+
     setLoading(false)
   }
 
   async function enviar() {
-    if (!semana) return
+    if (!cliente) return
     setEnviando(true)
-    const clienteId = semana.bloques?.planificaciones?.cliente_id
-    if (!clienteId) {
-      console.error('[CheckinSemanal] cliente_id no encontrado en la cadena semana→bloque→plan')
-      alert('No se pudo enviar el check-in. Enlace inválido.')
-      setEnviando(false)
-      return
-    }
-    // Calcular week_start a partir de bloque.fecha_inicio + semana.numero
-    const bloqueFechaInicio = semana.bloques?.fecha_inicio
-    const weekStart = bloqueFechaInicio
-      ? calcWeekStart(addDays(parseISO(bloqueFechaInicio), (semana.numero - 1) * 7))
-      : calcWeekStart()
 
     const molestiaZonas = molestias && molestias !== 'No' ? zonas.filter(z => z.zona.trim()) : null
-    const { error } = await supabase.from('checkin_semanal').insert({
-      cliente_id: clienteId,
-      semana_id: semana.id,
+
+    const { error: err } = await supabase.from('checkin_semanal').insert({
+      cliente_id: cliente.id,
       week_start: weekStart,
       energia,
       descanso,
@@ -135,10 +145,16 @@ export default function CheckinSemanal() {
       comparativa_semanas: comparativa,
       comentario_libre: comentario || null,
     })
-    console.log('[CheckinSemanal Submit]', { clienteId, semana_id: semana.id, week_start: weekStart, supabaseError: error || null })
+
+    console.log('[CheckinPortal Submit]', {
+      cliente_id: cliente.id,
+      week_start: weekStart,
+      supabaseError: err || null,
+    })
+
     setEnviando(false)
-    if (error) {
-      alert('No se pudo enviar el check-in. Inténtalo de nuevo.')
+    if (err) {
+      alert('No se pudo enviar el feedback. Inténtalo de nuevo.')
       return
     }
     setEnviado(true)
@@ -150,9 +166,9 @@ export default function CheckinSemanal() {
     </div>
   )
 
-  if (!semana) return (
+  if (error) return (
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <p style={{ color: T.text2, fontSize: 14, textAlign: 'center' }}>Este enlace no es válido o ha caducado.</p>
+      <p style={{ color: T.text2, fontSize: 14, textAlign: 'center' }}>{error}</p>
     </div>
   )
 
@@ -161,7 +177,7 @@ export default function CheckinSemanal() {
       <div style={{ textAlign: 'center', maxWidth: 320 }}>
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 28 }}>✓</div>
         <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>¡Gracias!</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>Tu feedback de semana se ha enviado correctamente. Tu entrenadora lo revisará antes de planificar la siguiente semana.</p>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>Tu feedback se ha enviado correctamente. Tu entrenadora lo revisará antes de planificar la siguiente semana.</p>
       </div>
     </div>
   )
@@ -170,14 +186,11 @@ export default function CheckinSemanal() {
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center', maxWidth: 320 }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-        <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>Ya enviaste el feedback de semana</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>El feedback de semana ya fue enviado correctamente.</p>
+        <h2 style={{ fontSize: 20, fontWeight: 500, color: T.text, margin: '0 0 10px' }}>Ya enviaste el feedback</h2>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6, margin: 0 }}>El feedback de la semana {weekStartFmt}–{weekEnd} ya fue enviado correctamente.</p>
       </div>
     </div>
   )
-
-  const fechaInicio = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero - 1), 'dd MMM', { locale: es }) : ''
-  const fechaFin = bloque?.fecha_inicio ? format(addWeeks(parseISO(bloque.fecha_inicio), semana.numero), 'dd MMM yyyy', { locale: es }) : ''
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -186,14 +199,8 @@ export default function CheckinSemanal() {
         <div style={{ background: '#1a1a2e', padding: '24px 20px 28px', borderRadius: '0 0 20px 20px', marginBottom: 12 }}>
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: '0 0 6px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{cliente?.nombre}</p>
           <h1 style={{ fontSize: 22, fontWeight: 500, color: '#fff', margin: '0 0 4px' }}>Sensaciones de semana</h1>
-          {fechaInicio && <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: '0 0 16px' }}>{fechaInicio} – {fechaFin} · Semana {semana.numero}</p>}
-          {semana.objetivo && (
-            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px' }}>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Objetivo de la semana</p>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>{semana.objetivo}</p>
-            </div>
-          )}
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: '14px 0 0', lineHeight: 1.5 }}>Valora brevemente cómo ha ido la semana. Tus sensaciones son importantes para ajustar el entrenamiento de forma individualizada.</p>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: '0 0 16px' }}>{weekStartFmt} – {weekEnd}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.5 }}>Valora brevemente cómo ha ido la semana. Tus sensaciones son importantes para ajustar el entrenamiento.</p>
         </div>
 
         <div style={{ background: T.card, borderRadius: 16, border: `1px solid ${T.border}`, margin: '0 12px 12px', overflow: 'hidden' }}>

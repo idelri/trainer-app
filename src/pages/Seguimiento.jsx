@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { format, addWeeks, addDays, isWithinInterval, parseISO } from 'date-fns'
+import { format, addWeeks, addDays, isWithinInterval, parseISO, startOfWeek } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import {
@@ -747,6 +747,8 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
   const semanasEnriquecidas = useMemo(() => {
     const checkinPorSemana = {}
     checkins.forEach(c => { if (c.semana_id) checkinPorSemana[c.semana_id] = c })
+    const checkinPorWeekStart = {}
+    checkins.forEach(c => { if (c.week_start) checkinPorWeekStart[c.week_start] = c })
 
     const lista = []
     const bloquesOrdenados = [...(bloques || [])].sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))
@@ -765,6 +767,7 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
           .filter(se => se.fecha && isWithinInterval(parseISO(se.fecha), { start: inicio, end: fin }))
           .map(se => ({ ...se, feedback: feedbacks[se.id] || null }))
         const subPlan = (subbloques?.[b.id] || []).find(sb => num >= sb.semana_inicio && num <= sb.semana_fin)
+        const weekStartStr = format(startOfWeek(inicio, { weekStartsOn: 1 }), 'yyyy-MM-dd')
         lista.push({
           id: s?.id || `virtual-${b.id}-${num}`,
           virtual: !s,
@@ -772,7 +775,7 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
           bloqueNombre: b.nombre,
           numero: num,
           inicio, fin,
-          checkin: s ? (checkinPorSemana[s.id] || null) : null,
+          checkin: checkinPorSemana[s?.id] || checkinPorWeekStart[weekStartStr] || null,
           sesiones: sesionesSemana,
           kmReal:      s?.km_real      ?? null,
           kmObjetivo:  s?.km_objetivo  ?? null,

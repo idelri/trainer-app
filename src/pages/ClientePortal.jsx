@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval,
-  isSameDay, addDays, isToday, addMonths, subMonths, parseISO, differenceInWeeks, startOfDay } from 'date-fns'
+  isSameDay, addDays, isToday, addMonths, subMonths, parseISO, differenceInWeeks, startOfDay, subWeeks } from 'date-fns'
+import { calcWeekStart } from './CheckinPortal'
 import { es } from 'date-fns/locale'
 
 /* ---------- tokens de diseño ---------- */
@@ -361,83 +362,22 @@ export default function ClientePortal({ token }) {
     ) : null
 
     const FeedbackSemana = () => {
-      // Usa el bloque activo o, si no hay ninguno, el último bloque disponible
-      const bloqueRef = bloqueActivo || (bloques.length > 0 ? bloques[bloques.length - 1] : null)
-      if (!bloqueRef) return null
+      // Semana actual y anterior calculadas por fecha calendario, SIN dependencia de plan/bloque
+      const currentWeekStart = calcWeekStart()
+      const previousWeekStart = calcWeekStart(subWeeks(new Date(), 1))
 
-      const semanaRef = getSemanaActual(bloqueRef)
-      const checkinRef = checkins.find(c => c.semana_id === semanaRef?.id)
+      const checkinActual   = checkins.find(c => c.week_start === currentWeekStart)
+      const checkinAnterior = checkins.find(c => c.week_start === previousWeekStart)
 
-      // Semana anterior: calcular rango de la semana pasada y buscar fila en DB (o usar virtual)
-      const hoyDate = new Date()
-      const getSemanaAnteriorInfo = (bloque) => {
-        if (!bloque?.fecha_inicio) return null
-        const ini = parseISO(bloque.fecha_inicio + 'T12:00:00')
-        const numSemAnt = Math.floor((hoyDate - ini) / (7 * 24 * 3600 * 1000)) // semana anterior = actual - 1
-        if (numSemAnt < 1) return null // aún estamos en la primera semana del bloque
-        const numReal = numSemAnt // numero de semana (1-based) de la semana anterior
-        const rowDB = semanas.filter(s => s.bloque_id === bloque.id).find(s => s.numero === numReal) || null
-        return { numero: numReal, row: rowDB }
-      }
-      const semanaAntInfo = getSemanaAnteriorInfo(bloqueRef)
-      const checkinAnt = semanaAntInfo?.row ? checkins.find(c => c.semana_id === semanaAntInfo.row.id) : null
-      const mostrarAvisoAnt = semanaAntInfo && !checkinAnt
+      // Recordatorio: solo lun-mié, solo semana inmediatamente anterior, solo si esta semana tampoco está hecha
+      const diaSemana = new Date().getDay() // 0=dom,1=lun,2=mar,3=mié,4=jue...
+      const esLunMarMie = diaSemana >= 1 && diaSemana <= 3
+      const mostrarAvisoAnt = esLunMarMie && !checkinActual && !checkinAnterior
 
-      async function abrirCheckinAnt() {
-        let token = semanaAntInfo?.row?.token_publico
-        if (!token) {
-          if (semanaAntInfo?.row?.id) {
-            const uuid = crypto.randomUUID()
-            await supabase.from('semanas').update({ token_publico: uuid }).eq('id', semanaAntInfo.row.id)
-            token = uuid
-          } else {
-            // Crear fila para la semana anterior
-            const { data: nueva } = await supabase
-              .from('semanas').insert({ bloque_id: bloqueRef.id, numero: semanaAntInfo.numero, carga: 'media' })
-              .select().single()
-            token = nueva?.token_publico
-            if (!token && nueva?.id) {
-              const uuid = crypto.randomUUID()
-              await supabase.from('semanas').update({ token_publico: uuid }).eq('id', nueva.id)
-              token = uuid
-            }
-            if (nueva) setSemanas(s => [...s, nueva])
-          }
-        }
-        if (token) window.location.href = `/checkin/${token}`
-      }
-
-      async function abrirCheckin() {
-        let token = semanaRef?.token_publico
-        if (!token) {
-          // Calcular número de semana actual dentro del bloque
-          const hoy = new Date()
-          const ini = parseISO(bloqueRef.fecha_inicio + 'T12:00:00')
-          const numSem = Math.max(1, Math.floor((hoy - ini) / (7 * 24 * 3600 * 1000)) + 1)
-
-          if (semanaRef?.id) {
-            // Semana existe pero sin token: actualizamos
-            const { data: updated } = await supabase
-              .from('semanas').update({ token_publico: crypto.randomUUID() })
-              .eq('id', semanaRef.id).select('token_publico').single()
-            token = updated?.token_publico
-          } else {
-            // Semana no existe: la creamos (DB genera token_publico si tiene DEFAULT)
-            const { data: nueva } = await supabase
-              .from('semanas').insert({ bloque_id: bloqueRef.id, numero: numSem, carga: 'media' })
-              .select().single()
-            token = nueva?.token_publico
-            if (!token && nueva?.id) {
-              // Sin DEFAULT en DB: asignamos manualmente
-              const uuid = crypto.randomUUID()
-              await supabase.from('semanas').update({ token_publico: uuid }).eq('id', nueva.id)
-              token = uuid
-            }
-            if (nueva) setSemanas(s => [...s, nueva])
-          }
-        }
-        if (token) window.location.href = `/checkin/${token}`
-        else alert('No se pudo generar el enlace de feedback. Inténtalo de nuevo.')
+      // Botones de navegación: usan /checkin-portal/TOKEN?week=YYYY-MM-DD
+      // `token` es el token_cliente del cliente (prop del componente padre)
+      function irACheckin(weekStr) {
+        window.location.href = `/checkin-portal/${token}?week=${weekStr}`
       }
 
       return (
@@ -445,7 +385,7 @@ export default function ClientePortal({ token }) {
         {mostrarAvisoAnt && (
           <div style={{ background: '#fffbe6', border: '1px solid #f0e5a0', borderRadius: 10, padding: '10px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ fontSize: 12, color: '#5a4e00' }}>¿Olvidaste el feedback de la semana pasada?</div>
-            <button onClick={abrirCheckinAnt}
+            <button onClick={() => irACheckin(previousWeekStart)}
               style={{ flexShrink: 0, background: '#e6c200', color: '#3a3000', fontSize: 11, fontWeight: 600, padding: '6px 11px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               Rellenarlo
             </button>
@@ -454,44 +394,44 @@ export default function ClientePortal({ token }) {
         <div style={card}>
           <div style={{ padding: '12px 14px' }}>
             <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase', color: T.ink3, marginBottom: 10 }}>Feedback de semana</div>
-            {checkinRef ? (
+            {checkinActual ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {checkinRef.energia && (
+                  {checkinActual.energia && (
                     <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
                       <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>ENERGÍA</div>
-                      <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinRef.energia] || checkinRef.energia}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{ENERGIA_LABEL[checkinActual.energia] || checkinActual.energia}</div>
                     </div>
                   )}
-                  {checkinRef.descanso && (
+                  {checkinActual.descanso && (
                     <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
                       <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>DESCANSO</div>
-                      <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinRef.descanso] || checkinRef.descanso}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{DESCANSO_LABEL[checkinActual.descanso] || checkinActual.descanso}</div>
                     </div>
                   )}
-                  {checkinRef.horas_sueno && (
+                  {checkinActual.horas_sueno && (
                     <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
                       <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>SUEÑO</div>
-                      <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinRef.horas_sueno}h/noche</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>~{checkinActual.horas_sueno}h/noche</div>
                     </div>
                   )}
-                  {checkinRef.tolerancia_carga && (
+                  {checkinActual.tolerancia_carga && (
                     <div style={{ background: T.bg, borderRadius: 8, padding: '7px 10px', flex: 1, minWidth: 120 }}>
                       <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>TOLERANCIA</div>
-                      <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinRef.tolerancia_carga] || checkinRef.tolerancia_carga}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{TOLERANCIA_LABEL[checkinActual.tolerancia_carga] || checkinActual.tolerancia_carga}</div>
                     </div>
                   )}
                 </div>
-                {checkinRef.molestias && checkinRef.molestias !== 'No' && (
+                {checkinActual.molestias && checkinActual.molestias !== 'No' && (
                   <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '8px 10px' }}>
                     <div style={{ fontFamily: T.mono, fontSize: 8, color: '#633806', marginBottom: 3 }}>MOLESTIAS</div>
-                    <div style={{ fontSize: 12, color: '#633806' }}>{checkinRef.molestias}</div>
+                    <div style={{ fontSize: 12, color: '#633806' }}>{checkinActual.molestias}</div>
                   </div>
                 )}
-                {checkinRef.comentario_libre && (
+                {checkinActual.comentario_libre && (
                   <div style={{ borderLeft: `3px solid ${colA}`, paddingLeft: 10 }}>
                     <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3, marginBottom: 3 }}>COMENTARIO</div>
-                    <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinRef.comentario_libre}</div>
+                    <div style={{ fontSize: 12, color: T.ink2, lineHeight: 1.45 }}>{checkinActual.comentario_libre}</div>
                   </div>
                 )}
                 <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
@@ -499,7 +439,7 @@ export default function ClientePortal({ token }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
                 <div style={{ fontSize: 12.5, color: T.ink2 }}>Aún no has completado el feedback de semana.</div>
-                <button onClick={abrirCheckin}
+                <button onClick={() => irACheckin(currentWeekStart)}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colA, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   📋 Enviar feedback de semana
                 </button>

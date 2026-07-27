@@ -11,6 +11,7 @@ import Biblioteca from './pages/Biblioteca'
 import PlanPublica from './pages/PlanPublica'
 import SesionPublica from './pages/SesionPublica'
 import CheckinSemanal from './pages/CheckinSemanal'
+import CheckinPortal from './pages/CheckinPortal'
 import Login from './pages/Login'
 import VistaSemanalCliente from './pages/VistaSemanalCliente'
 import PackPublico from './pages/PackPublico'
@@ -39,6 +40,7 @@ export default function App() {
   const [publicPackToken, setPublicPackToken] = useState(null)
   const [publicClienteToken, setPublicClienteToken] = useState(null)
   const [publicCuestionarioToken, setPublicCuestionarioToken] = useState(null)
+  const [publicCheckinPortalToken, setPublicCheckinPortalToken] = useState(null)
   useEffect(() => {
     // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
@@ -51,6 +53,12 @@ export default function App() {
    const matchSesion = path.match(/^\/sesion\/([a-f0-9-]+)$/)
     if (matchSesion) {
       setPublicSesionToken(matchSesion[1])
+      setAuthLoading(false)
+      return
+    }
+    const matchCheckinPortal = path.match(/^\/checkin-portal\/(.+)$/)
+    if (matchCheckinPortal) {
+      setPublicCheckinPortalToken(matchCheckinPortal[1])
       setAuthLoading(false)
       return
     }
@@ -100,7 +108,8 @@ export default function App() {
  // Vista pública
   if (publicToken) return <PlanPublica token={publicToken} />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
-  if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
+   if (publicCheckinPortalToken) return <CheckinPortal />
+ if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
   if (publicSemanaToken) return <VistaSemanalCliente />
   if (publicPackToken) return <PackPublico token={publicPackToken} />
   if (publicClienteToken) return <ClientePortal token={publicClienteToken} />
