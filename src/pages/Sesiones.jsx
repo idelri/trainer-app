@@ -947,7 +947,16 @@ async function guardarSesion() {
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
     setDirty(true)
     if (campo === 'nombre' && valor?.trim()) {
-      supabase.from('ejercicios_biblioteca').upsert({ nombre: valor.trim() }, { onConflict: 'nombre', ignoreDuplicates: true }).then(() => {})
+      // Guarda en biblioteca (crea si no existe) y vincula biblioteca_id
+      supabase.from('ejercicios_biblioteca')
+        .upsert({ nombre: valor.trim() }, { onConflict: 'nombre', ignoreDuplicates: true })
+        .then(async () => {
+          const { data: bib } = await supabase.from('ejercicios_biblioteca').select('id').eq('nombre', valor.trim()).single()
+          if (bib) {
+            await supabase.from('sesion_ejercicios').update({ biblioteca_id: bib.id }).eq('id', id)
+            setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, biblioteca_id: bib.id } : e) }))
+          }
+        })
     }
   }
 
