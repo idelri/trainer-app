@@ -402,13 +402,6 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     return () => document.removeEventListener('click', handler)
   }, [menuVariableAbierto])
 
-  useEffect(() => {
-    if (!ctxCarrito) return
-    function handler() { setCtxCarrito(null) }
-    document.addEventListener('click', handler)
-    return () => document.removeEventListener('click', handler)
-  }, [ctxCarrito])
-
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
     setClientes(data || [])
@@ -425,6 +418,14 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [carritoItems, setCarritoItems] = useState([]) // lista combinada fases sueltas + grupos para editor carrera
   const [draggingCarrito, setDraggingCarrito] = useState(null) // { idx, grupoId?, innerIdx? }
   const [ctxCarrito, setCtxCarrito] = useState(null) // { x, y, item, grupoId?, innerIdx? }
+
+  // Cerrar menú contextual del carrito al hacer clic fuera
+  useEffect(() => {
+    if (!ctxCarrito) return
+    function handler() { setCtxCarrito(null) }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [ctxCarrito])
 
   async function cargarSesiones() {
     setLoading(true)
