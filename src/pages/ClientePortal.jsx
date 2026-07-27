@@ -368,29 +368,41 @@ export default function ClientePortal({ token }) {
       const semanaRef = getSemanaActual(bloqueRef)
       const checkinRef = checkins.find(c => c.semana_id === semanaRef?.id)
 
-      // Semana anterior: visible lun-mié si no tiene checkin
-      const diaSemana = new Date().getDay() // 0=dom,1=lun,...,6=sab
-      const esInicioSemana = diaSemana >= 1 && diaSemana <= 3
-      const getSemanaAnterior = (bloque) => {
+      // Semana anterior: calcular rango de la semana pasada y buscar fila en DB (o usar virtual)
+      const hoyDate = new Date()
+      const getSemanaAnteriorInfo = (bloque) => {
         if (!bloque?.fecha_inicio) return null
-        const hoy = new Date()
-        return semanas.filter(s => s.bloque_id === bloque.id).find(s => {
-          const ini = addDays(parseISO(bloque.fecha_inicio + 'T12:00:00'), (s.numero - 1) * 7)
-          const fin = addDays(ini, 7)
-          const semPasada = addDays(hoy, -7)
-          return semPasada >= ini && semPasada < fin
-        }) || null
+        const ini = parseISO(bloque.fecha_inicio + 'T12:00:00')
+        const numSemAnt = Math.floor((hoyDate - ini) / (7 * 24 * 3600 * 1000)) // semana anterior = actual - 1
+        if (numSemAnt < 1) return null // aún estamos en la primera semana del bloque
+        const numReal = numSemAnt // numero de semana (1-based) de la semana anterior
+        const rowDB = semanas.filter(s => s.bloque_id === bloque.id).find(s => s.numero === numReal) || null
+        return { numero: numReal, row: rowDB }
       }
-      const semanaAnt = esInicioSemana ? getSemanaAnterior(bloqueRef) : null
-      const checkinAnt = semanaAnt ? checkins.find(c => c.semana_id === semanaAnt.id) : null
-      const mostrarAvisoAnt = esInicioSemana && semanaAnt && !checkinAnt
+      const semanaAntInfo = getSemanaAnteriorInfo(bloqueRef)
+      const checkinAnt = semanaAntInfo?.row ? checkins.find(c => c.semana_id === semanaAntInfo.row.id) : null
+      const mostrarAvisoAnt = semanaAntInfo && !checkinAnt
 
       async function abrirCheckinAnt() {
-        let token = semanaAnt?.token_publico
-        if (!token && semanaAnt?.id) {
-          const uuid = crypto.randomUUID()
-          await supabase.from('semanas').update({ token_publico: uuid }).eq('id', semanaAnt.id)
-          token = uuid
+        let token = semanaAntInfo?.row?.token_publico
+        if (!token) {
+          if (semanaAntInfo?.row?.id) {
+            const uuid = crypto.randomUUID()
+            await supabase.from('semanas').update({ token_publico: uuid }).eq('id', semanaAntInfo.row.id)
+            token = uuid
+          } else {
+            // Crear fila para la semana anterior
+            const { data: nueva } = await supabase
+              .from('semanas').insert({ bloque_id: bloqueRef.id, numero: semanaAntInfo.numero, carga: 'media' })
+              .select().single()
+            token = nueva?.token_publico
+            if (!token && nueva?.id) {
+              const uuid = crypto.randomUUID()
+              await supabase.from('semanas').update({ token_publico: uuid }).eq('id', nueva.id)
+              token = uuid
+            }
+            if (nueva) setSemanas(s => [...s, nueva])
+          }
         }
         if (token) window.location.href = `/checkin/${token}`
       }
