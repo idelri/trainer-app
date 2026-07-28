@@ -997,7 +997,17 @@ async function guardarSesion() {
     const orden = (ejercicios[bloqueId] || []).length
     const { data: ejRow, error: ejError } = await supabase
       .from('sesion_ejercicios')
-      .insert({ bloque_id: bloqueId, nombre: formCrearEj.nombre.trim(), biblioteca_id: bib.id, orden })
+      .insert({
+        bloque_id: bloqueId,
+        nombre: formCrearEj.nombre.trim(),
+        biblioteca_id: bib.id,
+        orden,
+        ...(formCrearEj.media_tipo ? { media_tipo: formCrearEj.media_tipo } : {}),
+        ...(formCrearEj.media_url ? { media_url: formCrearEj.media_url } : {}),
+        ...(formCrearEj.video_url ? { video_url: formCrearEj.video_url } : {}),
+        ...(formCrearEj.notas ? { notas: formCrearEj.notas } : {}),
+        ...(formCrearEj.ejecucion_tipo ? { ejecucion_tipo: formCrearEj.ejecucion_tipo } : {}),
+      })
       .select()
       .single()
 
