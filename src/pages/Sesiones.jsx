@@ -1046,6 +1046,7 @@ async function guardarSesion() {
       icono: sesionOrigen.icono,
     }).select().single()
     if (errSesion || !nuevaSesion) { alert('Error: ' + (errSesion?.message || errSesion?.code || JSON.stringify(errSesion))); setSaving(false); return }
+    // Bloques fuerza
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({
@@ -1063,6 +1064,26 @@ async function guardarSesion() {
           peso_der: e.peso_der, peso_izq: e.peso_izq, reps_por_lado: e.reps_por_lado,
         })
       }
+    }
+    // Bloques carrera (fases sueltas y grupos con repeticiones)
+    const { data: grupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
+    const gruposMap = {}
+    for (const g of grupos || []) {
+      const { data: ng } = await supabase.from('sesion_fase_grupos').insert({
+        sesion_id: nuevaSesion.id, repeticiones: g.repeticiones, orden: g.orden,
+      }).select().single()
+      if (ng) gruposMap[g.id] = ng.id
+    }
+    const { data: fasesSrc } = await supabase.from('sesion_fases').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
+    for (const f of fasesSrc || []) {
+      await supabase.from('sesion_fases').insert({
+        sesion_id: nuevaSesion.id,
+        grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
+        nombre: f.nombre, descripcion: f.descripcion,
+        volumen_min: f.volumen_min, volumen_km: f.volumen_km,
+        fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin,
+        rpe: f.rpe, orden: f.orden,
+      })
     }
     setSaving(false)
     if (clienteDestino !== clienteSeleccionado) setClienteSeleccionado(clienteDestino)
@@ -1086,6 +1107,26 @@ async function guardarSesion() {
           media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
         })
       }
+    }
+    // Bloques carrera
+    const { data: grupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
+    const gruposMap = {}
+    for (const g of grupos || []) {
+      const { data: ng } = await supabase.from('sesion_fase_grupos').insert({
+        sesion_id: nuevaSesion.id, repeticiones: g.repeticiones, orden: g.orden,
+      }).select().single()
+      if (ng) gruposMap[g.id] = ng.id
+    }
+    const { data: fasesSrc } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
+    for (const f of fasesSrc || []) {
+      await supabase.from('sesion_fases').insert({
+        sesion_id: nuevaSesion.id,
+        grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
+        nombre: f.nombre, descripcion: f.descripcion,
+        volumen_min: f.volumen_min, volumen_km: f.volumen_km,
+        fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin,
+        rpe: f.rpe, orden: f.orden,
+      })
     }
     setSaving(false)
     cargarSesiones()
