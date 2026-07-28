@@ -2591,26 +2591,51 @@ async function guardarSesion() {
                 </div>
               </div>
               {/* Multimedia */}
-              <div>
-                <label className="form-label">Multimedia</label>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                  {['youtube', 'imagen'].map(tipo => (
-                    <button key={tipo} type="button"
-                      onClick={() => setFormCrearEj(f => ({ ...f, media_tipo: tipo, media_url: '', video_url: '' }))}
-                      style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${formCrearEj.media_tipo === tipo ? 'var(--accent)' : 'var(--border)'}`, background: formCrearEj.media_tipo === tipo ? 'var(--accent-bg)' : 'transparent', color: formCrearEj.media_tipo === tipo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer' }}>
-                      {tipo === 'youtube' ? '▶ YouTube' : '🖼 Imagen'}
-                    </button>
-                  ))}
-                </div>
-                {formCrearEj.media_tipo === 'youtube' && (
-                  <input className="form-input" placeholder="URL YouTube" value={formCrearEj.video_url}
-                    onChange={e => setFormCrearEj(f => ({ ...f, video_url: e.target.value }))} />
-                )}
-                {formCrearEj.media_tipo === 'imagen' && (
-                  <input className="form-input" placeholder="URL imagen" value={formCrearEj.media_url}
-                    onChange={e => setFormCrearEj(f => ({ ...f, media_url: e.target.value }))} />
-                )}
+              <div className="form-group">
+                <label className="form-label">Tipo de media</label>
+                <select className="form-select" value={formCrearEj.media_tipo}
+                  onChange={e => setFormCrearEj(f => ({ ...f, media_tipo: e.target.value, media_url: '', video_url: '' }))}>
+                  <option value="">Sin media</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="imagen">Imagen</option>
+                  <option value="video">Vídeo</option>
+                  <option value="gif">GIF</option>
+                </select>
               </div>
+              {formCrearEj.media_tipo && (
+                <div className="form-group">
+                  <label className="form-label">{formCrearEj.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input className="form-input" value={formCrearEj.media_url}
+                      onChange={e => setFormCrearEj(f => ({ ...f, media_url: e.target.value }))}
+                      placeholder={formCrearEj.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
+                      style={{ flex: 1 }} />
+                    {formCrearEj.media_tipo !== 'youtube' && (
+                      <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                        <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                          onChange={async ev => {
+                            const file = ev.target.files?.[0]; if (!file) return
+                            const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
+                            const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                            if (error) { alert('Error: ' + error.message); return }
+                            const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                            setFormCrearEj(f => ({ ...f, media_url: publicUrl }))
+                            ev.target.value = ''
+                          }} />
+                        <span className="btn btn-ghost btn-sm">📁 Subir</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+              {formCrearEj.media_tipo && formCrearEj.media_tipo !== 'youtube' && (
+                <div className="form-group">
+                  <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
+                  <input className="form-input" value={formCrearEj.video_url}
+                    onChange={e => setFormCrearEj(f => ({ ...f, video_url: e.target.value }))}
+                    placeholder="https://..." />
+                </div>
+              )}
               {/* Etiquetas taxonómicas */}
               {Object.entries(ETIQUETAS).map(([campo, config]) => {
                 const isSingle = config.single === true
