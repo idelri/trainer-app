@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { clasificarEjercicio } from '../lib/clasificarEjercicio'
+import { ETIQUETAS, TAG_COLORS } from '../lib/taxonomia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
@@ -348,8 +350,13 @@ export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla,
   const [loading, setLoading] = useState(false)
   const [sesionAbierta, setSesionAbierta] = useState(null)
   const sesionInicialCargada = useRef(false)
-  const registrandoEnBib = useRef(new Set()) // protege contra dobles llamadas al crear en biblioteca
   const [bloques, setBloques] = useState([])
+
+  const FORM_CREAR_EJ_EMPTY = { nombre: '', descripcion: '', notas: '', ejecucion_tipo: '', media_tipo: 'youtube', media_url: '', video_url: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [], material: [], nivel_aproximacion: [] }
+  const [modalCrearEj, setModalCrearEj] = useState(null) // { bloqueId, variablesDefault }
+  const [formCrearEj, setFormCrearEj] = useState(FORM_CREAR_EJ_EMPTY)
+  const [guardandoCrearEj, setGuardandoCrearEj] = useState(false)
+  const [errorCrearEj, setErrorCrearEj] = useState(null)
   const [ejercicios, setEjercicios] = useState({})
 
   const [dirty, setDirty] = useState(false)
@@ -903,14 +910,10 @@ async function guardarSesion() {
     setDirty(true)
   }
 
-  async function añadirEjercicio(bloqueId, variablesDefault = []) {
-    const lista = ejercicios[bloqueId] || []
-    const { data: e } = await supabase.from('sesion_ejercicios').insert({
-      bloque_id: bloqueId, nombre: '', series: '', reps: '', rpe: '', notas: '',
-      media_tipo: 'youtube', media_url: '', video_url: '', orden: lista.length,
-      variables_activas: variablesDefault,
-    }).select().single()
-    if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
+  function abrirCrearEjercicio(bloqueId, variablesDefault = []) {
+    setFormCrearEj(FORM_CREAR_EJ_EMPTY)
+    setErrorCrearEj(null)
+    setModalCrearEj({ bloqueId, variablesDefault })
   }
 
   async function abrirBiblioteca(bloqueId, variablesDefault = []) {
@@ -947,30 +950,68 @@ async function guardarSesion() {
     await supabase.from('sesion_ejercicios').update({ [campo]: valor }).eq('id', id)
     setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, [campo]: valor } : e) }))
     setDirty(true)
+  }
 
-    // Solo cuando se asigna el PRIMER nombre válido a un ejercicio nuevo (sin biblioteca_id todavía)
-    // En cualquier otro caso (renombre posterior) no tocamos la Biblioteca
-    if (campo === 'nombre' && valor?.trim()) {
-      const ejActual = (ejercicios[bloqueId] || []).find(e => e.id === id)
-      const sinVincular = ejActual && !ejActual.biblioteca_id
-      const yaEnProceso = registrandoEnBib.current.has(id)
-      if (sinVincular && !yaEnProceso) {
-        registrandoEnBib.current.add(id)
-        try {
-          const { data: bib } = await supabase
-            .from('ejercicios_biblioteca')
-            .insert({ nombre: valor.trim() })
-            .select('id')
-            .single()
-          if (bib) {
-            await supabase.from('sesion_ejercicios').update({ biblioteca_id: bib.id }).eq('id', id)
-            setEjercicios(ej => ({ ...ej, [bloqueId]: (ej[bloqueId] || []).map(e => e.id === id ? { ...e, biblioteca_id: bib.id } : e) }))
-          }
-        } finally {
-          registrandoEnBib.current.delete(id)
-        }
-      }
+  async function guardarEjercicioPersonalizado() {
+    if (!formCrearEj.nombre?.trim()) return
+    setGuardandoCrearEj(true)
+    setErrorCrearEj(null)
+    const { bloqueId } = modalCrearEj
+
+    const tags = clasificarEjercicio({
+      nombre: formCrearEj.nombre.trim(),
+      notas: formCrearEj.notas || '',
+      ejecucion_tipo: formCrearEj.ejecucion_tipo || '',
+      ejecucion_texto: '',
+    })
+    const camposTags = {}
+    for (const campo of Object.keys(ETIQUETAS)) {
+      const valForm = formCrearEj[campo]
+      if (valForm && valForm.length > 0) camposTags[campo] = valForm
+      else if (tags[campo] && tags[campo].length > 0) camposTags[campo] = tags[campo]
     }
+
+    const insertBib = {
+      nombre: formCrearEj.nombre.trim(),
+      ...(formCrearEj.descripcion ? { descripcion: formCrearEj.descripcion } : {}),
+      ...(formCrearEj.notas ? { notas: formCrearEj.notas } : {}),
+      ...(formCrearEj.ejecucion_tipo ? { ejecucion_tipo: formCrearEj.ejecucion_tipo } : {}),
+      ...(formCrearEj.media_tipo ? { media_tipo: formCrearEj.media_tipo } : {}),
+      ...(formCrearEj.media_url ? { media_url: formCrearEj.media_url } : {}),
+      ...(formCrearEj.video_url ? { video_url: formCrearEj.video_url } : {}),
+      ...camposTags,
+    }
+
+    const { data: bib, error: bibError } = await supabase
+      .from('ejercicios_biblioteca')
+      .insert(insertBib)
+      .select('id')
+      .single()
+
+    if (bibError || !bib) {
+      setErrorCrearEj(bibError?.message || 'Error al crear ejercicio en Biblioteca')
+      setGuardandoCrearEj(false)
+      return
+    }
+
+    const orden = (ejercicios[bloqueId] || []).length
+    const { data: ejRow, error: ejError } = await supabase
+      .from('sesion_ejercicios')
+      .insert({ bloque_id: bloqueId, nombre: formCrearEj.nombre.trim(), biblioteca_id: bib.id, orden })
+      .select()
+      .single()
+
+    if (ejError || !ejRow) {
+      await supabase.from('ejercicios_biblioteca').delete().eq('id', bib.id)
+      setErrorCrearEj(ejError?.message || 'Error al añadir ejercicio a la sesión')
+      setGuardandoCrearEj(false)
+      return
+    }
+
+    setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), ejRow] }))
+    setDirty(true)
+    setModalCrearEj(null)
+    setGuardandoCrearEj(false)
   }
 
   async function eliminarEjercicio(bloqueId, id) {
@@ -1956,7 +1997,7 @@ async function guardarSesion() {
                     )
                   })}
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => añadirEjercicio(b.id, b.variables_default || [])}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => abrirCrearEjercicio(b.id, b.variables_default || [])}>
                       <Plus size={12} /> Ejercicio
                     </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => abrirBiblioteca(b.id, b.variables_default || [])} style={{ color: 'var(--accent)' }}>
@@ -2273,9 +2314,8 @@ async function guardarSesion() {
             { grupo: 'Tren superior', items: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Estabilidad escapular'] },
             { grupo: 'Core', items: ['Anti-extensión','Anti-rotación','Anti-flexión lateral','Anti-flexión frontal','Rotación','Flexión de tronco','Control lumbopélvico'] },
           ]},
-          { campo: 'objetivo', label: 'Objetivo', color: '#b45309', grupos: [
-            { grupo: '', items: ['Fuerza base','Fuerza específica','Potencia / Velocidad','Técnica / Control motor','Movilidad / Flexibilidad'] },
-          ]},
+          { campo: 'objetivo', label: 'Objetivo', color: '#b45309', grupos: ETIQUETAS.objetivo.grupos },
+          { campo: 'nivel_aproximacion', label: 'Nivel', color: '#0f766e', single: true, grupos: ETIQUETAS.nivel_aproximacion.grupos },
           { campo: 'zona_corporal', label: 'Zona corporal', color: '#0369a1', grupos: [
             { grupo: 'Cadenas principales', items: ['Cadena Anterior','Cadena Posterior','Estabilizadores de Cadera','Cadena Medial / Aductores'] },
             { grupo: 'CORE / Tronco', items: ['Lumbo-pélvico','Abdominal','Dorsal / Torácico','Cervical'] },
@@ -2418,6 +2458,15 @@ async function guardarSesion() {
                 })}
               </div>{/* fin columna derecha */}
               </div>{/* fin dos columnas */}
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => {
+                  const { bloqueId, variablesDefault } = modalBiblioteca
+                  setModalBiblioteca(null)
+                  abrirCrearEjercicio(bloqueId, variablesDefault)
+                }}>
+                  <Plus size={12} /> Crear ejercicio personalizado
+                </button>
+              </div>
             </div>
           </div>
         )
@@ -2504,6 +2553,102 @@ async function guardarSesion() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Modal: Crear ejercicio personalizado */}
+      {modalCrearEj && (
+        <div className="modal-backdrop" onClick={() => setModalCrearEj(null)}>
+          <div className="modal" style={{ maxWidth: 640, width: '95vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Crear ejercicio personalizado</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrearEj(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Nombre */}
+              <div>
+                <label className="form-label">Nombre *</label>
+                <input className="form-input" autoFocus placeholder="Nombre del ejercicio" value={formCrearEj.nombre}
+                  onChange={e => setFormCrearEj(f => ({ ...f, nombre: e.target.value }))} />
+              </div>
+              {/* Descripción */}
+              <div>
+                <label className="form-label">Descripción</label>
+                <textarea className="form-input" placeholder="Descripción del ejercicio" value={formCrearEj.descripcion}
+                  onChange={e => setFormCrearEj(f => ({ ...f, descripcion: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+              </div>
+              {/* Notas / ejecución */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label className="form-label">Notas de ejecución</label>
+                  <textarea className="form-input" placeholder="Indicaciones técnicas..." value={formCrearEj.notas}
+                    onChange={e => setFormCrearEj(f => ({ ...f, notas: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+                </div>
+                <div>
+                  <label className="form-label">Tipo de ejecución</label>
+                  <input className="form-input" placeholder="Ej: Excéntrico lento, pausa..." value={formCrearEj.ejecucion_tipo}
+                    onChange={e => setFormCrearEj(f => ({ ...f, ejecucion_tipo: e.target.value }))} />
+                </div>
+              </div>
+              {/* Multimedia */}
+              <div>
+                <label className="form-label">Multimedia</label>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                  {['youtube', 'imagen'].map(tipo => (
+                    <button key={tipo} type="button"
+                      onClick={() => setFormCrearEj(f => ({ ...f, media_tipo: tipo, media_url: '', video_url: '' }))}
+                      style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${formCrearEj.media_tipo === tipo ? 'var(--accent)' : 'var(--border)'}`, background: formCrearEj.media_tipo === tipo ? 'var(--accent-bg)' : 'transparent', color: formCrearEj.media_tipo === tipo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer' }}>
+                      {tipo === 'youtube' ? '▶ YouTube' : '🖼 Imagen'}
+                    </button>
+                  ))}
+                </div>
+                {formCrearEj.media_tipo === 'youtube' && (
+                  <input className="form-input" placeholder="URL YouTube" value={formCrearEj.video_url}
+                    onChange={e => setFormCrearEj(f => ({ ...f, video_url: e.target.value }))} />
+                )}
+                {formCrearEj.media_tipo === 'imagen' && (
+                  <input className="form-input" placeholder="URL imagen" value={formCrearEj.media_url}
+                    onChange={e => setFormCrearEj(f => ({ ...f, media_url: e.target.value }))} />
+                )}
+              </div>
+              {/* Etiquetas taxonómicas */}
+              {Object.entries(ETIQUETAS).map(([campo, config]) => {
+                const isSingle = config.single === true
+                const seleccionados = formCrearEj[campo] || []
+                return (
+                  <div key={campo}>
+                    <label className="form-label" style={{ color: TAG_COLORS[campo] }}>{config.label}{isSingle ? ' (1 máx.)' : ''}</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {config.grupos.flatMap(g => g.items).map(item => {
+                        const activo = seleccionados.includes(item)
+                        return (
+                          <button key={item} type="button"
+                            onClick={() => setFormCrearEj(f => {
+                              const actual = f[campo] || []
+                              let next
+                              if (activo) next = actual.filter(v => v !== item)
+                              else if (isSingle) next = [item]
+                              else next = [...actual, item]
+                              return { ...f, [campo]: next }
+                            })}
+                            style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? TAG_COLORS[campo] : 'var(--border)'}`, background: activo ? TAG_COLORS[campo] + '22' : 'transparent', color: activo ? TAG_COLORS[campo] : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
+                            {item}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+              {errorCrearEj && <p style={{ color: 'var(--error)', fontSize: 12 }}>{errorCrearEj}</p>}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalCrearEj(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={guardandoCrearEj || !formCrearEj.nombre?.trim()} onClick={guardarEjercicioPersonalizado}>
+                {guardandoCrearEj ? 'Guardando...' : 'Guardar ejercicio'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
