@@ -693,12 +693,11 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   async function cambiarRepeticionesGrupo(grupoId, delta) {
-    setCarritoItems(ci => ci.map(it => {
-      if (it.id !== grupoId || it.type !== 'grupo') return it
-      const next = Math.max(2, it.repeticiones + delta)
-      supabase.from('sesion_fase_grupos').update({ repeticiones: next }).eq('id', grupoId)
-      return { ...it, repeticiones: next }
-    }))
+    const grupo = carritoItems.find(it => it.id === grupoId && it.type === 'grupo')
+    if (!grupo) return
+    const next = Math.max(2, grupo.repeticiones + delta)
+    await supabase.from('sesion_fase_grupos').update({ repeticiones: next }).eq('id', grupoId)
+    setCarritoItems(ci => ci.map(it => it.id === grupoId && it.type === 'grupo' ? { ...it, repeticiones: next } : it))
     setDirty(true)
   }
 
