@@ -1787,17 +1787,29 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                       estado: 'pendiente',
                     }).select().single()
                     if (error || !nueva) { console.error('Error pegando sesión:', error); return }
-                    const bloques = await supabase.from('sesion_bloques').select('*, sesion_ejercicios(*)').eq('sesion_id', item.id)
-                    for (const b of bloques.data || []) {
-                      const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
-                      if (!nb) continue
+                    const { data: bloquesData, error: errBloques } = await supabase.from('sesion_bloques').select('*, sesion_ejercicios(*)').eq('sesion_id', item.id)
+                    if (errBloques) { console.error('Error copiando bloques:', errBloques); alert('Error al copiar bloques: ' + errBloques.message); return }
+                    for (const b of bloquesData || []) {
+                      const { data: nb, error: errNb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
+                      if (errNb || !nb) { console.error('Error insertando bloque:', errNb); continue }
                       for (const e of b.sesion_ejercicios || []) {
-                        await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
+                        const { error: errEj } = await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
+                        if (errEj) console.error('Error insertando ejercicio:', errEj)
                       }
                     }
-                    const fases = await supabase.from('sesion_fases').select('*').eq('sesion_id', item.id)
-                    for (const f of fases.data || []) {
-                      await supabase.from('sesion_fases').insert({ sesion_id: nueva.id, nombre: f.nombre, descripcion: f.descripcion, orden: f.orden, volumen_min: f.volumen_min, volumen_km: f.volumen_km, fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin, rpe: f.rpe })
+                    const { data: grupos, error: errGrupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', item.id).order('orden')
+                    if (errGrupos) { console.error('Error consultando grupos de carrera:', errGrupos); alert('Error al leer grupos de carrera: ' + errGrupos.message); return }
+                    const gruposMap = {}
+                    for (const g of grupos || []) {
+                      const { data: ng, error: errNg } = await supabase.from('sesion_fase_grupos').insert({ sesion_id: nueva.id, repeticiones: g.repeticiones, orden: g.orden }).select().single()
+                      if (errNg || !ng) { console.error('Error insertando grupo de carrera:', errNg); continue }
+                      gruposMap[g.id] = ng.id
+                    }
+                    const { data: fasesData, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', item.id).order('orden')
+                    if (errFases) { console.error('Error consultando fases de carrera:', errFases); alert('Error al leer fases de carrera: ' + errFases.message); return }
+                    for (const f of fasesData || []) {
+                      const { error: errF } = await supabase.from('sesion_fases').insert({ sesion_id: nueva.id, grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null, nombre: f.nombre, descripcion: f.descripcion, orden: f.orden, volumen_min: f.volumen_min, volumen_km: f.volumen_km, fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin, rpe: f.rpe })
+                      if (errF) console.error('Error insertando fase de carrera:', errF)
                     }
                   } else {
                     const tabla = item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
