@@ -428,7 +428,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
   async function pegarSesion(s, fecha, clienteDestino = clienteId, recargar = true, ordenOverride = null, packId = null) {
     setSaving(true)
     const orden = fecha ? null : (ordenOverride != null ? ordenOverride : await siguienteOrdenSinFecha(clienteDestino))
-    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, tipo_actividad: s.tipo_actividad || 'fuerza', tipos_actividad: s.tipos_actividad?.length > 0 ? s.tipos_actividad : [s.tipo_actividad || 'fuerza'], ...(orden != null ? { orden } : {}), ...(packId ? { pack_id: packId } : {}) }).select().single()
+    const { data: nueva } = await supabase.from('sesiones').insert({ cliente_id: clienteDestino, titulo: s.titulo, fecha, objetivo: s.objetivo, duracion_min: s.duracion_min, tipo_actividad: s.tipo_actividad || 'fuerza', tipos_actividad: s.tipos_actividad?.length > 0 ? s.tipos_actividad : [s.tipo_actividad || 'fuerza'], tipo_editor: s.tipo_editor || null, ...(orden != null ? { orden } : {}), ...(packId ? { pack_id: packId } : {}) }).select().single()
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({ sesion_id: nueva.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden }).select().single()
