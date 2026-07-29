@@ -1,7 +1,7 @@
 # CONTRATO FUNCIONAL — idelri trainer-app
 
 > Fecha: 2026-07-29  
-> Última actualización: 2026-07-29 (R1: SesionesPlan.jsx movido a _legado; botón "Compartir plan" eliminado de Planificacion.jsx)  
+> Última actualización: 2026-07-29 (R1: SesionesPlan.jsx movido a _legado; sistema /plan/[token] eliminado completamente: PlanPublica.jsx, ruta, lógica App.js, columna planificaciones.token_publico y 4 políticas RLS asociadas)  
 > Propósito: referencia obligatoria para todas las refactorizaciones futuras.  
 > Todo lo descrito aquí debe seguir funcionando exactamente igual salvo decisión explícita de Irene del Río.
 
@@ -186,15 +186,9 @@ La comunicación entre ambos universos pasa por Supabase: la entrenadora crea y 
 
 ---
 
-### F13 — Acceso de la clienta a su plan público
+### F13 — ~~Acceso público al plan de planificación~~ — ELIMINADO
 
-> **Nota (2026-07-29):** el botón "🔗 Compartir" que generaba este enlace desde la cabecera de Planificacion.jsx ha sido eliminado. La ruta `/plan/[token]` y `PlanPublica.jsx` siguen existiendo pero ya no hay UI interna para generar el enlace. El sistema activo de compartir es el portal completo desde la lista de clientes (`/cliente/[token_cliente]`).
-
-**Entrada:** enlace `/plan/[token]` (acceso manual al URL)  
-**Componentes:** `PlanPublica.jsx`  
-**Tablas:** `planificaciones`, `bloques`, `subbloques`, `semanas`, `competiciones`, `controles`  
-**Resultado esperado:** la clienta ve su planificación anual en formato visual (timeline, bloques, subbloques, semanas). Sin login. Sin poder editar.  
-**Nunca debe romperse:** el acceso sin login, que el token incorrecto no muestre datos de otra clienta.
+> **Eliminado completamente 2026-07-29.** `PlanPublica.jsx` borrado. Ruta `/plan/[token]` y lógica en App.js eliminadas. Columna `planificaciones.token_publico` eliminada de Supabase junto con las 4 políticas RLS dependientes (`público - planificaciones por token`, `público - bloques`, `público - subbloques`, `público - semanas`). El sistema activo de acceso público es el portal completo `/cliente/[token_cliente]`. Los tokens de `sesiones`, `semanas`, `packs_flexibles` y `cuestionario_inicial` siguen intactos.
 
 ---
 
@@ -295,7 +289,7 @@ Estas funcionalidades forman parte de la app y deben funcionar, pero un cambio t
 | S10 | Guardar sesión en biblioteca de sesiones (plantillas) |
 | S11 | Copiar plantilla de biblioteca a un cliente con fecha |
 | S12 | Vista previa cliente desde el editor de sesiones |
-| S13 | ~~Compartir enlace de planificación (plan público por token)~~ — **Retirado 2026-07-29.** El botón fue eliminado de Planificacion.jsx. La ruta `/plan/[token]` sigue activa pero sin generador de enlace en la UI. |
+| S13 | ~~Compartir enlace de planificación (plan público por token)~~ — **Eliminado 2026-07-29.** `PlanPublica.jsx` borrado. Ruta `/plan/[token]` inactiva. |
 | S14 | Tooltip al pasar el cursor sobre sesión en el calendario (bloques/fases/grupos) |
 | S15 | Filtros de timeline (bloques, subbloques, semanas, sesiones, eventos) |
 | S16 | Cuestionario inicial de incorporación de clienta (`/cuestionario/[token]`) |

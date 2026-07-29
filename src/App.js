@@ -8,7 +8,6 @@ import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
 import Sesiones from './pages/Sesiones'
 import Biblioteca from './pages/Biblioteca'
-import PlanPublica from './pages/PlanPublica'
 import SesionPublica from './pages/SesionPublica'
 import CheckinSemanal from './pages/CheckinSemanal'
 import CheckinPortal from './pages/CheckinPortal'
@@ -34,7 +33,6 @@ export default function App() {
   const [sesionesContext, setSesionesContext] = useState({ clienteId: null, sesionId: null })
   const [recargarPlan, setRecargarPlan] = useState(0)
   const [authLoading, setAuthLoading] = useState(true)
-  const [publicToken, setPublicToken] = useState(null)
   const [publicSesionToken, setPublicSesionToken] = useState(null)
   const [publicCheckinToken, setPublicCheckinToken] = useState(null)
   const [publicSemanaToken, setPublicSemanaToken] = useState(null)
@@ -43,14 +41,7 @@ export default function App() {
   const [publicCuestionarioToken, setPublicCuestionarioToken] = useState(null)
   const [publicCheckinPortalToken, setPublicCheckinPortalToken] = useState(null)
   useEffect(() => {
-    // Detectar si es una URL pública /plan/TOKEN o /sesion/TOKEN
     const path = window.location.pathname
-    const matchPlan = path.match(/^\/plan\/([a-f0-9]+)$/)
-    if (matchPlan) {
-      setPublicToken(matchPlan[1])
-      setAuthLoading(false)
-      return
-    }
    const matchSesion = path.match(/^\/sesion\/([a-f0-9-]+)$/)
     if (matchSesion) {
       setPublicSesionToken(matchSesion[1])
@@ -107,7 +98,6 @@ export default function App() {
   if (authLoading) return null
 
  // Vista pública
-  if (publicToken) return <PlanPublica token={publicToken} />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
    if (publicCheckinPortalToken) return <CheckinPortal />
  if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
