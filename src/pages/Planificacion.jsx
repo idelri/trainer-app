@@ -540,12 +540,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     cargarPlanificacion()
   }
 
-  function copiarEnlace() {
-    if (!planificacion?.token_publico) return
-    navigator.clipboard.writeText(`${window.location.origin}/plan/${planificacion.token_publico}`)
-    alert(`Enlace copiado:\n${window.location.origin}/plan/${planificacion.token_publico}`)
-  }
-
   const esSalud       = planificacion?.tipo === 'salud'
   const esResistencia = !esSalud && clienteData?.perfil_planificacion !== 'fuerza_salud'
 
@@ -1573,7 +1567,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           {planificacion && <p className="page-subtitle">{planificacion.nombre}</p>}
         </div>
         <div className="flex gap-2" style={{ position: 'relative' }}>
-          {planificacion && <button className="btn btn-ghost btn-sm" onClick={copiarEnlace}>🔗 Compartir</button>}
           {planificacion && <button className="btn btn-ghost btn-sm" onClick={() => window.print()}>🖨️ Imprimir</button>}
           {planificacion && <button className="btn btn-ghost" onClick={() => openModal('plan_editar')}>Editar</button>}
           {planificacion && (

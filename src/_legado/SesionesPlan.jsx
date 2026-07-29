@@ -1,3 +1,12 @@
+// LEGADO:
+// Este archivo no está conectado a ninguna ruta ni flujo activo.
+// Se conserva como referencia de funcionalidades todavía no migradas,
+// como copia de semanas, copia de packs, copia entre clientes
+// y controles de visibilidad.
+// No modificar ni reactivar sin revisar antes:
+// docs/AUDITORIA_FASE_2_ARQUITECTURA_SESIONES.md
+// docs/CONTRATO_FUNCIONAL_APP.md
+
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO, addDays } from 'date-fns'
