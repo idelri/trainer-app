@@ -1067,17 +1067,17 @@ async function guardarSesion() {
     }
     // Bloques carrera (fases sueltas y grupos con repeticiones)
     const { data: grupos, error: errGrupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
-    console.log('[copy] grupos encontrados:', grupos?.length, 'error:', errGrupos)
+
     const gruposMap = {}
     for (const g of grupos || []) {
       const { data: ng, error: errNg } = await supabase.from('sesion_fase_grupos').insert({
         sesion_id: nuevaSesion.id, repeticiones: g.repeticiones, orden: g.orden,
       }).select().single()
-      console.log('[copy] grupo insertado:', ng?.id, 'reps:', g.repeticiones, 'error:', errNg)
+
       if (ng) gruposMap[g.id] = ng.id
     }
     const { data: fasesSrc, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
-    console.log('[copy] fases encontradas:', fasesSrc?.length, 'error:', errFases)
+
     for (const f of fasesSrc || []) {
       const { error: errF } = await supabase.from('sesion_fases').insert({
         sesion_id: nuevaSesion.id,

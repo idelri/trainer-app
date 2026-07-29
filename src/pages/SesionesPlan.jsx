@@ -437,15 +437,12 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
     }
     // Fases de carrera (fases sueltas + grupos con repeticiones)
     const { data: grupos, error: errGrupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
-    console.log('[copy] sesion_fase_grupos encontrados:', grupos?.length, 'error:', errGrupos)
     const gruposMap = {}
     for (const g of grupos || []) {
       const { data: ng, error: errNg } = await supabase.from('sesion_fase_grupos').insert({ sesion_id: nueva.id, repeticiones: g.repeticiones, orden: g.orden }).select().single()
-      console.log('[copy] grupo insertado:', ng?.id, 'error:', errNg)
       if (ng) gruposMap[g.id] = ng.id
     }
     const { data: fasesSrc, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
-    console.log('[copy] sesion_fases encontradas:', fasesSrc?.length, 'error:', errFases)
     for (const f of fasesSrc || []) {
       const { error: errFaseIns } = await supabase.from('sesion_fases').insert({
         sesion_id: nueva.id,
