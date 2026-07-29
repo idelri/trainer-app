@@ -92,8 +92,11 @@ export default function CalendarioSesiones({
       if (sesion._tipo === 'nota') {
         setTooltip({ x, y, sesion, bloques: [], fases: [] })
       } else if (sesion.tipo_editor === 'carrera') {
-        const { data: fases } = await supabase.from('sesion_fases').select('nombre, descripcion, orden').eq('sesion_id', sesion.id).order('orden')
-        setTooltip({ x, y, sesion, fases: fases || [], bloques: [] })
+        const [{ data: fases }, { data: grupos }] = await Promise.all([
+          supabase.from('sesion_fases').select('nombre, descripcion, orden, grupo_id').eq('sesion_id', sesion.id).order('orden'),
+          supabase.from('sesion_fase_grupos').select('id, repeticiones, orden').eq('sesion_id', sesion.id).order('orden'),
+        ])
+        setTooltip({ x, y, sesion, fases: fases || [], grupos: grupos || [], bloques: [] })
       } else {
         const { data: bloques } = await supabase.from('sesion_bloques').select('id, nombre, color, sesion_ejercicios(nombre, orden)').eq('sesion_id', sesion.id).order('orden')
         setTooltip({ x, y, sesion, bloques: bloques || [], fases: [] })
@@ -358,14 +361,35 @@ export default function CalendarioSesiones({
           {tooltip.sesion.duracion_min && (
             <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6 }}>⏱ {tooltip.sesion.duracion_min} min</div>
           )}
-          {tooltip.fases?.length > 0 ? (
-            tooltip.fases.map((f, i) => (
+          {tooltip.fases?.length > 0 ? (() => {
+            const gruposMap = {}
+            for (const g of tooltip.grupos || []) gruposMap[g.id] = { ...g, fases: [] }
+            const sueltas = []
+            for (const f of tooltip.fases) {
+              if (f.grupo_id && gruposMap[f.grupo_id]) gruposMap[f.grupo_id].fases.push(f)
+              else sueltas.push(f)
+            }
+            const items = [
+              ...Object.values(gruposMap).sort((a, b) => a.orden - b.orden),
+              ...sueltas,
+            ].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999))
+            return items.map((item, i) => item.fases ? (
               <div key={i} style={{ marginBottom: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>▸ {f.nombre || 'Fase'}</div>
-                {f.descripcion && <div style={{ fontSize: 10.5, color: 'var(--text2)', paddingLeft: 10, lineHeight: 1.5 }}>{f.descripcion}</div>}
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>🔁 {item.repeticiones}×</div>
+                {item.fases.map((f, j) => (
+                  <div key={j} style={{ paddingLeft: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>▸ {f.nombre || 'Fase'}</div>
+                    {f.descripcion && <div style={{ fontSize: 10.5, color: 'var(--text2)', paddingLeft: 10, lineHeight: 1.5 }}>{f.descripcion}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div key={i} style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>▸ {item.nombre || 'Fase'}</div>
+                {item.descripcion && <div style={{ fontSize: 10.5, color: 'var(--text2)', paddingLeft: 10, lineHeight: 1.5 }}>{item.descripcion}</div>}
               </div>
             ))
-          ) : tooltip.bloques.length === 0 ? (
+          })() : tooltip.bloques.length === 0 ? (
             <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin contenido</div>
           ) : (
             tooltip.bloques.map(b => (
