@@ -1123,13 +1123,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                   if (setPage) setPage('sesiones')
                   closeModal()
                 }}>✏️ Editar bloques y ejercicios</button>
-                {modalItem?.token_publico && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => {
-                    const url = `${window.location.origin}/sesion/${modalItem.token_publico}`
-                    navigator.clipboard.writeText(url)
-                    alert(`Enlace copiado:\n${url}`)
-                  }}>🔗 Compartir sesión</button>
-                )}
                 <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={eliminarItem}>Eliminar</button>
               </div>
             )}

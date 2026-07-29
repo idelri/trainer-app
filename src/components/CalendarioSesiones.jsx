@@ -332,6 +332,18 @@ export default function CalendarioSesiones({
               📋 Copiar
             </button>
           )}
+          {menu.item?._tipo === 'sesion' && menu.item?.token_publico && (
+            <button onClick={() => {
+              const url = `${window.location.origin}/sesion/${menu.item.token_publico}`
+              navigator.clipboard.writeText(url).catch(() => {})
+              alert(`Enlace copiado:\n${url}`)
+              cerrarMenu()
+            }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 12.5, background: 'none', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              🔗 Compartir enlace
+            </button>
+          )}
           {clipboard && (
             <button onClick={() => { onPegar(clipboard, menu.fecha); cerrarMenu() }}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 12.5, background: 'none', border: 'none', cursor: 'pointer' }}

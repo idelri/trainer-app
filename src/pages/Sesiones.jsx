@@ -874,12 +874,6 @@ async function guardarSesion() {
     else setSesionAbierta(null)
   }
 
-  function copiarEnlaceSesion(s) {
-    const url = `${window.location.origin}/sesion/${s.token_publico}`
-    navigator.clipboard.writeText(url)
-    alert(`Enlace copiado:\n${url}`)
-  }
-
   async function actualizarBloque(id, campo, valor) {
     await supabase.from('sesion_bloques').update({ [campo]: valor }).eq('id', id)
     setBloques(bs => bs.map(b => b.id === id ? { ...b, [campo]: valor } : b))
@@ -1169,7 +1163,6 @@ async function guardarSesion() {
           <div className="flex gap-2">
             <button className="btn btn-ghost btn-sm" onClick={() => setVistaPrevia(v => !v)}>{vistaPrevia ? '✏️ Editor' : '👁 Vista cliente'}</button>
             <button className="btn btn-ghost btn-sm" style={{ color: panelBiblioteca ? 'var(--accent)' : undefined }} onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } if (!panelBiblioteca && bloquesBiblioteca === null) cargarBloquesBiblioteca(); setPanelBiblioteca(v => !v) }}>📚 Biblioteca</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => copiarEnlaceSesion(sesionAbierta)}>🔗 Compartir</button>
             <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => guardarEnBiblioteca(sesionAbierta)} disabled={guardandoEnBib} title="Guardar una copia en la biblioteca de sesiones">
               {guardandoEnBib ? '⏳' : '📚'} {guardandoEnBib ? 'Guardando...' : 'Guardar en biblioteca'}
