@@ -436,15 +436,18 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
       for (const e of ejs || []) await supabase.from('sesion_ejercicios').insert({ bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas, media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden })
     }
     // Fases de carrera (fases sueltas + grupos con repeticiones)
-    const { data: grupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
+    const { data: grupos, error: errGrupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
+    console.log('[copy] sesion_fase_grupos encontrados:', grupos?.length, 'error:', errGrupos)
     const gruposMap = {}
     for (const g of grupos || []) {
-      const { data: ng } = await supabase.from('sesion_fase_grupos').insert({ sesion_id: nueva.id, repeticiones: g.repeticiones, orden: g.orden }).select().single()
+      const { data: ng, error: errNg } = await supabase.from('sesion_fase_grupos').insert({ sesion_id: nueva.id, repeticiones: g.repeticiones, orden: g.orden }).select().single()
+      console.log('[copy] grupo insertado:', ng?.id, 'error:', errNg)
       if (ng) gruposMap[g.id] = ng.id
     }
-    const { data: fasesSrc } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
+    const { data: fasesSrc, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
+    console.log('[copy] sesion_fases encontradas:', fasesSrc?.length, 'error:', errFases)
     for (const f of fasesSrc || []) {
-      await supabase.from('sesion_fases').insert({
+      const { error: errFaseIns } = await supabase.from('sesion_fases').insert({
         sesion_id: nueva.id,
         grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
         nombre: f.nombre, descripcion: f.descripcion,
@@ -452,6 +455,7 @@ export default function SesionesPlan({ clienteId, bloquesPlan, subbloquesPlan, c
         fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin,
         rpe: f.rpe, orden: f.orden,
       })
+      if (errFaseIns) console.error('[copy] error insertando fase:', errFaseIns)
     }
     setSaving(false)
     if (recargar && clienteDestino === clienteId) cargarSesiones()
