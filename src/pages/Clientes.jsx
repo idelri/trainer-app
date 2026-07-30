@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { format } from 'date-fns'
 import { Plus, X, Pencil } from 'lucide-react'
+import PortalClienteModal from '../components/PortalClienteModal'
 
 const EMPTY_CLIENTE = {
   nombre: '', email: '', telefono: '', estado: 'activo',
@@ -24,6 +25,7 @@ export default function Clientes() {
   const [cuestionarioTab, setCuestionarioTab] = useState('resumen')
   const [cuestionarios, setCuestionarios] = useState({}) // { clienteId: cuestionario }
   const [generandoEnlace, setGenerandoEnlace] = useState(false)
+  const [portalModal, setPortalModal] = useState(null) // null | cliente
 
   useEffect(() => { cargar() }, [])
 
@@ -205,11 +207,8 @@ export default function Clientes() {
                       <Pencil size={12} />
                     </button>
                     {c.token_cliente && (
-                      <button className="btn btn-ghost btn-sm" title="Enlace portal del cliente" onClick={() => {
-                        const url = `${window.location.origin}/cliente/${c.token_cliente}`
-                        navigator.clipboard.writeText(url).catch(() => {})
-                        alert(`Enlace del portal copiado:\n${url}`)
-                      }}>🔗</button>
+                      <button className="btn btn-ghost btn-sm" title="Configurar y compartir portal"
+                        onClick={() => setPortalModal(c)}>🔗</button>
                     )}
                     <button className="btn btn-ghost btn-sm" title="Cuestionario inicial"
                       onClick={() => abrirCuestionario(c)}
@@ -422,6 +421,16 @@ export default function Clientes() {
           </div>
         </div>
       )}
+
+      <PortalClienteModal
+        cliente={portalModal}
+        abierto={!!portalModal}
+        onCerrar={() => setPortalModal(null)}
+        onGuardado={config => {
+          setClientes(prev => prev.map(c => c.id === portalModal?.id ? { ...c, portal_config: config } : c))
+          setPortalModal(prev => prev ? { ...prev, portal_config: config } : null)
+        }}
+      />
     </div>
   )
 }

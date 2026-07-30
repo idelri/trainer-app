@@ -5,6 +5,7 @@ import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers, Pencil, Lock } from 'lucide-react'
 import CalendarioSesiones from '../components/CalendarioSesiones'
 import Seguimiento from './Seguimiento'
+import PortalClienteModal from '../components/PortalClienteModal'
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [filtros,    setFiltros]    = useState({ bloques: true, sub: true, semanas: true, sesiones: true, eventos: false })
   const [tooltip,    setTooltip]    = useState({ visible: false, tipo: null, item: null, x: 0, y: 0 })
   const [menuAnadir, setMenuAnadir] = useState(false)
+  const [portalModal, setPortalModal] = useState(false)
   const [modalPack, setModalPack] = useState(null)
   const [formPack, setFormPack] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' })
   const [modalCopiarPack, setModalCopiarPack] = useState(null)
@@ -164,7 +166,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   }
 
   async function cargarClienteData(id) {
-    const { data } = await supabase.from('clientes').select('semana_tipo, disponibilidad, consideraciones, perfil_planificacion').eq('id', id).single()
+    const { data } = await supabase.from('clientes').select('id, nombre, semana_tipo, disponibilidad, consideraciones, perfil_planificacion, token_cliente, portal_config').eq('id', id).single()
     setClienteData(data || null)
   }
 
@@ -1561,6 +1563,9 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         </div>
         <div className="flex gap-2" style={{ position: 'relative' }}>
           {planificacion && <button className="btn btn-ghost btn-sm" onClick={() => window.print()}>🖨️ Imprimir</button>}
+          {clienteData?.token_cliente && (
+            <button className="btn btn-ghost btn-sm" title="Configurar y compartir portal" onClick={() => setPortalModal(true)}>🔗 Portal</button>
+          )}
           {planificacion && <button className="btn btn-ghost" onClick={() => openModal('plan_editar')}>Editar</button>}
           {planificacion && (
             <button className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={async () => {
@@ -2282,6 +2287,13 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           </div>
         </div>
       )}
+
+      <PortalClienteModal
+        cliente={clienteData}
+        abierto={portalModal}
+        onCerrar={() => setPortalModal(false)}
+        onGuardado={config => setClienteData(prev => prev ? { ...prev, portal_config: config } : prev)}
+      />
 
     </div>
   )

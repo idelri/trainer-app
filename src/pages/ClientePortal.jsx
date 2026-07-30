@@ -136,11 +136,25 @@ export default function ClientePortal({ token }) {
   const [packSesiones, setPackSesiones] = useState([])
   const [checkins, setCheckins] = useState([])
   const [tab, setTab] = useState('semana')
+  const [tabInicializada, setTabInicializada] = useState(false)
   const [calMes, setCalMes] = useState(new Date())
   const [bloquesAbiertos, setBloquesAbiertos] = useState(new Set())
   const [vista, setVista] = useState(() => window.innerWidth >= 768 ? 'escritorio' : 'movil')
 
   useEffect(() => { cargar() }, [token])
+
+  useEffect(() => {
+    if (!cliente || tabInicializada) return
+    const cfg = {
+      mostrar_semana:     cliente.portal_config?.mostrar_semana     ?? true,
+      mostrar_calendario: cliente.portal_config?.mostrar_calendario ?? true,
+      mostrar_plan:       cliente.portal_config?.mostrar_plan       ?? true,
+    }
+    if (cfg.mostrar_semana) setTab('semana')
+    else if (cfg.mostrar_calendario) setTab('calendario')
+    else setTab('plan')
+    setTabInicializada(true)
+  }, [cliente])
 
   async function cargar() {
     setLoading(true)
@@ -300,6 +314,18 @@ export default function ClientePortal({ token }) {
   const progreso = getProgresoPlan()
   const sesActuales = getSesionesSemanaActual()
   const colA = bloqueActivo?.color || T.green
+
+  const portalConfig = {
+    mostrar_semana:     cliente?.portal_config?.mostrar_semana     ?? true,
+    mostrar_calendario: cliente?.portal_config?.mostrar_calendario ?? true,
+    mostrar_plan:       cliente?.portal_config?.mostrar_plan       ?? true,
+  }
+  const TABS_TODAS = [['semana', 'Esta semana'], ['calendario', 'Calendario'], ['plan', 'Mi plan']]
+  const TABS_VISIBLES = TABS_TODAS.filter(([id]) =>
+    id === 'semana'     ? portalConfig.mostrar_semana :
+    id === 'calendario' ? portalConfig.mostrar_calendario :
+    portalConfig.mostrar_plan
+  )
 
   const isDesktop = vista === 'escritorio'
   const card = { background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden' }
@@ -879,7 +905,7 @@ export default function ClientePortal({ token }) {
           </div>
           {/* TABS */}
           <div style={{ display: 'flex', borderTop: `1px solid ${T.bg2}` }}>
-            {[['semana', 'Esta semana'], ['calendario', 'Calendario'], ['plan', 'Mi plan']].map(([id, label]) => (
+            {TABS_VISIBLES.map(([id, label]) => (
               <div key={id} onClick={() => setTab(id)}
                 style={{ flex: isDesktop ? 0 : 1, padding: isDesktop ? '8px 20px 7px' : '8px 4px 7px', textAlign: 'center', fontSize: 12, fontWeight: tab === id ? 600 : 400, color: tab === id ? colA : T.ink3, cursor: 'pointer', borderBottom: tab === id ? `2px solid ${colA}` : '2px solid transparent', transition: 'all .15s' }}>
                 {label}
@@ -890,9 +916,9 @@ export default function ClientePortal({ token }) {
       </div>
 
       <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '0 24px' : '0' }}>
-        {tab === 'semana' && <TabSemana />}
-        {tab === 'calendario' && <TabCalendario />}
-        {tab === 'plan' && <TabPlan />}
+        {tab === 'semana'     && portalConfig.mostrar_semana     && <TabSemana />}
+        {tab === 'calendario' && portalConfig.mostrar_calendario && <TabCalendario />}
+        {tab === 'plan'       && portalConfig.mostrar_plan       && <TabPlan />}
       </div>
     </div>
   )

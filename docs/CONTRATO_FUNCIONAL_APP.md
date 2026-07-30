@@ -1,7 +1,7 @@
 # CONTRATO FUNCIONAL — idelri trainer-app
 
 > Fecha: 2026-07-29  
-> Última actualización: 2026-07-29 (R1: SesionesPlan.jsx movido a _legado; sistema /plan/[token] eliminado completamente: PlanPublica.jsx, ruta, lógica App.js, columna planificaciones.token_publico y 4 políticas RLS asociadas)  
+> Última actualización: 2026-07-30 (portal configurable v1: columna portal_config JSONB en clientes, PortalClienteModal.jsx compartido, visibilidad de pestañas por cliente)  
 > Propósito: referencia obligatoria para todas las refactorizaciones futuras.  
 > Todo lo descrito aquí debe seguir funcionando exactamente igual salvo decisión explícita de Irene del Río.
 
@@ -206,9 +206,24 @@ La comunicación entre ambos universos pasa por Supabase: la entrenadora crea y 
 
 **Entrada:** enlace `/cliente/[token_cliente]`  
 **Componentes:** `ClientePortal.jsx`  
-**Tablas:** `clientes`, `planificaciones`, `sesiones`, `sesion_feedback`, `packs_flexibles`, `competiciones`, `controles`, `sesion_notas`  
-**Resultado esperado:** la clienta ve toda su información: semana actual, sesiones, packs, nota de la entrenadora, estado de cada sesión. Puede ir a cada sesión haciendo clic. Puede enviar feedback de semana.  
-**Nunca debe romperse:** que el token de cliente cargue solo los datos de esa clienta.
+**Tablas:** `clientes` (incluye `portal_config`), `planificaciones`, `sesiones`, `sesion_feedback`, `packs_flexibles`, `competiciones`, `controles`, `sesion_notas`  
+**Resultado esperado:** la clienta ve su información según la configuración de visibilidad. Pestañas disponibles: "Esta semana", "Calendario", "Mi plan". Cada una puede activarse/desactivarse individualmente desde `portal_config`.  
+**Compatibilidad:** clientes sin `portal_config` (null) ven las tres pestañas completas.  
+**Pestaña inicial:** la primera visible según orden: Esta semana → Calendario → Mi plan.  
+**Nunca debe romperse:** que el token de cliente cargue solo los datos de esa clienta. Que una configuración incompleta no deje pantalla vacía.
+
+**Configuración de visibilidad (`portal_config` JSONB en `clientes`):**
+```json
+{
+  "mostrar_semana": true,
+  "mostrar_calendario": true,
+  "mostrar_plan": true
+}
+```
+- Valores por defecto: todos `true`.
+- Mínimo un apartado visible (validado en `PortalClienteModal.jsx`).
+- Los flags son de presentación: no reemplazan las políticas RLS.
+- Las rutas `/sesion/`, `/semana/`, `/pack/`, `/cuestionario/`, `/checkin-portal/` siguen activas e independientes.
 
 ---
 
