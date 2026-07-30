@@ -199,12 +199,14 @@ export default function ClientePortal({ token }) {
 
     const { data: ses } = await supabase.from('sesiones').select('*, sesion_feedback(submitted_at)').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
     const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
-    setSesiones((ses || []).map(s => ({
-      ...s,
-      estado_efectivo: s.estado_manual
+    const hoy = new Date()
+    setSesiones((ses || []).map(s => {
+      const estadoEfectivo = s.estado_manual
         || (s.estado && s.estado !== 'pendiente' ? estadoMap[s.estado] || null : null)
         || (getFeedbackAt(s) ? 'completed' : null)
-    })))
+      const fechaPasada = s.fecha && new Date(s.fecha + 'T23:59:59') < hoy
+      return { ...s, estado_efectivo: estadoEfectivo || (fechaPasada ? 'missed' : null) }
+    }))
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').not('fecha', 'is', null).order('fecha')
     setNotas(nts || [])
     const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', cli.id).order('fecha')
