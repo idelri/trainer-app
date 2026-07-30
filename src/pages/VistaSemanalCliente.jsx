@@ -103,111 +103,81 @@ export default function VistaSemanalCliente() {
 
   async function cargarDatos() {
     setLoading(true)
-    const { data: sem } = await supabase
-      .from('semanas')
-      .select('*, bloques(*, planificaciones(cliente_id))')
-      .eq('token_publico', token)
-      .single()
 
-    if (!sem) { setLoading(false); return }
-    setSemana(sem)
+    // Round trip 1: contexto de la semana (sin ningún ID interno en el retorno)
+    const { data: ctxArr } = await supabase.rpc('get_contexto_semana_por_token', { p_token: token })
+    const ctx = ctxArr?.[0] ?? null
+    if (!ctx) { setLoading(false); return }
 
-    const b = sem.bloques
+    setSemana({ numero: ctx.numero, objetivo: ctx.objetivo, nota_cliente: ctx.nota_cliente })
+    const b = { nombre: ctx.bloque_nombre, objetivo: ctx.bloque_objetivo, color: ctx.bloque_color, fecha_inicio: ctx.bloque_fecha_ini }
     setBloque(b)
+    setSubbloque(ctx.subbloque_nombre ? {
+      nombre: ctx.subbloque_nombre,
+      objetivo: ctx.subbloque_objetivo,
+      notas: ctx.subbloque_notas,
+      duracion_media_min: ctx.subbloque_duracion,
+    } : null)
 
-    const { data: subs } = await supabase.from('subbloques').select('*').eq('bloque_id', b.id)
-    const sub = (subs || []).find(s => sem.numero >= s.semana_inicio && sem.numero <= s.semana_fin)
-    setSubbloque(sub || null)
+    // Round trips 2-6 en paralelo: todo resuelto por el token de semana
+    const [cliArr, sesArr, agendaArr, packsArr, packSesArr, yaRespondidoVal] = await Promise.all([
+      supabase.rpc('get_nombre_por_token_semana',            { p_token: token }).then(r => r.data),
+      supabase.rpc('get_sesiones_por_token_semana',          { p_token: token }).then(r => r.data),
+      supabase.rpc('get_agenda_por_token_semana',            { p_token: token }).then(r => r.data),
+      supabase.rpc('get_packs_por_token_semana',             { p_token: token }).then(r => r.data),
+      supabase.rpc('get_sesiones_de_packs_por_token_semana', { p_token: token }).then(r => r.data),
+      supabase.rpc('get_checkin_estado_por_token_semana',    { p_token: token }).then(r => r.data),
+    ])
 
-    const clienteId = b?.planificaciones?.cliente_id
-    if (clienteId) {
-      const { data: cliArr } = await supabase.rpc('get_nombre_por_token_semana', { p_token: token })
-      setCliente(cliArr?.[0] ?? null)
+    setCliente(cliArr?.[0] ?? null)
 
-      const fechaInicioSem = addWeeks(parseISO(b.fecha_inicio), sem.numero - 1)
-      const fechaFinSem = addWeeks(parseISO(b.fecha_inicio), sem.numero)
-      const fechaInicioStr = format(fechaInicioSem, 'yyyy-MM-dd')
-      const fechaFinStr = format(fechaFinSem, 'yyyy-MM-dd')
+    // Calcular _estado de cada sesión en el frontend
+    const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
+    setSesiones((sesArr || []).map(s => {
+      let _estado = null
+      if (s.estado_manual)                              _estado = s.estado_manual
+      else if (s.estado && s.estado !== 'pendiente')    _estado = estadoMap[s.estado] || s.estado
+      else if (s.feedback_status)                       _estado = s.feedback_status
+      else if (s.completada_el)                         _estado = 'completed'
+      return { ...s, _estado }
+    }))
 
-      const { data: sesionesSemana } = await supabase
-        .from('sesiones')
-        .select('*')
-        .eq('cliente_id', clienteId)
-        .is('pack_id', null)
-        .or(`fecha.gte.${fechaInicioStr},tipo_sesion.eq.flexible,tipo_sesion.eq.opcional`)
-        .order('fecha', { ascending: true })
-        .order('orden', { ascending: true })
+    // Agenda semanal: separar por tipo
+    const agenda = agendaArr || []
+    setNotasCliente(agenda.filter(a => a.tipo === 'nota'))
+    setCompeticionesCliente(agenda.filter(a => a.tipo === 'competicion'))
+    setControlesCliente(agenda.filter(a => a.tipo === 'control'))
 
-      const filtradas = (sesionesSemana || []).filter(s => {
-        if (!s.fecha) return false  // sin fecha y sin pack → no mostrar al cliente
-        if (s.tipo_sesion === 'flexible' || s.tipo_sesion === 'opcional') return s.fecha >= fechaInicioStr && s.fecha < fechaFinStr
-        return s.fecha >= fechaInicioStr && s.fecha < fechaFinStr
+    // Packs con sus sesiones agrupadas
+    const packs = packsArr || []
+    if (packs.length > 0) {
+      const sesionesPorPack = {}
+      ;(packSesArr || []).forEach(s => {
+        if (!sesionesPorPack[s.pack_id]) sesionesPorPack[s.pack_id] = []
+        sesionesPorPack[s.pack_id].push(s)
       })
-      if (filtradas.length > 0) {
-        const { data: feedbacks } = await supabase.from('sesion_feedback').select('sesion_id, data').in('sesion_id', filtradas.map(s => s.id))
-        const estadoPorSesion = {}
-        ;(feedbacks || []).forEach(f => { estadoPorSesion[f.sesion_id] = f.data?.completion?.status })
-        filtradas.forEach(s => {
-          const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
-          if (s.estado_manual) s._estado = s.estado_manual
-          else if (s.estado && s.estado !== 'pendiente') s._estado = estadoMap[s.estado] || s.estado
-          else if (estadoPorSesion[s.id]) s._estado = estadoPorSesion[s.id]
-          else if (s.completada_el) s._estado = 'completed'
-          else s._estado = null
-        })
-      }
-      setSesiones(filtradas)
-
-      // Notas, competiciones y controles visibles al cliente en esta semana
-      const { data: notasSem } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
-      setNotasCliente(notasSem || [])
-      const { data: compsSem } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
-      setCompeticionesCliente(compsSem || [])
-      const { data: ctrlsSem } = await supabase.from('controles').select('*').eq('cliente_id', clienteId).eq('visibilidad', 'cliente').gte('fecha', fechaInicioStr).lt('fecha', fechaFinStr)
-      setControlesCliente(ctrlsSem || [])
-
-      const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
-      if (existing) setYaRespondido(true)
-
-      // Packs flexibles que solapan con esta semana
-      const { data: packs } = await supabase
-        .from('packs_flexibles')
-        .select('*')
-        .eq('cliente_id', clienteId)
-        .lte('fecha_inicio', fechaFinStr)
-        .gte('fecha_fin', fechaInicioStr)
-      if (packs && packs.length > 0) {
-        const { data: packSesiones } = await supabase
-          .from('sesiones')
-          .select('*')
-          .in('pack_id', packs.map(p => p.id))
-        const sesionesPorPack = {}
-        ;(packSesiones || []).forEach(s => {
-          if (!sesionesPorPack[s.pack_id]) sesionesPorPack[s.pack_id] = []
-          sesionesPorPack[s.pack_id].push(s)
-        })
-        setPacksConSesiones(packs.map(p => ({ ...p, sesiones: sesionesPorPack[p.id] || [] })))
-      }
+      setPacksConSesiones(packs.map(p => ({ ...p, sesiones: sesionesPorPack[p.id] || [] })))
     }
+
+    if (yaRespondidoVal) setYaRespondido(true)
     setLoading(false)
   }
 
   async function enviarCheckin() {
     if (!semana) return
     setEnviando(true)
-    const clienteId = bloque?.planificaciones?.cliente_id
-    const { error } = await supabase.from('checkin_semanal').insert({
-      cliente_id: clienteId,
-      semana_id: semana.id,
-      energia, descanso,
-      horas_sueno: horasSueno,
-      molestias,
-      molestias_zonas: molestias && molestias !== 'No' ? zonas.filter(z => z.zona.trim()) : null,
-      agujetas,
-      agujetas_detalle: agujetasDetalle || null,
-      tolerancia_carga: tolerancia,
-      comparativa_semanas: comparativa,
-      comentario_libre: comentario || null,
+    const { error } = await supabase.rpc('insertar_checkin_por_token_semana', {
+      p_token:            token,
+      p_energia:          energia,
+      p_descanso:         descanso,
+      p_horas_sueno:      horasSueno,
+      p_molestias:        molestias,
+      p_molestias_zonas:  molestias && molestias !== 'No' ? zonas.filter(z => z.zona.trim()) : null,
+      p_agujetas:         agujetas,
+      p_agujetas_detalle: agujetasDetalle || null,
+      p_tolerancia_carga: tolerancia,
+      p_comparativa:      comparativa,
+      p_comentario:       comentario || null,
     })
     setEnviando(false)
     if (error) {

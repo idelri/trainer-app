@@ -180,23 +180,19 @@ export default function ClientePortal({ token }) {
     if (!cli) { setError('Enlace no válido'); setLoading(false); return }
     setCliente(cli)
 
-    const { data: planes } = await supabase.from('planificaciones').select('*').eq('cliente_id', cli.id).order('fecha_inicio', { ascending: false }).limit(1)
-    const planActual = planes?.[0] || null
-    setPlan(planActual)
-
-    if (planActual) {
-      const { data: bls } = await supabase.from('bloques').select('*').eq('planificacion_id', planActual.id).order('orden')
-      setBloques(bls || [])
-      if (bls?.length) {
-        const ids = bls.map(b => b.id)
-        const { data: subs } = await supabase.from('subbloques').select('*').in('bloque_id', ids).order('semana_inicio')
-        setSubbloques(subs || [])
-        const { data: sems } = await supabase.from('semanas').select('*').in('bloque_id', ids).order('numero')
-        setSemanas(sems || [])
-        const activo = bls.find(b => esBloqueActivo(b))
-        if (activo) setBloquesAbiertos(new Set([activo.id]))
-      }
-    }
+    const [planArr, blsArr, subsArr, semsArr] = await Promise.all([
+      supabase.rpc('get_plan_activo_por_token_cliente',   { p_token: token }).then(r => r.data),
+      supabase.rpc('get_bloques_por_token_cliente',       { p_token: token }).then(r => r.data),
+      supabase.rpc('get_subbloques_por_token_cliente',    { p_token: token }).then(r => r.data),
+      supabase.rpc('get_semanas_por_token_cliente',       { p_token: token }).then(r => r.data),
+    ])
+    setPlan(planArr?.[0] || null)
+    const bls = blsArr || []
+    setBloques(bls)
+    setSubbloques(subsArr || [])
+    setSemanas(semsArr || [])
+    const activo = bls.find(b => esBloqueActivo(b))
+    if (activo) setBloquesAbiertos(new Set([activo.id]))
 
     const { data: ses } = await supabase.from('sesiones').select('*, sesion_feedback(submitted_at)').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
     const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
@@ -215,7 +211,7 @@ export default function ClientePortal({ token }) {
     const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', cli.id).order('fecha')
     setControles(ctrls || [])
 
-    const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', cli.id).order('fecha_inicio')
+    const { data: pks } = await supabase.rpc('get_packs_por_token_cliente', { p_token: token })
     setPacks(pks || [])
     if (pks?.length) {
       const ids = pks.map(p => p.id)

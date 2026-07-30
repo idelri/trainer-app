@@ -1,7 +1,7 @@
 # CONTRATO FUNCIONAL — idelri trainer-app
 
 > Fecha: 2026-07-29  
-> Última actualización: 2026-07-30 (portal configurable v1: columna portal_config JSONB en clientes, PortalClienteModal.jsx compartido, visibilidad de pestañas por cliente)  
+> Última actualización: 2026-07-30 (portal configurable v1: columna portal_config JSONB en clientes, PortalClienteModal.jsx compartido, visibilidad de pestañas por cliente) — (seguridad: tabla clientes cerrada a acceso anónimo, acceso público via RPCs contextuales, ver [docs/architecture/SEGURIDAD_ACCESO_PUBLICO.md](architecture/SEGURIDAD_ACCESO_PUBLICO.md))  
 > Propósito: referencia obligatoria para todas las refactorizaciones futuras.  
 > Todo lo descrito aquí debe seguir funcionando exactamente igual salvo decisión explícita de Irene del Río.
 

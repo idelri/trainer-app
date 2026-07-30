@@ -49,11 +49,8 @@ export default function PackPublico({ token }) {
   useEffect(() => { cargar() }, [token])
 
   async function cargar() {
-    const { data: p } = await supabase
-      .from('packs_flexibles')
-      .select('*')
-      .eq('token_publico', token)
-      .single()
+    const { data: packArr } = await supabase.rpc('get_pack_por_token', { p_token: token })
+    const p = packArr?.[0] ?? null
     if (!p) { setError(true); setLoading(false); return }
     setPack(p)
 

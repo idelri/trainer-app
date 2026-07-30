@@ -267,3 +267,16 @@ Esta distinción afecta a subbloques, semanas, paneles de análisis y componente
 - Las vistas públicas (cliente) van por `token_publico`, sin autenticación propia.
 - Prioridad de desarrollo: Vista Sesiones > resto de Planificación > Dashboard > Clientes/Pagos.
 - La visualización del `checkin_semanal` está pendiente — no está implementada aún.
+
+### Reglas de seguridad — acceso público a clientes (obligatorias)
+
+**La tabla `clientes` nunca debe ser accesible directamente desde rutas públicas.**
+
+- Prohibido usar `.from('clientes')` en páginas accesibles sin autenticación.
+- Prohibido hacer JOINs hacia `clientes` desde queries públicas (p.ej. `.select('*, clientes(nombre)')`).
+- Prohibido crear políticas RLS con `USING (true)` sobre la tabla `clientes`.
+- Todo acceso público a datos de cliente debe ir a través de una RPC `SECURITY DEFINER` contextual que reciba el token público del recurso (nunca `cliente_id`).
+- Las funciones públicas nunca deben usar `SELECT *`.
+- Los tokens existentes (`token_cliente`, `token_publico` de semanas/sesiones/packs) no deben modificarse.
+
+Documento de referencia completo: [`docs/architecture/SEGURIDAD_ACCESO_PUBLICO.md`](docs/architecture/SEGURIDAD_ACCESO_PUBLICO.md)
