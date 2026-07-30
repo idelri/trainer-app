@@ -75,7 +75,7 @@ export default function RestablecerContrasena() {
       <div style={{ width: '100%', maxWidth: 360 }}>
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>🏋️</div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.4px' }}>IDELRI App</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.4px' }}>IdelRi App</h1>
           <p style={{ color: 'var(--text2)', fontSize: 13.5, marginTop: 4 }}>Nueva contraseña</p>
         </div>
         <div className="card">

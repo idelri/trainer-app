@@ -87,7 +87,7 @@ export default function Login() {
       <div style={innerStyle}>
         <div style={headerStyle}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>🏋️</div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.4px' }}>IDELRI App</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.4px' }}>IdelRi App</h1>
           <p style={{ color: 'var(--text2)', fontSize: 13.5, marginTop: 4 }}>Planificación, seguimiento y gestión del entrenamiento</p>
         </div>
 
