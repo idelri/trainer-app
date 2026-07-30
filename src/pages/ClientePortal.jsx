@@ -22,9 +22,10 @@ function iconoSesion(s) {
 }
 
 function badgeEstado(e) {
-  if (e === 'completed') return { label: '✓ Completada', bg: '#E1F5EE', color: '#0F6E56' }
-  if (e === 'partial')   return { label: '◐ Parcial',    bg: '#FAEEDA', color: '#633806' }
-  if (e === 'missed')    return { label: '✕ No realizada', bg: '#FCEBEB', color: '#A32D2D' }
+  if (e === 'completed')  return { label: '✓ Completada',   bg: '#E1F5EE', color: '#0F6E56' }
+  if (e === 'partial')    return { label: '◐ Parcial',      bg: '#FAEEDA', color: '#633806' }
+  if (e === 'missed')     return { label: '✕ No realizada', bg: '#FCEBEB', color: '#A32D2D' }
+  if (e === 'realizada')  return { label: '○ Realizada',    bg: '#DBEAFE', color: '#1D4ED8' }
   return { label: 'Pendiente', bg: T.bg2, color: T.ink3 }
 }
 
@@ -41,14 +42,16 @@ function badgeFeedback(s) {
   if (tieneFeedback) return { label: '✓ Feedback', bg: '#EAF3DE', color: '#3B6D11' }
   const e = s.estado_efectivo
   if (e === 'missed') return null
+  if (e === 'realizada') return { label: 'Falta tu feedback', bg: '#DBEAFE', color: '#1E40AF' }
   if (e === 'completed' || e === 'partial') return { label: 'Falta tu feedback', bg: '#FAEEDA', color: '#854F0B' }
   return { label: 'Pendiente', bg: '#ECEAE4', color: '#9A9890' }
 }
 
 function dotColor(e) {
-  if (e === 'completed') return '#1D9E75'
-  if (e === 'partial')   return '#EF9F27'
-  if (e === 'missed')    return '#E24B4A'
+  if (e === 'completed')  return '#1D9E75'
+  if (e === 'partial')    return '#EF9F27'
+  if (e === 'missed')     return '#E24B4A'
+  if (e === 'realizada')  return '#3B82F6'
   return '#C8C5BC'
 }
 
@@ -196,7 +199,11 @@ export default function ClientePortal({ token }) {
     if (activo) setBloquesAbiertos(new Set([activo.id]))
 
     const { data: ses } = await supabase.rpc('get_sesiones_por_token_cliente', { p_token: token })
-    const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
+    const estadoMap = {
+      completada: 'completed', parcial: 'partial', no_realizada: 'missed',
+      realizada: 'realizada',
+      perdida: 'missed', gris: 'realizada',  // compat temporal
+    }
     const hoy = new Date()
     setSesiones((ses || []).map(s => {
       const estadoEfectivo = s.estado_manual
@@ -396,7 +403,7 @@ export default function ClientePortal({ token }) {
       ...notas.map(x => ({ ...x, _tipo: 'nota' })),
     ].filter(x => x.fecha && parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav)
 
-    const hechas = sesNav.filter(s => s.estado_efectivo === 'completed' || s.estado_efectivo === 'partial').length
+    const hechas = sesNav.filter(s => ['completed', 'partial', 'realizada'].includes(s.estado_efectivo)).length
 
     const ENERGIA_LABEL = { 1: '😴 Muy baja', 2: '😕 Baja', 3: '😐 Normal', 4: '😊 Buena', 5: '🔥 Muy alta' }
     const DESCANSO_LABEL = { 1: '😴 Muy malo', 2: '😕 Malo', 3: '😐 Regular', 4: '😊 Bueno', 5: '⭐ Muy bueno' }

@@ -105,45 +105,54 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
   // ── Estado visual de sesión ──
   function estadoSesion(s) {
-    // 1. Trainer manual override (wins over automatic), or auto-set by client action
-    if (s.estado && s.estado !== 'pendiente') return s.estado
+    // Compatibilidad temporal: normaliza valores históricos en DB
+    const raw = s.estado
+    const estadoPersistido = raw === 'gris'
+      ? (s.completada_el ? 'realizada' : 'pendiente')
+      : raw === 'perdida' ? 'no_realizada'
+      : raw
+
+    // 1. Estado persistido (no pendiente)
+    if (estadoPersistido && estadoPersistido !== 'pendiente') return estadoPersistido
 
     const hoy = new Date(new Date().toDateString())
     const fb = feedbacks.find(f => f.sesion_id === s.id)
-    const fbStatus = fb?.data?.completion?.status  // 'completed' | 'partial' | 'missed' | null
+    const fbStatus = fb?.data?.completion?.status
 
-    // 2. Client saved+sent the session (completada_el set)
+    // 2. Cliente guardó la sesión (completada_el set)
     if (s.completada_el) {
       if (fbStatus === 'completed') return 'completada'
       if (fbStatus === 'partial')   return 'parcial'
-      return 'gris'  // saved but no feedback or missed
+      return 'realizada'
     }
 
-    // 3. Client did NOT save — check if date has expired
+    // 3. Fecha expirada sin acción — estado visual solo, no se persiste
     const fechaExpira = s.fecha
       ? new Date(s.fecha)
       : s.pack_id
         ? (() => { const p = packs.find(p => p.id === s.pack_id); return p ? new Date(p.fecha_fin) : null })()
         : null
 
-    if (fechaExpira && fechaExpira < hoy) return 'perdida'
+    if (fechaExpira && fechaExpira < hoy) return 'vencida'
 
     return 'pendiente'
   }
   function colorEstado(s) {
     const e = estadoSesion(s)
-    if (e === 'completada') return '#16a34a'
-    if (e === 'parcial')    return '#ca8a04'
-    if (e === 'perdida')    return '#dc2626'
-    if (e === 'gris')       return '#9ca3af'
+    if (e === 'completada')   return '#16a34a'
+    if (e === 'parcial')      return '#ca8a04'
+    if (e === 'realizada')    return '#3b82f6'
+    if (e === 'no_realizada') return '#dc2626'
+    if (e === 'vencida')      return '#dc2626'
     return '#64748b'
   }
   function iconoEstado(s) {
     const e = estadoSesion(s)
-    if (e === 'completada') return { icono: '✓', bg: '#dcfce7', border: '#16a34a', color: '#166534' }
-    if (e === 'parcial')    return { icono: '〜', bg: '#fef9c3', border: '#ca8a04', color: '#713f12' }
-    if (e === 'perdida')    return { icono: '✗', bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d' }
-    if (e === 'gris')       return { icono: '○', bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' }
+    if (e === 'completada')   return { icono: '✓', bg: '#dcfce7', border: '#16a34a', color: '#166534' }
+    if (e === 'parcial')      return { icono: '〜', bg: '#fef9c3', border: '#ca8a04', color: '#713f12' }
+    if (e === 'realizada')    return { icono: '○', bg: '#dbeafe', border: '#3b82f6', color: '#1d4ed8' }
+    if (e === 'no_realizada') return { icono: '✗', bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d' }
+    if (e === 'vencida')      return { icono: '✗', bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d' }
     return null
   }
 
@@ -1076,7 +1085,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <div className="form-group">
                 <label className="form-label">Estado</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['perdida','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
+                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['realizada','○ Realizada','#dbeafe','#1d4ed8','#3b82f6'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['no_realizada','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
                     const active = (formData.estado || 'pendiente') === val
                     return (
                       <button key={val} onClick={() => fd('estado', val)}
@@ -2702,9 +2711,12 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                           <div style={{ minWidth: 0 }}>
                                             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
                                               {s.titulo}
-                                              {s.estado === 'completada' && <span title="Completada" style={{ fontSize: 12 }}>✅</span>}
-                                              {s.estado === 'parcial'    && <span title="Parcial"    style={{ fontSize: 12 }}>〜</span>}
-                                              {s.estado === 'perdida'    && <span title="No realizada" style={{ fontSize: 12 }}>❌</span>}
+                                              {s.estado === 'completada'   && <span title="Completada"    style={{ fontSize: 12 }}>✅</span>}
+                                              {s.estado === 'parcial'      && <span title="Parcial"       style={{ fontSize: 12 }}>〜</span>}
+                                              {s.estado === 'realizada'    && <span title="Realizada"     style={{ fontSize: 12 }}>🔵</span>}
+                                              {s.estado === 'no_realizada' && <span title="No realizada"  style={{ fontSize: 12 }}>❌</span>}
+                                              {s.estado === 'perdida'      && <span title="No realizada"  style={{ fontSize: 12 }}>❌</span>}
+                                              {s.estado === 'gris'         && <span title="Realizada"     style={{ fontSize: 12 }}>🔵</span>}
                                             </div>
                                             {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}><span style={{ fontStyle: 'normal', marginRight: 4, color: 'var(--text3)' }}>·</span>{s.objetivo}</div>}
                                           </div>

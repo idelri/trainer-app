@@ -222,8 +222,8 @@ export default function SesionPublica({ token }) {
     const status = data?.completion?.status
     if (status === 'completed') return 'completada'
     if (status === 'partial')   return 'parcial'
-    if (status === 'missed')    return 'perdida'
-    return 'gris'
+    if (status === 'missed')    return 'no_realizada'
+    return 'realizada'
   }
 
   function toggleSerie(ejId, serieIdx) {
@@ -666,15 +666,14 @@ export default function SesionPublica({ token }) {
                 setGuardandoSesion(true)
                 if (!sesion.fecha) {
                   const { data: clonData, error } = await supabase.rpc('clonar_sesion_flexible_por_token', {
-                    p_token: token, p_valores_reales: valoresReales, p_estado: 'gris'
+                    p_token: token, p_valores_reales: valoresReales, p_estado: 'realizada'
                   })
                   setGuardandoSesion(false)
                   if (error || !clonData?.[0]) { alert('Error al guardar. Inténtalo de nuevo.'); return }
                   setValoresReales({})
                   setSesionFlexibleGuardada(clonData[0].fecha)
                 } else {
-                  // Si ya hay feedback, preservar el estado que éste fijó; si no, marcar como 'gris'
-                  const estadoGuardar = feedbackEnviado ? estadoDesdeData(feedbackEnviado.data) : 'gris'
+                  const estadoGuardar = feedbackEnviado ? estadoDesdeData(feedbackEnviado.data) : 'realizada'
                   const { error: errGuardar } = await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: sesion.fecha, p_estado: estadoGuardar })
                   setGuardandoSesion(false)
                   if (errGuardar) { alert('Error al guardar la sesión. Inténtalo de nuevo.'); return }
@@ -704,7 +703,8 @@ export default function SesionPublica({ token }) {
               <button onClick={async () => {
                 await supabase.rpc('desmarcar_sesion_por_token', { p_token: token })
                 setSesionFlexibleGuardada(null)
-                setSesion(s => ({ ...s, completada_el: null }))
+                setFeedbackEnviado(null)
+                setSesion(s => ({ ...s, completada_el: null, estado: 'pendiente' }))
                 const allEjs = Object.values(ejercicios).flat()
                 const progInit = {}
                 const vrInit = {}
