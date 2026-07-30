@@ -37,12 +37,10 @@ function getFeedbackAt(s) {
 
 function badgeFeedback(s) {
   const tieneFeedback = getFeedbackAt(s)
+  if (tieneFeedback) return { label: '✓ Feedback', bg: '#EAF3DE', color: '#3B6D11' }
   const e = s.estado_efectivo
-  if (e === 'completed' || e === 'partial') {
-    if (tieneFeedback) return { label: '✓ Feedback', bg: '#EAF3DE', color: '#3B6D11' }
-    return { label: 'Falta tu feedback', bg: '#FAEEDA', color: '#854F0B' }
-  }
   if (e === 'missed') return null
+  if (e === 'completed' || e === 'partial') return { label: 'Falta tu feedback', bg: '#FAEEDA', color: '#854F0B' }
   return { label: 'Pendiente', bg: '#ECEAE4', color: '#9A9890' }
 }
 
