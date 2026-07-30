@@ -29,7 +29,7 @@ function badgeEstado(e) {
 }
 
 function badgeFeedback(s) {
-  const tieneFeedback = s.sesion_feedback?.submitted_at
+  const tieneFeedback = s.sesion_feedback?.[0]?.submitted_at
   const e = s.estado_efectivo
   if (e === 'completed' || e === 'partial') {
     if (tieneFeedback) return { label: '✓ Feedback', bg: '#EAF3DE', color: '#3B6D11' }
@@ -198,7 +198,7 @@ export default function ClientePortal({ token }) {
       ...s,
       estado_efectivo: s.estado_manual
         || (s.estado && s.estado !== 'pendiente' ? estadoMap[s.estado] || s.estado : null)
-        || (s.sesion_feedback?.submitted_at ? 'completed' : null)
+        || (s.sesion_feedback?.[0]?.submitted_at ? 'completed' : null)
     })))
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').not('fecha', 'is', null).order('fecha')
     setNotas(nts || [])
