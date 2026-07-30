@@ -202,7 +202,7 @@ export default function ClientePortal({ token }) {
     setSesiones((ses || []).map(s => ({
       ...s,
       estado_efectivo: s.estado_manual
-        || (s.estado && s.estado !== 'pendiente' ? estadoMap[s.estado] || s.estado : null)
+        || (s.estado && s.estado !== 'pendiente' ? estadoMap[s.estado] || null : null)
         || (getFeedbackAt(s) ? 'completed' : null)
     })))
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').not('fecha', 'is', null).order('fecha')
