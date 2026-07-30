@@ -131,39 +131,36 @@ export default function SesionPublica({ token }) {
   useEffect(() => { cargar() }, [token])
 
   async function cargar() {
-    const { data: s } = await supabase
-      .from('sesiones').select('*')
-      .eq('token_publico', token).single()
+    const [sesArr, fssArr, grpsArr, cliArr, blsArr, ejsArr, fbArr] = await Promise.all([
+      supabase.rpc('get_sesion_por_token',              { p_token: token }).then(r => r.data),
+      supabase.rpc('get_fases_por_token_sesion',        { p_token: token }).then(r => r.data),
+      supabase.rpc('get_grupos_fases_por_token_sesion', { p_token: token }).then(r => r.data),
+      supabase.rpc('get_nombre_por_token_sesion',       { p_token: token }).then(r => r.data),
+      supabase.rpc('get_bloques_por_token_sesion',      { p_token: token }).then(r => r.data),
+      supabase.rpc('get_ejercicios_por_token_sesion',   { p_token: token }).then(r => r.data),
+      supabase.rpc('get_feedback_por_token_sesion',     { p_token: token }).then(r => r.data),
+    ])
+    const s = sesArr?.[0] ?? null
     if (!s) { setError(true); setLoading(false); return }
     setSesion(s)
-
-    const [{ data: fss }, { data: grps }, { data: cliArr }] = await Promise.all([
-      supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden'),
-      supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden'),
-      supabase.rpc('get_nombre_por_token_sesion', { p_token: token }),
-    ])
     setCliente(cliArr?.[0] ?? null)
-    setFases(fss || [])
+    setFases(fssArr || [])
     // Build combined list for rendering
     const gruposMap = {}
-    ;(grps || []).forEach(g => { gruposMap[g.id] = { type: 'grupo', ...g, fases: [] } })
+    ;(grpsArr || []).forEach(g => { gruposMap[g.id] = { type: 'grupo', ...g, fases: [] } })
     const libres = []
-    ;(fss || []).forEach(f => {
+    ;(fssArr || []).forEach(f => {
       if (f.grupo_id && gruposMap[f.grupo_id]) gruposMap[f.grupo_id].fases.push(f)
       else libres.push({ type: 'fase', ...f })
     })
     setFasesItems([...libres, ...Object.values(gruposMap)].sort((a, b) => a.orden - b.orden))
-    const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
-    setBloques(bls || [])
-    let ejsList = []
-    if (bls && bls.length > 0) {
-      const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').in('bloque_id', bls.map(b => b.id)).order('orden')
-      ejsList = ejs || []
-      const map = {}
-      ejsList.forEach(e => { if (!map[e.bloque_id]) map[e.bloque_id] = []; map[e.bloque_id].push(e) })
-      setEjercicios(map)
-    }
-    const { data: fb } = await supabase.from('sesion_feedback').select('*').eq('sesion_id', s.id).maybeSingle()
+    const bls = blsArr || []
+    setBloques(bls)
+    const ejsList = ejsArr || []
+    const map = {}
+    ejsList.forEach(e => { if (!map[e.bloque_id]) map[e.bloque_id] = []; map[e.bloque_id].push(e) })
+    setEjercicios(map)
+    const fb = fbArr?.[0] ?? null
     setFeedbackEnviado(fb || null)
     // Restaurar estado de completada si ya fue guardada anteriormente
     if (s.completada_el && !s.fecha) setSesionFlexibleGuardada(s.completada_el)
@@ -184,7 +181,7 @@ export default function SesionPublica({ token }) {
   async function actualizarValorReal(ejId, campo, valor) {
     setValoresReales(vr => {
       const next = { ...vr, [ejId]: { ...(vr[ejId] || {}), [campo]: valor } }
-      supabase.from('sesion_ejercicios').update({ valores_reales: next[ejId] }).eq('id', ejId)
+      supabase.rpc('actualizar_valor_real_por_token', { p_token: token, p_ejercicio_id: ejId, p_valor: next[ejId] })
       return next
     })
   }
@@ -227,40 +224,6 @@ export default function SesionPublica({ token }) {
     if (status === 'partial')   return 'parcial'
     if (status === 'missed')    return 'perdida'
     return 'gris'
-  }
-
-  async function clonarSesionHoy() {
-    const hoyStr = format(new Date(), 'yyyy-MM-dd')
-    const nuevoToken = crypto.randomUUID()
-    const { data: clon, error: clonError } = await supabase.from('sesiones').insert({
-      cliente_id: sesion.cliente_id, titulo: sesion.titulo, fecha: hoyStr,
-      objetivo: sesion.objetivo, duracion_min: sesion.duracion_min, material: sesion.material,
-      indicaciones: sesion.indicaciones, tipo_sesion: 'programada', icono: sesion.icono,
-      tipo_editor: sesion.tipo_editor, con_feedback: sesion.con_feedback, token_publico: nuevoToken,
-      completada_el: hoyStr,
-    }).select().single()
-    if (clonError || !clon) return null
-    for (const bloque of bloques) {
-      const { data: nuevoBloque } = await supabase.from('sesion_bloques').insert({
-        sesion_id: clon.id, nombre: bloque.nombre, color: bloque.color, nota: bloque.nota, orden: bloque.orden,
-      }).select().single()
-      if (nuevoBloque) {
-        for (const ej of (ejercicios[bloque.id] || [])) {
-          await supabase.from('sesion_ejercicios').insert({
-            bloque_id: nuevoBloque.id, nombre: ej.nombre, series: ej.series, reps: ej.reps,
-            rpe: ej.rpe, notas: ej.notas, media_tipo: ej.media_tipo, media_url: ej.media_url,
-            video_url: ej.video_url, orden: ej.orden, peso: ej.peso, duracion: ej.duracion,
-            distancia: ej.distancia, altura: ej.altura, descanso: ej.descanso,
-            ejecucion_tipo: ej.ejecucion_tipo, ejecucion_texto: ej.ejecucion_texto,
-            variables_activas: ej.variables_activas, peso_der: ej.peso_der, peso_izq: ej.peso_izq,
-            reps_por_lado: ej.reps_por_lado, valores_reales: valoresReales[ej.id] || {},
-          })
-        }
-      }
-    }
-    // Marcar la sesión original como completada (persiste entre recargas)
-    await supabase.from('sesiones').update({ completada_el: hoyStr }).eq('id', sesion.id)
-    return { clon, hoyStr }
   }
 
   function toggleSerie(ejId, serieIdx) {
@@ -702,14 +665,15 @@ export default function SesionPublica({ token }) {
               onClick={async () => {
                 setGuardandoSesion(true)
                 if (!sesion.fecha) {
-                  const resultado = await clonarSesionHoy()
+                  const { data: clonData, error } = await supabase.rpc('clonar_sesion_flexible_por_token', {
+                    p_token: token, p_valores_reales: valoresReales, p_estado: 'gris'
+                  })
                   setGuardandoSesion(false)
-                  if (!resultado) { alert('Error al guardar. Inténtalo de nuevo.'); return }
-                  await supabase.from('sesiones').update({ estado: 'gris' }).eq('id', resultado.clon.id)
+                  if (error || !clonData?.[0]) { alert('Error al guardar. Inténtalo de nuevo.'); return }
                   setValoresReales({})
-                  setSesionFlexibleGuardada(resultado.hoyStr)
+                  setSesionFlexibleGuardada(clonData[0].fecha)
                 } else {
-                  await supabase.from('sesiones').update({ completada_el: sesion.fecha, estado: 'gris' }).eq('id', sesion.id)
+                  await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: sesion.fecha, p_estado: 'gris' })
                   setSesion(s => ({ ...s, estado: 'gris' }))
                   setGuardandoSesion(false)
                   setSesionFijaGuardada(true)
@@ -735,12 +699,10 @@ export default function SesionPublica({ token }) {
               <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800, color: '#15803d' }}>Sesión completada</p>
               <p style={{ margin: '0 0 14px', fontSize: 13.5, color: '#166534' }}>Registrada el {format(new Date(sesionFlexibleGuardada + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}.</p>
               <button onClick={async () => {
-                // Resetear para nueva realización
-                await supabase.from('sesiones').update({ completada_el: null }).eq('id', sesion.id)
-                const allEjs = Object.values(ejercicios).flat()
-                await Promise.all(allEjs.map(e => supabase.from('sesion_ejercicios').update({ valores_reales: {} }).eq('id', e.id)))
+                await supabase.rpc('desmarcar_sesion_por_token', { p_token: token })
                 setSesionFlexibleGuardada(null)
                 setSesion(s => ({ ...s, completada_el: null }))
+                const allEjs = Object.values(ejercicios).flat()
                 const progInit = {}
                 const vrInit = {}
                 allEjs.forEach(e => { const n = parseInt(e.series) || 1; progInit[e.id] = { series: Array(n).fill(false), hecho: false }; vrInit[e.id] = {} })
@@ -778,33 +740,32 @@ export default function SesionPublica({ token }) {
                   setEnviandoFeedback(true)
                   const nuevoEstado = estadoDesdeData(data)
                   if (editandoFeedback) {
-                    const { data: act } = await supabase.from('sesion_feedback').update({ data }).eq('id', feedbackEnviado.id).select().single()
-                    // Solo actualizar estado si el trainer no lo ha sobreescrito manualmente
-                    if (!sesion.estado || sesion.estado === 'pendiente' || sesion.estado === 'gris' || sesion.estado === 'completada' || sesion.estado === 'parcial' || sesion.estado === 'perdida') {
-                      await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', sesion.id)
+                    const { data: actArr } = await supabase.rpc('actualizar_feedback_por_token', { p_token: token, p_data: data })
+                    if (!sesion.estado || ['pendiente','gris','completada','parcial','perdida'].includes(sesion.estado)) {
+                      await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: null, p_estado: nuevoEstado })
                       setSesion(s => ({ ...s, estado: nuevoEstado }))
                     }
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
-                    if (act) setFeedbackEnviado(act)
+                    if (actArr?.[0]) setFeedbackEnviado(actArr[0])
                   } else if (!sesion.fecha) {
-                    const resultado = await clonarSesionHoy()
-                    if (!resultado) {
+                    const { data: clonData, error } = await supabase.rpc('clonar_sesion_flexible_por_token', {
+                      p_token: token, p_valores_reales: valoresReales, p_feedback_data: data, p_estado: nuevoEstado
+                    })
+                    if (error || !clonData?.[0]) {
                       setEnviandoFeedback(false)
                       alert('Error al guardar la sesión. Inténtalo de nuevo.')
                       return
                     }
-                    await supabase.from('sesion_feedback').insert({ sesion_id: resultado.clon.id, data })
-                    await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', resultado.clon.id)
                     setEnviandoFeedback(false)
                     setValoresReales({})
-                    setSesionFlexibleGuardada(resultado.hoyStr)
+                    setSesionFlexibleGuardada(clonData[0].fecha)
                   } else {
-                    const { data: nuevo } = await supabase.from('sesion_feedback').insert({ sesion_id: sesion.id, data }).select().single()
-                    await supabase.from('sesiones').update({ estado: nuevoEstado }).eq('id', sesion.id)
+                    const { data: nuevoArr } = await supabase.rpc('insertar_feedback_por_token', { p_token: token, p_data: data })
+                    await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: null, p_estado: nuevoEstado })
                     setSesion(s => ({ ...s, estado: nuevoEstado }))
                     setEnviandoFeedback(false)
-                    if (nuevo) setFeedbackEnviado(nuevo)
+                    if (nuevoArr?.[0]) setFeedbackEnviado(nuevoArr[0])
                   }
                 }}
               />

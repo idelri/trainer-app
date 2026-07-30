@@ -29,6 +29,7 @@ function badgeEstado(e) {
 }
 
 function getFeedbackAt(s) {
+  if ('feedback_submitted_at' in s) return s.feedback_submitted_at ?? null
   const fb = s.sesion_feedback
   if (!fb) return null
   if (Array.isArray(fb)) return fb[0]?.submitted_at ?? null
@@ -194,7 +195,7 @@ export default function ClientePortal({ token }) {
     const activo = bls.find(b => esBloqueActivo(b))
     if (activo) setBloquesAbiertos(new Set([activo.id]))
 
-    const { data: ses } = await supabase.from('sesiones').select('*, sesion_feedback(submitted_at)').eq('cliente_id', cli.id).not('fecha', 'is', null).order('fecha')
+    const { data: ses } = await supabase.rpc('get_sesiones_por_token_cliente', { p_token: token })
     const estadoMap = { completada: 'completed', parcial: 'partial', perdida: 'missed' }
     const hoy = new Date()
     setSesiones((ses || []).map(s => {
@@ -213,11 +214,8 @@ export default function ClientePortal({ token }) {
 
     const { data: pks } = await supabase.rpc('get_packs_por_token_cliente', { p_token: token })
     setPacks(pks || [])
-    if (pks?.length) {
-      const ids = pks.map(p => p.id)
-      const { data: pkSes } = await supabase.from('sesiones').select('*').in('pack_id', ids).order('orden')
-      setPackSesiones(pkSes || [])
-    }
+    const { data: pkSes } = await supabase.rpc('get_sesiones_packs_por_token_cliente', { p_token: token })
+    setPackSesiones(pkSes || [])
 
     const { data: chks } = await supabase.rpc('get_checkins_por_token_cliente', { p_token: token })
     setCheckins(chks || [])
