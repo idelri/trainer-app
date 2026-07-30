@@ -16,6 +16,7 @@ import VistaSemanalCliente from './pages/VistaSemanalCliente'
 import PackPublico from './pages/PackPublico'
 import ClientePortal from './pages/ClientePortal'
 import CuestionarioInicial from './pages/CuestionarioInicial'
+import RestablecerContrasena from './pages/RestablecerContrasena'
 import './index.css'
 
 const NAV = [
@@ -42,6 +43,10 @@ export default function App() {
   const [publicCheckinPortalToken, setPublicCheckinPortalToken] = useState(null)
   useEffect(() => {
     const path = window.location.pathname
+    if (path.startsWith('/restablecer-contrasena')) {
+      setAuthLoading(false)
+      return
+    }
    const matchSesion = path.match(/^\/sesion\/([a-f0-9-]+)$/)
     if (matchSesion) {
       setPublicSesionToken(matchSesion[1])
@@ -98,6 +103,7 @@ export default function App() {
   if (authLoading) return null
 
  // Vista pública
+  if (window.location.pathname.startsWith('/restablecer-contrasena')) return <RestablecerContrasena />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
    if (publicCheckinPortalToken) return <CheckinPortal />
  if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
