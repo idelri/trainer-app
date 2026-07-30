@@ -764,7 +764,7 @@ export default function Seguimiento({ clienteId, planificacionId, bloques, seman
         const inicio = addWeeks(parseISO(b.fecha_inicio + 'T12:00:00'), num - 1)
         const fin = addDays(inicio, 6)
         const sesionesSemana = sesionesCliente
-          .filter(se => se.fecha && isWithinInterval(parseISO(se.fecha), { start: inicio, end: fin }))
+          .filter(se => se.fecha && isWithinInterval(parseISO(se.fecha + 'T12:00:00'), { start: inicio, end: fin }))
           .map(se => ({ ...se, feedback: feedbacks[se.id] || null }))
         const subPlan = (subbloques?.[b.id] || []).find(sb => num >= sb.semana_inicio && num <= sb.semana_fin)
         const weekStartStr = format(startOfWeek(inicio, { weekStartsOn: 1 }), 'yyyy-MM-dd')
