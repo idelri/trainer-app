@@ -117,7 +117,7 @@ export default function App() {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <h1>Trainer App</h1>
+          <h1>IDELRI App</h1>
           <p>gestión personal</p>
         </div>
         <nav className="sidebar-nav">
