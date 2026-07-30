@@ -9,10 +9,8 @@ import Planificacion from './pages/Planificacion'
 import Sesiones from './pages/Sesiones'
 import Biblioteca from './pages/Biblioteca'
 import SesionPublica from './pages/SesionPublica'
-import CheckinSemanal from './pages/CheckinSemanal'
 import CheckinPortal from './pages/CheckinPortal'
 import Login from './pages/Login'
-import VistaSemanalCliente from './pages/VistaSemanalCliente'
 import PackPublico from './pages/PackPublico'
 import ClientePortal from './pages/ClientePortal'
 import CuestionarioInicial from './pages/CuestionarioInicial'
@@ -35,8 +33,6 @@ export default function App() {
   const [recargarPlan, setRecargarPlan] = useState(0)
   const [authLoading, setAuthLoading] = useState(true)
   const [publicSesionToken, setPublicSesionToken] = useState(null)
-  const [publicCheckinToken, setPublicCheckinToken] = useState(null)
-  const [publicSemanaToken, setPublicSemanaToken] = useState(null)
   const [publicPackToken, setPublicPackToken] = useState(null)
   const [publicClienteToken, setPublicClienteToken] = useState(null)
   const [publicCuestionarioToken, setPublicCuestionarioToken] = useState(null)
@@ -56,18 +52,6 @@ export default function App() {
     const matchCheckinPortal = path.match(/^\/checkin-portal\/(.+)$/)
     if (matchCheckinPortal) {
       setPublicCheckinPortalToken(matchCheckinPortal[1])
-      setAuthLoading(false)
-      return
-    }
-    const matchCheckin = path.match(/^\/checkin\/([a-f0-9-]+)$/)
-    if (matchCheckin) {
-      setPublicCheckinToken(matchCheckin[1])
-      setAuthLoading(false)
-      return
-    }
-    const matchSemana = path.match(/^\/semana\/([a-f0-9-]+)$/)
-    if (matchSemana) {
-      setPublicSemanaToken(matchSemana[1])
       setAuthLoading(false)
       return
     }
@@ -106,8 +90,6 @@ export default function App() {
   if (window.location.pathname.startsWith('/restablecer-contrasena')) return <RestablecerContrasena />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
    if (publicCheckinPortalToken) return <CheckinPortal />
- if (publicCheckinToken) return <CheckinSemanal token={publicCheckinToken} />
-  if (publicSemanaToken) return <VistaSemanalCliente />
   if (publicPackToken) return <PackPublico token={publicPackToken} />
   if (publicClienteToken) return <ClientePortal token={publicClienteToken} />
   if (publicCuestionarioToken) return <CuestionarioInicial token={publicCuestionarioToken} />

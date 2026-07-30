@@ -219,7 +219,7 @@ export default function ClientePortal({ token }) {
       setPackSesiones(pkSes || [])
     }
 
-    const { data: chks } = await supabase.from('checkin_semanal').select('*').eq('cliente_id', cli.id)
+    const { data: chks } = await supabase.rpc('get_checkins_por_token_cliente', { p_token: token })
     setCheckins(chks || [])
 
     setLoading(false)

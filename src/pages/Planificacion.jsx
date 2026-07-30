@@ -928,7 +928,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
       // ── SEMANA ────────────────────────────────────────────────────────────
       case 'semana': {
-        const tokenSemana = modalItem?.semanaData?.token_publico
         return (
           <div style={{ padding: '0 20px 4px' }}>
             <div className="form-group">
@@ -998,15 +997,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <textarea className="form-textarea" value={formData.comentario || ''} onChange={e => fd('comentario', e.target.value)} style={{ minHeight: 56 }} />
             </div>
 
-            {tokenSemana && (
-              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => {
-                  const url = `${window.location.origin}/semana/${tokenSemana}`
-                  navigator.clipboard.writeText(url)
-                  alert(`Enlace copiado:\n${url}`)
-                }}>🔗 Copiar enlace semana</button>
-              </div>
-            )}
           </div>
         )
       }

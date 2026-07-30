@@ -112,16 +112,11 @@ export default function CheckinPortal() {
     }
     setCliente(cli)
 
-    // Comprobar si ya existe feedback para esta semana
-    const { data: existing, error: ckErr } = await supabase
-      .from('checkin_semanal')
-      .select('id')
-      .eq('cliente_id', cli.id)
-      .eq('week_start', weekStart)
-      .maybeSingle()
-
-    if (ckErr) console.error('[CheckinPortal] Error comprobando checkin:', ckErr)
-    if (existing) setYaRespondido(true)
+    const yaRes = await supabase.rpc('get_estado_checkin_por_token_cliente', {
+      p_token:      clienteToken,
+      p_week_start: weekStart,
+    })
+    if (yaRes.data) setYaRespondido(true)
 
     setLoading(false)
   }
@@ -132,25 +127,19 @@ export default function CheckinPortal() {
 
     const molestiaZonas = molestias && molestias !== 'No' ? zonas.filter(z => z.zona.trim()) : null
 
-    const { error: err } = await supabase.from('checkin_semanal').insert({
-      cliente_id: cliente.id,
-      week_start: weekStart,
-      energia,
-      descanso,
-      horas_sueno: horasSueno,
-      molestias,
-      molestias_zonas: molestiaZonas,
-      agujetas,
-      agujetas_detalle: agujetasDetalle || null,
-      tolerancia_carga: tolerancia,
-      comparativa_semanas: comparativa,
-      comentario_libre: comentario || null,
-    })
-
-    console.log('[CheckinPortal Submit]', {
-      cliente_id: cliente.id,
-      week_start: weekStart,
-      supabaseError: err || null,
+    const { error: err } = await supabase.rpc('insertar_checkin_por_token_cliente', {
+      p_token:            clienteToken,
+      p_week_start:       weekStart,
+      p_energia:          energia,
+      p_descanso:         descanso,
+      p_horas_sueno:      horasSueno,
+      p_molestias:        molestias,
+      p_molestias_zonas:  molestiaZonas,
+      p_agujetas:         agujetas,
+      p_agujetas_detalle: agujetasDetalle || null,
+      p_tolerancia_carga: tolerancia,
+      p_comparativa:      comparativa,
+      p_comentario:       comentario || null,
     })
 
     setEnviando(false)

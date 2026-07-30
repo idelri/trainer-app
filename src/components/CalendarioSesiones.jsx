@@ -241,19 +241,6 @@ export default function CalendarioSesiones({
                     <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: (info.bloque.color || '#2d6a4f') + '1a', color: info.bloque.color || '#2d6a4f' }}>
                       B{info.bloqueNum} {info.bloque.nombre}
                     </span>
-                    <button title="Compartir semana con cliente" onClick={async e => {
-                      e.stopPropagation()
-                      const { data: semsBloque } = await supabase.from('semanas').select('token_publico, numero').eq('bloque_id', info.bloque.id).eq('numero', info.semanaNum).maybeSingle()
-                      let token = semsBloque?.token_publico
-                      if (!token) {
-                        const { data: nueva } = await supabase.from('semanas').insert({ bloque_id: info.bloque.id, numero: info.semanaNum, carga: 'media' }).select('token_publico').single()
-                        token = nueva?.token_publico
-                      }
-                      if (token) {
-                        navigator.clipboard.writeText(`${window.location.origin}/semana/${token}`)
-                        alert('Enlace de la semana copiado')
-                      }
-                    }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>🔗</button>
                     {onCopiarSemana && (
                       <button title="Copiar semana" onClick={e => { e.stopPropagation(); onCopiarSemana(diasSem) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>📋</button>

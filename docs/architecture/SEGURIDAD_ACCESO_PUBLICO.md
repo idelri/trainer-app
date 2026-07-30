@@ -79,21 +79,9 @@ LIMIT 1;
 
 ---
 
-### `get_nombre_por_token_semana(p_token uuid)`
+### `get_nombre_por_token_semana` — ELIMINADA
 
-```sql
-SELECT c.nombre
-FROM   semanas        s
-JOIN   bloques        b ON b.id = s.bloque_id
-JOIN   planificaciones p ON p.id = b.planificacion_id
-JOIN   clientes        c ON c.id = p.cliente_id
-WHERE  s.token_publico = p_token
-LIMIT  1;
-```
-
-El llamante debe conocer el `token_publico` de una semana concreta. La función recorre la cadena `semanas → bloques → planificaciones → clientes` internamente. Ningún eslabón de esa cadena es accesible directamente por el rol anónimo.
-
-**Usada por:** `VistaSemanalCliente.jsx` (`/semana/[token]`) y `CheckinSemanal.jsx` (`/checkin/[token]`).
+> Eliminada 2026-07-30 junto con `CheckinSemanal.jsx` y `VistaSemanalCliente.jsx`. La columna `semanas.token_publico` también fue eliminada. No quedan consumidores.
 
 ---
 
@@ -148,7 +136,7 @@ Las funciones `SECURITY DEFINER` no están sujetas a la RLS del rol llamante: se
 | Tabla | Columna | Tipo SQL | Ruta pública |
 |---|---|---|---|
 | `clientes` | `token_cliente` | `text` | `/cliente/[token]`, `/checkin-portal/[token]` |
-| `semanas` | `token_publico` | `uuid` | `/semana/[token]`, `/checkin/[token]` |
+| `semanas` | `token_publico` | `uuid` | **ELIMINADO** — columna y constraint UNIQUE eliminados 2026-07-30 |
 | `packs_flexibles` | `token_publico` | `text` | `/pack/[token]` |
 | `sesiones` | `token_publico` | `text` | `/sesion/[token]` |
 
@@ -161,7 +149,7 @@ Los tokens son opacos y permanentes. **Nunca deben modificarse** salvo decisión
 Estas reglas son obligatorias para cualquier desarrollo presente y futuro que toque rutas públicas o la tabla `clientes`.
 
 **1. Nunca consultar la tabla `clientes` desde una ruta pública.**  
-Las páginas accesibles sin autenticación (`/cliente/`, `/semana/`, `/sesion/`, `/checkin/`, `/checkin-portal/`, `/pack/`) no pueden contener `.from('clientes')`. El acceso debe ir siempre a través de una RPC contextual.
+Las páginas accesibles sin autenticación (`/cliente/`, `/sesion/`, `/checkin-portal/`, `/pack/`) no pueden contener `.from('clientes')`. El acceso debe ir siempre a través de una RPC contextual.
 
 **2. Nunca crear políticas RLS `USING (true)` sobre `clientes`.**  
 Una política con condición `true` sobre `clientes` equivale a publicar la tabla entera. Aunque la intención sea dar acceso a un solo campo, la política no puede hacer esa distinción de columnas. Usar siempre funciones en lugar de políticas permisivas.
@@ -293,7 +281,7 @@ Todas las rutas públicas verificadas en producción tras el despliegue del comm
 |---|---|---|
 | `/cliente/[token]` | `get_cliente_por_token` | ✓ Verificada |
 | `/checkin-portal/[token]` | `get_cliente_por_token` | ✓ Verificada |
-| `/semana/[token]` | `get_nombre_por_token_semana` | ✓ Verificada |
-| `/checkin/[token]` | `get_nombre_por_token_semana` | ✓ Verificada |
+| `/semana/[token]` | — | **ELIMINADA** 2026-07-30 |
+| `/checkin/[token]` | — | **ELIMINADA** 2026-07-30 |
 | `/pack/[token]` | `get_nombre_por_token_pack` | ✓ Verificada |
 | `/sesion/[token]` | `get_nombre_por_token_sesion` | ✓ Verificada |

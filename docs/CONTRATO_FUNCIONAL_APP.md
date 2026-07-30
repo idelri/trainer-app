@@ -188,17 +188,13 @@ La comunicación entre ambos universos pasa por Supabase: la entrenadora crea y 
 
 ### F13 — ~~Acceso público al plan de planificación~~ — ELIMINADO
 
-> **Eliminado completamente 2026-07-29.** `PlanPublica.jsx` borrado. Ruta `/plan/[token]` y lógica en App.js eliminadas. Columna `planificaciones.token_publico` eliminada de Supabase junto con las 4 políticas RLS dependientes (`público - planificaciones por token`, `público - bloques`, `público - subbloques`, `público - semanas`). El sistema activo de acceso público es el portal completo `/cliente/[token_cliente]`. Los tokens de `sesiones`, `semanas`, `packs_flexibles` y `cuestionario_inicial` siguen intactos.
+> **Eliminado completamente 2026-07-29.** `PlanPublica.jsx` borrado. Ruta `/plan/[token]` y lógica en App.js eliminadas. Columna `planificaciones.token_publico` eliminada de Supabase junto con las 4 políticas RLS dependientes (`público - planificaciones por token`, `público - bloques`, `público - subbloques`, `público - semanas`). El sistema activo de acceso público es el portal completo `/cliente/[token_cliente]`. Los tokens de `sesiones`, `packs_flexibles` y `cuestionario_inicial` siguen intactos. La columna `semanas.token_publico` fue eliminada posteriormente (2026-07-30) al eliminar el check-in independiente.
 
 ---
 
 ### F14 — Vista semanal de la clienta
 
-**Entrada:** enlace `/semana/[token]`  
-**Componentes:** `VistaSemanalCliente.jsx`  
-**Tablas:** `semanas`, `sesiones`, `sesion_feedback`, `checkin_semanal`  
-**Resultado esperado:** la clienta ve las sesiones de esa semana con su estado (pendiente, completada, etc.). Puede rellenar el check-in semanal.  
-**Nunca debe romperse:** que las sesiones aparezcan con el estado correcto, que el check-in se guarde en Supabase.
+> **Eliminado completamente 2026-07-30.** `VistaSemanalCliente.jsx` borrado. Ruta `/semana/[token]` y lógica en App.js eliminadas. RPCs específicas de esta vista eliminadas de Supabase. El caso de uso queda cubierto por el portal completo `/cliente/[token_cliente]`.
 
 ---
 
@@ -223,7 +219,7 @@ La comunicación entre ambos universos pasa por Supabase: la entrenadora crea y 
 - Valores por defecto: todos `true`.
 - Mínimo un apartado visible (validado en `PortalClienteModal.jsx`).
 - Los flags son de presentación: no reemplazan las políticas RLS.
-- Las rutas `/sesion/`, `/semana/`, `/pack/`, `/cuestionario/`, `/checkin-portal/` siguen activas e independientes.
+- Las rutas `/sesion/`, `/pack/`, `/cuestionario/`, `/checkin-portal/` siguen activas e independientes.
 
 ---
 
@@ -292,9 +288,7 @@ Estas funcionalidades forman parte de la app y deben funcionar, pero un cambio t
 
 | # | Funcionalidad |
 |---|---|
-| S1 | Compartir enlace de semana (`/semana/[token]`) y check-in semanal de la clienta |
-| S2 | Vista semanal de cliente (`VistaSemanalCliente`): estado de sesiones y check-in |
-| S3 | Gestión de packs flexibles (CRUD, compartir enlace `/pack/[token]`) |
+| S1 | Gestión de packs flexibles (CRUD, compartir enlace `/pack/[token]`) |
 | S4 | Exportar datos a CSV (`export.js`) |
 | S5 | Creación y edición de competiciones en el calendario |
 | S6 | Creación y edición de valoraciones/controles en el calendario |
