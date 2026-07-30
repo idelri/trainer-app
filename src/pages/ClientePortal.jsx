@@ -175,7 +175,8 @@ export default function ClientePortal({ token }) {
 
   async function cargar() {
     setLoading(true)
-    const { data: cli } = await supabase.from('clientes').select('*').eq('token_cliente', token).maybeSingle()
+    const { data: cliArr } = await supabase.rpc('get_cliente_por_token', { p_token: token })
+    const cli = cliArr?.[0] ?? null
     if (!cli) { setError('Enlace no válido'); setLoading(false); return }
     setCliente(cli)
 

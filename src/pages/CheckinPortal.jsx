@@ -100,8 +100,9 @@ export default function CheckinPortal() {
 
     if (!clienteToken) { setError('Enlace no válido.'); setLoading(false); return }
 
-    const { data: cli, error: cliErr } = await supabase
-      .from('clientes').select('id, nombre').eq('token_cliente', clienteToken).maybeSingle()
+    const { data: cliArr, error: cliErr } = await supabase
+      .rpc('get_cliente_por_token', { p_token: clienteToken })
+    const cli = cliArr?.[0] ?? null
 
     if (cliErr || !cli) {
       console.error('[CheckinPortal] Error cargando cliente:', cliErr)

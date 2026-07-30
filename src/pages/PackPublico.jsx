@@ -57,8 +57,8 @@ export default function PackPublico({ token }) {
     if (!p) { setError(true); setLoading(false); return }
     setPack(p)
 
-    const { data: cli } = await supabase.from('clientes').select('nombre').eq('id', p.cliente_id).single()
-    setCliente(cli)
+    const { data: cliArr } = await supabase.rpc('get_nombre_por_token_pack', { p_token: token })
+    setCliente(cliArr?.[0] ?? null)
 
     const { data: sess } = await supabase.from('sesiones').select('*').eq('pack_id', p.id).order('orden')
     setSesiones(sess || [])

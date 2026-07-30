@@ -93,11 +93,8 @@ export default function CheckinSemanal() {
     if (!sem) { setLoading(false); return }
     setSemana(sem)
     setBloque(sem.bloques)
-    const clienteId = sem.bloques?.planificaciones?.cliente_id
-    if (clienteId) {
-      const { data: cli } = await supabase.from('clientes').select('nombre').eq('id', clienteId).single()
-      setCliente(cli)
-    }
+    const { data: cliArr } = await supabase.rpc('get_nombre_por_token_semana', { p_token: token })
+    setCliente(cliArr?.[0] ?? null)
     const { data: existing } = await supabase.from('checkin_semanal').select('id').eq('semana_id', sem.id).maybeSingle()
     if (existing) setYaRespondido(true)
     setLoading(false)

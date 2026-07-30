@@ -121,8 +121,8 @@ export default function VistaSemanalCliente() {
 
     const clienteId = b?.planificaciones?.cliente_id
     if (clienteId) {
-      const { data: cli } = await supabase.from('clientes').select('nombre').eq('id', clienteId).single()
-      setCliente(cli)
+      const { data: cliArr } = await supabase.rpc('get_nombre_por_token_semana', { p_token: token })
+      setCliente(cliArr?.[0] ?? null)
 
       const fechaInicioSem = addWeeks(parseISO(b.fecha_inicio), sem.numero - 1)
       const fechaFinSem = addWeeks(parseISO(b.fecha_inicio), sem.numero)

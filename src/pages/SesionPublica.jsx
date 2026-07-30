@@ -132,15 +132,17 @@ export default function SesionPublica({ token }) {
 
   async function cargar() {
     const { data: s } = await supabase
-      .from('sesiones').select('*, clientes(nombre)')
+      .from('sesiones').select('*')
       .eq('token_publico', token).single()
     if (!s) { setError(true); setLoading(false); return }
-    setSesion(s); setCliente(s.clientes)
+    setSesion(s)
 
-    const [{ data: fss }, { data: grps }] = await Promise.all([
+    const [{ data: fss }, { data: grps }, { data: cliArr }] = await Promise.all([
       supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden'),
       supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden'),
+      supabase.rpc('get_nombre_por_token_sesion', { p_token: token }),
     ])
+    setCliente(cliArr?.[0] ?? null)
     setFases(fss || [])
     // Build combined list for rendering
     const gruposMap = {}
