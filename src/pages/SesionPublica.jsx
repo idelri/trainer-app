@@ -127,11 +127,12 @@ export default function SesionPublica({ token }) {
   const [sesionFlexibleGuardada, setSesionFlexibleGuardada] = useState(null)
   const [guardandoSesion, setGuardandoSesion] = useState(false)
   const [sesionFijaGuardada, setSesionFijaGuardada] = useState(false)
+  const [clonToken, setClonToken] = useState(null)
 
   useEffect(() => { cargar() }, [token])
 
   async function cargar() {
-    const [sesArr, fssArr, grpsArr, cliArr, blsArr, ejsArr, fbArr] = await Promise.all([
+    const [sesArr, fssArr, grpsArr, cliArr, blsArr, ejsArr, fbArr, pendingClonArr] = await Promise.all([
       supabase.rpc('get_sesion_por_token',              { p_token: token }).then(r => r.data),
       supabase.rpc('get_fases_por_token_sesion',        { p_token: token }).then(r => r.data),
       supabase.rpc('get_grupos_fases_por_token_sesion', { p_token: token }).then(r => r.data),
@@ -139,6 +140,7 @@ export default function SesionPublica({ token }) {
       supabase.rpc('get_bloques_por_token_sesion',      { p_token: token }).then(r => r.data),
       supabase.rpc('get_ejercicios_por_token_sesion',   { p_token: token }).then(r => r.data),
       supabase.rpc('get_feedback_por_token_sesion',     { p_token: token }).then(r => r.data),
+      supabase.rpc('get_clon_pendiente_feedback_por_token_original', { p_token: token }).then(r => r.data),
     ])
     const s = sesArr?.[0] ?? null
     if (!s) { setError(true); setLoading(false); return }
@@ -162,8 +164,16 @@ export default function SesionPublica({ token }) {
     setEjercicios(map)
     const fb = fbArr?.[0] ?? null
     setFeedbackEnviado(fb || null)
-    // Restaurar estado de completada si ya fue guardada anteriormente
-    if (s.completada_el && !s.fecha) setSesionFlexibleGuardada(s.completada_el)
+    // Restaurar estado al recargar
+    const pendingClon = pendingClonArr?.[0] ?? null
+    if (pendingClon) {
+      // Hay un clon ejecutado pero sin feedback aún: restaurar clonToken y mostrar el formulario
+      setClonToken(pendingClon.clon_token)
+      setSesion(prev => ({ ...prev, completada_el: pendingClon.completada_el }))
+    } else if (s.completada_el && !s.fecha && fb) {
+      // Sesión flexible con feedback ya enviado directamente al original (flujo antiguo)
+      setSesionFlexibleGuardada(s.completada_el)
+    }
     if (s.completada_el && s.fecha) setSesionFijaGuardada(true)
     const progInit = {}
     const vrInit = {}
@@ -280,6 +290,7 @@ export default function SesionPublica({ token }) {
               <button onClick={async () => {
                 await supabase.rpc('desmarcar_sesion_por_token', { p_token: token })
                 setSesionFlexibleGuardada(null)
+                setClonToken(null)
                 setFeedbackEnviado(null)
                 setSesion(s => ({ ...s, completada_el: null, estado: 'pendiente' }))
                 const allEjs = Object.values(ejercicios).flat()
@@ -448,7 +459,7 @@ export default function SesionPublica({ token }) {
                 const ejsBloque = ejercicios[b.id] || []
                 if (!ejsBloque.length) return null
                 const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
-                if (sesionFlexibleGuardada || sesionFijaGuardada) {
+                if (sesionFlexibleGuardada || sesionFijaGuardada || clonToken) {
                   return (
                     <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a', whiteSpace: 'nowrap' }}>
                       ✓ Bloque hecho
@@ -621,7 +632,7 @@ export default function SesionPublica({ token }) {
                         </div>
                         {/* Marcar ejercicio + checks de series */}
                         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {sesionFlexibleGuardada || sesionFijaGuardada ? (
+                          {sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? (
                             <span style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a' }}>
                               ✓ Ejercicio completado
                             </span>
@@ -632,8 +643,8 @@ export default function SesionPublica({ token }) {
                             </button>
                           )}
                           {prog.series.map((hecha, sIdx) => (
-                            <label key={sIdx} onClick={sesionFlexibleGuardada || sesionFijaGuardada ? undefined : () => toggleSerie(e.id, sIdx)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: sesionFlexibleGuardada || sesionFijaGuardada ? 'default' : 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
+                            <label key={sIdx} onClick={sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? undefined : () => toggleSerie(e.id, sIdx)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? 'default' : 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
                               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${hecha ? '#16a34a' : T.line}`, background: hecha ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                                 {hecha && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
                               </div>
@@ -662,7 +673,7 @@ export default function SesionPublica({ token }) {
         ))}
 
         {/* MARCAR SESIÓN COMPLETA — botón pequeño al final */}
-        {!sesionFlexibleGuardada && !sesionFijaGuardada && (() => {
+        {!sesionFlexibleGuardada && !sesionFijaGuardada && !clonToken && (() => {
           const todaMarcada = Object.keys(progreso).length > 0 && Object.values(progreso).every(p => p.hecho)
           return (
             <div style={{ marginTop: 20 }}>
@@ -675,7 +686,7 @@ export default function SesionPublica({ token }) {
         })()}
 
         {/* BOTÓN GUARDAR SESIÓN */}
-        {!sesionFlexibleGuardada && !sesionFijaGuardada && (
+        {!sesionFlexibleGuardada && !sesionFijaGuardada && !clonToken && (
           <div style={{ marginTop: 24 }}>
             <button
               onClick={async () => {
@@ -687,7 +698,8 @@ export default function SesionPublica({ token }) {
                   setGuardandoSesion(false)
                   if (error || !clonData?.[0]) { alert('Error al guardar. Inténtalo de nuevo.'); return }
                   setValoresReales({})
-                  setSesionFlexibleGuardada(clonData[0].fecha)
+                  setClonToken(clonData[0].clon_token)
+                  setSesion(s => ({ ...s, completada_el: clonData[0].fecha }))
                 } else {
                   const estadoGuardar = feedbackEnviado ? estadoDesdeData(feedbackEnviado.data) : 'realizada'
                   const { error: errGuardar } = await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: sesion.fecha, p_estado: estadoGuardar })
@@ -719,6 +731,7 @@ export default function SesionPublica({ token }) {
               <button onClick={async () => {
                 await supabase.rpc('desmarcar_sesion_por_token', { p_token: token })
                 setSesionFlexibleGuardada(null)
+                setClonToken(null)
                 setFeedbackEnviado(null)
                 setSesion(s => ({ ...s, completada_el: null, estado: 'pendiente' }))
                 const allEjs = Object.values(ejercicios).flat()
@@ -747,9 +760,18 @@ export default function SesionPublica({ token }) {
             <div style={{ background: '#fff', border: '1px solid #E4E6EB', borderRadius: 16, padding: '18px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>{editandoFeedback ? 'Modificar feedback' : 'Feedback de la sesión'}</h2>
-                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: T.paper, color: T.ink3, border: `1px solid ${T.line}` }}>No realizado</span>
+                {clonToken
+                  ? <span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>Realizada</span>
+                  : <span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: T.paper, color: T.ink3, border: `1px solid ${T.line}` }}>No realizado</span>
+                }
               </div>
-              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>{editandoFeedback ? 'Se guardará la última versión.' : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}</p>
+              <p style={{ margin: '0 0 4px', fontSize: 12.5, color: '#929BA8' }}>
+                {editandoFeedback
+                  ? 'Se guardará la última versión.'
+                  : clonToken
+                    ? `Sesión guardada el ${format(new Date(sesion.completada_el + 'T12:00:00'), 'dd MMM yyyy', { locale: es })}. Cuéntame cómo te ha ido.`
+                    : 'Cuéntame cómo te ha ido, lleva menos de un minuto.'}
+              </p>
               <FeedbackForm
                 tipoEditor={sesion.tipo_editor}
                 initial={editandoFeedback ? feedbackEnviado.data : null}
@@ -759,15 +781,26 @@ export default function SesionPublica({ token }) {
                   setEnviandoFeedback(true)
                   const nuevoEstado = estadoDesdeData(data)
                   if (editandoFeedback) {
-                    const { data: actArr, error: errAct } = await supabase.rpc('actualizar_feedback_por_token', { p_token: token, p_data: data })
+                    const tkn = clonToken || token
+                    const { data: actArr, error: errAct } = await supabase.rpc('actualizar_feedback_por_token', { p_token: tkn, p_data: data })
                     if (errAct) { setEnviandoFeedback(false); alert('Error al guardar el feedback. Inténtalo de nuevo.'); return }
-                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: null, p_estado: nuevoEstado })
+                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: tkn, p_fecha: null, p_estado: nuevoEstado })
                     if (errEst) { setEnviandoFeedback(false); alert('El feedback se ha guardado, pero no se pudo actualizar el estado de la sesión. Inténtalo de nuevo.'); return }
                     setSesion(s => ({ ...s, estado: nuevoEstado }))
                     setEnviandoFeedback(false)
                     setEditandoFeedback(false)
                     if (actArr?.[0]) setFeedbackEnviado(actArr[0])
+                  } else if (clonToken) {
+                    // Sesión flexible ya guardada: enviar feedback al clon existente
+                    const { data: nuevoArr, error: errIns } = await supabase.rpc('insertar_feedback_por_token', { p_token: clonToken, p_data: data })
+                    if (errIns) { setEnviandoFeedback(false); alert('Error al guardar el feedback. Inténtalo de nuevo.'); return }
+                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: clonToken, p_fecha: null, p_estado: nuevoEstado })
+                    if (errEst) { setEnviandoFeedback(false); alert('El feedback se ha guardado, pero no se pudo actualizar el estado de la sesión. Inténtalo de nuevo.'); return }
+                    setEnviandoFeedback(false)
+                    if (nuevoArr?.[0]) setFeedbackEnviado(nuevoArr[0])
+                    setSesionFlexibleGuardada(sesion.completada_el)
                   } else if (!sesion.fecha) {
+                    // Sesión flexible no guardada aún: clonar y guardar feedback de una vez
                     const { data: clonData, error } = await supabase.rpc('clonar_sesion_flexible_por_token', {
                       p_token: token, p_valores_reales: valoresReales, p_feedback_data: data, p_estado: nuevoEstado
                     })
