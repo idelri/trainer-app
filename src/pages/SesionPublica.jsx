@@ -274,8 +274,24 @@ export default function SesionPublica({ token }) {
 
         {/* BANNER COMPLETADA (solo cuando ya está guardada) */}
         {(sesionFlexibleGuardada || sesionFijaGuardada) && (
-          <div style={{ marginTop: 14, width: '100%', padding: '13px', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', fontSize: 14.5, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
-            ✓ Sesión completada y guardada
+          <div style={{ marginTop: 14, width: '100%', padding: '13px 16px', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.01em' }}>✓ Sesión completada y guardada</span>
+            {sesionFlexibleGuardada && (
+              <button onClick={async () => {
+                await supabase.rpc('desmarcar_sesion_por_token', { p_token: token })
+                setSesionFlexibleGuardada(null)
+                setFeedbackEnviado(null)
+                setSesion(s => ({ ...s, completada_el: null, estado: 'pendiente' }))
+                const allEjs = Object.values(ejercicios).flat()
+                const progInit = {}
+                const vrInit = {}
+                allEjs.forEach(e => { const n = parseInt(e.series) || 1; progInit[e.id] = { series: Array(n).fill(false), hecho: false }; vrInit[e.id] = {} })
+                setProgreso(progInit)
+                setValoresReales(vrInit)
+              }} style={{ fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 8, border: '1.5px solid #16a34a', background: 'transparent', color: '#15803d', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Realizar de nuevo
+              </button>
+            )}
           </div>
         )}
 

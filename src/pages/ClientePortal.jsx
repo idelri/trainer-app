@@ -202,7 +202,6 @@ export default function ClientePortal({ token }) {
     const estadoMap = {
       completada: 'completed', parcial: 'partial', no_realizada: 'missed',
       realizada: 'realizada',
-      perdida: 'missed', gris: 'realizada',  // compat temporal
     }
     const hoy = new Date()
     setSesiones((ses || []).map(s => {

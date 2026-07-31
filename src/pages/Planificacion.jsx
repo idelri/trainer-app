@@ -105,12 +105,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
   // ── Estado visual de sesión ──
   function estadoSesion(s) {
-    // Compatibilidad temporal: normaliza valores históricos en DB
-    const raw = s.estado
-    const estadoPersistido = raw === 'gris'
-      ? (s.completada_el ? 'realizada' : 'pendiente')
-      : raw === 'perdida' ? 'no_realizada'
-      : raw
+    const estadoPersistido = s.estado
 
     // 1. Estado persistido (no pendiente)
     if (estadoPersistido && estadoPersistido !== 'pendiente') return estadoPersistido
@@ -2715,8 +2710,6 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                               {s.estado === 'parcial'      && <span title="Parcial"       style={{ fontSize: 12 }}>〜</span>}
                                               {s.estado === 'realizada'    && <span title="Realizada"     style={{ fontSize: 12 }}>🔵</span>}
                                               {s.estado === 'no_realizada' && <span title="No realizada"  style={{ fontSize: 12 }}>❌</span>}
-                                              {s.estado === 'perdida'      && <span title="No realizada"  style={{ fontSize: 12 }}>❌</span>}
-                                              {s.estado === 'gris'         && <span title="Realizada"     style={{ fontSize: 12 }}>🔵</span>}
                                             </div>
                                             {s.objetivo && <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}><span style={{ fontStyle: 'normal', marginRight: 4, color: 'var(--text3)' }}>·</span>{s.objetivo}</div>}
                                           </div>
