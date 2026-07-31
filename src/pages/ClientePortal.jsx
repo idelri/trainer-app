@@ -211,11 +211,11 @@ export default function ClientePortal({ token }) {
       const fechaPasada = s.fecha && new Date(s.fecha + 'T23:59:59') < hoy
       return { ...s, estado_efectivo: estadoEfectivo || (fechaPasada ? 'missed' : null) }
     }))
-    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', cli.id).eq('visibilidad', 'cliente').not('fecha', 'is', null).order('fecha')
+    const { data: nts } = await supabase.rpc('get_notas_por_token_cliente', { p_token: token })
     setNotas(nts || [])
-    const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', cli.id).order('fecha')
+    const { data: comps } = await supabase.rpc('get_competiciones_por_token_cliente', { p_token: token })
     setCompeticiones(comps || [])
-    const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', cli.id).order('fecha')
+    const { data: ctrls } = await supabase.rpc('get_controles_por_token_cliente', { p_token: token })
     setControles(ctrls || [])
 
     const { data: pks } = await supabase.rpc('get_packs_por_token_cliente', { p_token: token })
