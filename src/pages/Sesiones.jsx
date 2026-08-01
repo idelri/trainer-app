@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura } from '../lib/taxonomia'
+import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId } from '../lib/taxonomia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
@@ -351,7 +351,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla,
   const sesionInicialCargada = useRef(false)
   const [bloques, setBloques] = useState([])
 
-  const FORM_CREAR_EJ_EMPTY = { nombre: '', descripcion: '', notas: '', ejecucion_tipo: '', media_tipo: 'youtube', media_url: '', video_url: '', complejo_articular: [], estructura_anatomica: [], patron_movimiento: [], lateralidad_apoyo: [], plano_movimiento: [], tipo_contraccion: [], material: [] }
+  const FORM_CREAR_EJ_EMPTY = { nombre: '', descripcion: '', notas: '', ejecucion_tipo: '', media_tipo: 'youtube', media_url: '', video_url: '', complejo_articular: [], estructura_anatomica: [], familia: [], patron_movimiento: [], posicion_ejercicio: [], plano_movimiento: [], tipo_contraccion: [], material: [] }
   const [modalCrearEj, setModalCrearEj] = useState(null) // { bloqueId, variablesDefault }
   const [formCrearEj, setFormCrearEj] = useState(FORM_CREAR_EJ_EMPTY)
   const [guardandoCrearEj, setGuardandoCrearEj] = useState(false)
@@ -2409,11 +2409,16 @@ async function guardarSesion() {
                 {varsActivas.length > 0 && (
                   <div style={{ width: 280, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
                     {varsActivas.map(v => {
-                      const allItems = v.tipo === 'chips' ? v.items : v.grupos.flatMap(g => g.items)
+                      const getLabel = v.tipo === 'patron' ? labelDePatronId : (v.labelFn || (id => id))
+                      const allItems = v.tipo === 'patron'
+                        ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+                        : v.tipo === 'chips'
+                          ? v.items
+                          : v.grupos.flatMap(g => g.items)
                       return (
                         <div key={v.campo} style={{ padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33` }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
-                          {v.tipo === 'chips' ? (
+                          {(v.tipo === 'chips' || v.tipo === 'patron') ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                               {allItems.map(item => {
                                 const activo = bibFiltros[v.campo] === item
@@ -2421,7 +2426,7 @@ async function guardarSesion() {
                                   <button key={item} type="button"
                                     onClick={() => setBibFiltros(f => ({ ...f, [v.campo]: activo ? null : item }))}
                                     style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? v.color : 'var(--border)'}`, background: activo ? v.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
-                                    {item}
+                                    {getLabel(item)}
                                   </button>
                                 )
                               })}
@@ -2477,9 +2482,12 @@ async function guardarSesion() {
                         {item.descripcion && <div style={{ fontSize: 11, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.descripcion}</div>}
                         {varsActivas.length > 0 && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
-                            {varsActivas.flatMap(v => (item[v.campo] || []).map(tag => (
-                              <span key={v.campo + tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: v.color + '18', color: v.color, border: `1px solid ${v.color}33`, fontWeight: 500 }}>{tag}</span>
-                            )))}
+                            {varsActivas.flatMap(v => (item[v.campo] || []).map(tag => {
+                              const label = v.tipo === 'patron' ? labelDePatronId(tag) : v.labelFn ? v.labelFn(tag) : tag
+                              return (
+                                <span key={v.campo + tag} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: v.color + '18', color: v.color, border: `1px solid ${v.color}33`, fontWeight: 500 }}>{label}</span>
+                              )
+                            }))}
                           </div>
                         )}
                       </div>
@@ -2670,7 +2678,12 @@ async function guardarSesion() {
               {/* Etiquetas taxonómicas */}
               {SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos').map(seccion => {
                 const seleccionados = formCrearEj[seccion.campo] || []
-                const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
+                const getLabel = seccion.tipo === 'patron' ? labelDePatronId : (seccion.labelFn || (id => id))
+                const allItems = seccion.tipo === 'patron'
+                  ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+                  : seccion.tipo === 'chips'
+                    ? seccion.items
+                    : seccion.grupos.flatMap(g => g.items)
                 return (
                   <div key={seccion.campo}>
                     <label className="form-label" style={{ color: seccion.color }}>{seccion.label}</label>
@@ -2684,7 +2697,7 @@ async function guardarSesion() {
                               return { ...f, [seccion.campo]: activo ? actual.filter(v => v !== item) : [...actual, item] }
                             })}
                             style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
-                            {item}
+                            {getLabel(item)}
                           </button>
                         )
                       })}

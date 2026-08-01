@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   COMPLEJOS, SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION,
+  PATRON_MOVIMIENTO,
   estadoGrupo, toggleGrupo, toggleEstructura, derivarComplejos,
   labelDeId, colorDeId, idsHojaDeEstructura,
+  labelDePatronId, colorDePatronId, patronesRecomendadosActivos,
 } from '../lib/taxonomia'
 import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check, Filter } from 'lucide-react'
 import BibliotecaSesiones from './BibliotecaSesiones'
@@ -21,8 +23,9 @@ const SORT_OPTIONS = [
 ]
 
 const EMPTY_CLASIFICACION = {
-  complejo_articular: [], estructura_anatomica: [], patron_movimiento: [],
-  lateralidad_apoyo: [], plano_movimiento: [], tipo_contraccion: [], material: [],
+  complejo_articular: [], estructura_anatomica: [],
+  familia: [], patron_movimiento: [], posicion_ejercicio: [],
+  plano_movimiento: [], tipo_contraccion: [], material: [],
 }
 
 const EMPTY = {
@@ -129,9 +132,104 @@ function ComplexSelector({ estructura_anatomica, onChange }) {
   )
 }
 
+// ── PATRON SELECTOR ──────────────────────────────────────────────────────────
+function PatronSelector({ value = [], onChange, complejosSeleccionados = [], estructurasSeleccionadas = [] }) {
+  const [todosAbierto, setTodosAbierto] = useState(false)
+
+  const recomSet = new Set(patronesRecomendadosActivos(complejosSeleccionados, estructurasSeleccionadas))
+
+  // Grupos que contienen al menos un hijo recomendado
+  const bloquesRec = PATRON_MOVIMIENTO
+    .map(bloque => ({
+      ...bloque,
+      grupos: bloque.grupos.filter(g => g.children.some(c => recomSet.has(c.id))),
+    }))
+    .filter(b => b.grupos.length > 0)
+
+  function renderGrupo(grupo, color) {
+    const estado = estadoGrupo(grupo, value)
+    return (
+      <div key={grupo.id} style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+          <button type="button" onClick={() => onChange(toggleGrupo(grupo, value))}
+            style={{
+              width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+              border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : color}`,
+              background: estado === 'full' ? color : estado === 'partial' ? color + '44' : 'transparent',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+            {estado === 'partial' && <span style={{ color, fontSize: 10, lineHeight: 1 }}>−</span>}
+          </button>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            {grupo.label}
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+          {grupo.children.map(hijo => {
+            const sel = value.includes(hijo.id)
+            return (
+              <button key={hijo.id} type="button"
+                onClick={() => onChange(toggleEstructura(hijo.id, grupo, value))}
+                style={{
+                  fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                  border: `1.5px solid ${sel ? color : 'var(--border)'}`,
+                  background: sel ? color + '22' : 'transparent',
+                  color: sel ? color : 'var(--text2)',
+                  cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s',
+                }}>
+                {hijo.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {bloquesRec.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            💡 Sugeridos según anatomía seleccionada
+          </div>
+          {bloquesRec.map(bloque => (
+            <div key={bloque.id}>
+              {bloquesRec.length > 1 && (
+                <div style={{ fontSize: 10, color: bloque.color, fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{bloque.label}</div>
+              )}
+              {bloque.grupos.map(grupo => renderGrupo(grupo, bloque.color))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <button type="button" onClick={() => setTodosAbierto(o => !o)}
+          style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, marginBottom: todosAbierto ? 10 : 0 }}>
+          {todosAbierto ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          Todos los patrones
+        </button>
+        {todosAbierto && (
+          <div>
+            {PATRON_MOVIMIENTO.map(bloque => (
+              <div key={bloque.id} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: bloque.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{bloque.label}</div>
+                {bloque.grupos.map(grupo => renderGrupo(grupo, bloque.color))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── TAG SELECTOR (secciones tipo grupos y chips) ──────────────────────────────
 function TagSelector({ seccion, value = [], onChange }) {
   if (seccion.tipo === 'chips') {
+    const getLabel = seccion.labelFn || (id => id)
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {seccion.items.map(item => {
@@ -140,7 +238,7 @@ function TagSelector({ seccion, value = [], onChange }) {
             <button key={item} type="button"
               onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
               style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
-              {item}
+              {getLabel(item)}
             </button>
           )
         })}
@@ -203,7 +301,15 @@ function EstructuraChips({ estructuraIds = [] }) {
 // ── INLINE TAGS (editable, tabla) ─────────────────────────────────────────────
 function InlineTags({ seccion, values = [], onChange }) {
   const color = seccion.color
-  const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
+  const getLabel = seccion.labelFn || (id => id)
+
+  // Para tipo:'patron' extraemos todos los hijos de PATRON_MOVIMIENTO como items planos
+  const allItems = seccion.tipo === 'patron'
+    ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+    : seccion.tipo === 'chips'
+      ? seccion.items
+      : seccion.grupos.flatMap(g => g.items)
+
   const disponibles = allItems.filter(i => !values.includes(i))
   const [abierto, setAbierto] = useState(false)
   const ref = useRef()
@@ -217,15 +323,18 @@ function InlineTags({ seccion, values = [], onChange }) {
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginTop: 4, position: 'relative' }} ref={ref}>
-      {values.map(v => (
-        <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '2px 6px 2px 8px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}55`, fontWeight: 500 }}>
-          {v}
-          <button type="button" onClick={() => onChange(values.filter(x => x !== v))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
-            <X size={9} />
-          </button>
-        </span>
-      ))}
+      {values.map(v => {
+        const label = seccion.tipo === 'patron' ? labelDePatronId(v) : getLabel(v)
+        return (
+          <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '2px 6px 2px 8px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}55`, fontWeight: 500 }}>
+            {label}
+            <button type="button" onClick={() => onChange(values.filter(x => x !== v))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+              <X size={9} />
+            </button>
+          </span>
+        )
+      })}
       {disponibles.length > 0 && (
         <button type="button" onClick={() => setAbierto(o => !o)}
           style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, border: `1px dashed ${color}88`, background: 'transparent', color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -233,17 +342,47 @@ function InlineTags({ seccion, values = [], onChange }) {
         </button>
       )}
       {abierto && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 200, maxWidth: 320 }}>
-          {seccion.tipo === 'chips' ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {disponibles.map(item => (
-                <button key={item} type="button"
-                  onClick={() => { onChange([...values, item]); setAbierto(false) }}
-                  style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
-                  {item}
-                </button>
-              ))}
-            </div>
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 200, maxWidth: 340, maxHeight: 260, overflowY: 'auto' }}>
+          {(seccion.tipo === 'chips' || seccion.tipo === 'patron') ? (
+            seccion.tipo === 'patron'
+              ? PATRON_MOVIMIENTO.map(bloque => {
+                  const dispBloque = bloque.grupos.flatMap(g => g.children.map(c => c.id)).filter(id => !values.includes(id))
+                  if (!dispBloque.length) return null
+                  return (
+                    <div key={bloque.id} style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: bloque.color, textTransform: 'uppercase', marginBottom: 4 }}>{bloque.label}</div>
+                      {bloque.grupos.map(grupo => {
+                        const dispGrupo = grupo.children.map(c => c.id).filter(id => !values.includes(id))
+                        if (!dispGrupo.length) return null
+                        return (
+                          <div key={grupo.id} style={{ marginBottom: 5 }}>
+                            <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600, marginBottom: 3 }}>{grupo.label}</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                              {dispGrupo.map(id => (
+                                <button key={id} type="button"
+                                  onClick={() => { onChange([...values, id]); setAbierto(false) }}
+                                  style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${bloque.color}55`, background: bloque.color + '10', color: bloque.color, cursor: 'pointer', fontWeight: 500 }}>
+                                  {labelDePatronId(id)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })
+              : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {disponibles.map(item => (
+                    <button key={item} type="button"
+                      onClick={() => { onChange([...values, item]); setAbierto(false) }}
+                      style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
+                      {getLabel(item)}
+                    </button>
+                  ))}
+                </div>
+              )
           ) : seccion.grupos.map(({ grupo, items }) => {
             const disp = items.filter(i => !values.includes(i))
             if (!disp.length) return null
@@ -307,6 +446,9 @@ function InlineTagsPanel({ ej, onChange }) {
         <div key={seccion.campo}>
           <div style={{ fontSize: 10, fontWeight: 700, color: seccion.color, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{seccion.label}</div>
           <InlineTags seccion={seccion} values={ej[seccion.campo] || []} onChange={v => onChange(seccion.campo, v)} />
+          {seccion.tipo === 'patron' && (
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>Usa ⚙ para editar la jerarquía completa</div>
+          )}
         </div>
       ))}
     </div>
@@ -319,7 +461,12 @@ function ColumnFilter({ seccion, filtros, toggleFiltro, clearFiltro, ejercicios 
   const ref = useRef(null)
   const campo = seccion.campo
   const activos = filtros[campo] || []
-  const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
+  const getLabel = seccion.labelFn || (seccion.tipo === 'patron' ? labelDePatronId : (id => id))
+  const allItems = seccion.tipo === 'patron'
+    ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+    : seccion.tipo === 'chips'
+      ? seccion.items
+      : seccion.grupos.flatMap(g => g.items)
   const valoresUsados = new Set()
   ejercicios.forEach(e => (e[campo] || []).forEach(v => valoresUsados.add(v)))
   const items = allItems.filter(v => valoresUsados.has(v))
@@ -355,7 +502,7 @@ function ColumnFilter({ seccion, filtros, toggleFiltro, clearFiltro, ejercicios 
               return (
                 <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '3px 4px', borderRadius: 5, background: sel ? seccion.color + '14' : 'transparent' }}>
                   <input type="checkbox" checked={sel} onChange={() => toggleFiltro(campo, item)} style={{ accentColor: seccion.color, cursor: 'pointer', width: 13, height: 13 }} />
-                  <span style={{ fontSize: 11.5, color: sel ? seccion.color : 'var(--text2)', fontWeight: sel ? 600 : 400 }}>{item}</span>
+                  <span style={{ fontSize: 11.5, color: sel ? seccion.color : 'var(--text2)', fontWeight: sel ? 600 : 400 }}>{getLabel(item)}</span>
                 </label>
               )
             })}
@@ -609,8 +756,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       video_url: e.video_url || '', notas: e.notas || '',
       complejo_articular: e.complejo_articular || [],
       estructura_anatomica: e.estructura_anatomica || [],
+      familia: e.familia || [],
       patron_movimiento: e.patron_movimiento || [],
-      lateralidad_apoyo: e.lateralidad_apoyo || [],
+      posicion_ejercicio: e.posicion_ejercicio || [],
       plano_movimiento: e.plano_movimiento || [],
       tipo_contraccion: e.tipo_contraccion || [],
       material: e.material || [],
@@ -623,8 +771,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       id: e.id, nombre: e.nombre || '',
       complejo_articular: [...(e.complejo_articular || [])],
       estructura_anatomica: [...(e.estructura_anatomica || [])],
+      familia: [...(e.familia || [])],
       patron_movimiento: [...(e.patron_movimiento || [])],
-      lateralidad_apoyo: [...(e.lateralidad_apoyo || [])],
+      posicion_ejercicio: [...(e.posicion_ejercicio || [])],
       plano_movimiento: [...(e.plano_movimiento || [])],
       tipo_contraccion: [...(e.tipo_contraccion || [])],
       material: [...(e.material || [])],
@@ -652,8 +801,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       video_url: form.video_url || null, notas: form.notas || null,
       complejo_articular: form.complejo_articular,
       estructura_anatomica: form.estructura_anatomica,
+      familia: form.familia,
       patron_movimiento: form.patron_movimiento,
-      lateralidad_apoyo: form.lateralidad_apoyo,
+      posicion_ejercicio: form.posicion_ejercicio,
       plano_movimiento: form.plano_movimiento,
       tipo_contraccion: form.tipo_contraccion,
       material: form.material,
@@ -675,8 +825,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       nombre: inlineEj.nombre.trim(),
       complejo_articular: inlineEj.complejo_articular,
       estructura_anatomica: inlineEj.estructura_anatomica,
+      familia: inlineEj.familia,
       patron_movimiento: inlineEj.patron_movimiento,
-      lateralidad_apoyo: inlineEj.lateralidad_apoyo,
+      posicion_ejercicio: inlineEj.posicion_ejercicio,
       plano_movimiento: inlineEj.plano_movimiento,
       tipo_contraccion: inlineEj.tipo_contraccion,
       material: inlineEj.material,
@@ -752,10 +903,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
   // Columnas tabla (excluye estructura_anatomica compleja, usa patron+material)
   const TABLA_COLUMNAS = [
     { campo: 'nombre', label: 'Ejercicio', filtrable: false },
+    { campo: 'familia', label: 'Familia', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'familia') },
     { campo: 'patron_movimiento', label: 'Patrón', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'patron_movimiento') },
-    { campo: 'lateralidad_apoyo', label: 'Apoyo', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'lateralidad_apoyo') },
-    { campo: 'plano_movimiento', label: 'Plano', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'plano_movimiento') },
-    { campo: 'tipo_contraccion', label: 'Contracción', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'tipo_contraccion') },
+    { campo: 'posicion_ejercicio', label: 'Posición', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'posicion_ejercicio') },
     { campo: 'material', label: 'Material', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'material') },
   ]
 
@@ -838,12 +988,22 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                     )}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 0 }}>
-                    {(seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)).map(item => {
+                    {(seccion.tipo === 'patron'
+                      ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+                      : seccion.tipo === 'chips'
+                        ? seccion.items
+                        : seccion.grupos.flatMap(g => g.items)
+                    ).map(item => {
                       const activo = (filtros[seccion.campo] || []).includes(item)
+                      const label = seccion.tipo === 'patron'
+                        ? labelDePatronId(item)
+                        : seccion.labelFn
+                          ? seccion.labelFn(item)
+                          : item
                       return (
                         <button key={item} type="button" onClick={() => toggleFiltro(seccion.campo, item)}
                           style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '18' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
-                          {item}
+                          {label}
                         </button>
                       )
                     })}
@@ -929,12 +1089,16 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                       <>
                         {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
                         <EstructuraChips estructuraIds={e.estructura_anatomica || []} />
-                        {seccionesFiltro.filter(s => s.campo !== 'material').map(seccion => {
+                        {seccionesFiltro.map(seccion => {
                           const vals = e[seccion.campo] || []
                           if (!vals.length) return null
-                          return <MiniChips key={seccion.campo} values={vals} color={seccion.color} />
+                          const labels = seccion.tipo === 'patron'
+                            ? vals.map(id => labelDePatronId(id))
+                            : seccion.labelFn
+                              ? vals.map(id => seccion.labelFn(id))
+                              : vals
+                          return <MiniChips key={seccion.campo} values={labels} color={seccion.color} />
                         })}
-                        {(e.material || []).length > 0 && <MiniChips values={e.material} color="#475569" />}
                       </>
                     )}
                   </div>
@@ -1003,7 +1167,12 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                           {seccionesFiltro.map(seccion => {
                             const vals = e[seccion.campo] || []
                             if (!vals.length) return null
-                            return <MiniChips key={seccion.campo} values={vals} color={seccion.color} />
+                            const labels = seccion.tipo === 'patron'
+                              ? vals.map(id => labelDePatronId(id))
+                              : seccion.labelFn
+                                ? vals.map(id => seccion.labelFn(id))
+                                : vals
+                            return <MiniChips key={seccion.campo} values={labels} color={seccion.color} />
                           })}
                         </div>
                       )}
@@ -1161,6 +1330,13 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                       onChange={({ estructura_anatomica, complejo_articular }) => {
                         setForm(f => ({ ...f, estructura_anatomica, complejo_articular }))
                       }}
+                    />
+                  ) : seccion.tipo === 'patron' ? (
+                    <PatronSelector
+                      value={form.patron_movimiento}
+                      onChange={v => fd('patron_movimiento', v)}
+                      complejosSeleccionados={form.complejo_articular}
+                      estructurasSeleccionadas={form.estructura_anatomica}
                     />
                   ) : (
                     <TagSelector seccion={seccion} value={form[seccion.campo]} onChange={v => fd(seccion.campo, v)} />
