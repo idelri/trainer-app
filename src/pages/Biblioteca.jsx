@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { ETIQUETAS, TAG_COLORS } from '../lib/taxonomia'
+import {
+  COMPLEJOS, SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION,
+  estadoGrupo, toggleGrupo, toggleEstructura, derivarComplejos,
+  labelDeId, colorDeId, idsHojaDeEstructura,
+} from '../lib/taxonomia'
 import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check, Filter } from 'lucide-react'
 import BibliotecaSesiones from './BibliotecaSesiones'
 
@@ -10,25 +14,142 @@ function ytId(url) {
   return m ? m[1] : null
 }
 
-
 const SORT_OPTIONS = [
   { value: 'nombre', label: 'Nombre' },
-  { value: 'zona_corporal', label: 'Zona corporal' },
   { value: 'patron_movimiento', label: 'Patrón' },
-  { value: 'objetivo', label: 'Objetivo' },
-  { value: 'nivel_aproximacion', label: 'Nivel' },
-  { value: 'tipo_contraccion', label: 'Contracción' },
   { value: 'material', label: 'Material' },
 ]
 
-const EMPTY = { nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], nivel_aproximacion: [], tipo_contraccion: [], material: [] }
+const EMPTY_CLASIFICACION = {
+  complejo_articular: [], estructura_anatomica: [], patron_movimiento: [],
+  lateralidad_apoyo: [], plano_movimiento: [], tipo_contraccion: [], material: [],
+}
 
-function TagSelector({ campo, value = [], onChange }) {
-  const config = ETIQUETAS[campo]
-  const isSingle = config.single || false
+const EMPTY = {
+  nombre: '', descripcion: '', media_tipo: '', media_url: '', video_url: '', notas: '',
+  ...EMPTY_CLASIFICACION,
+}
+
+// ── COMPLEX SELECTOR ─────────────────────────────────────────────────────────
+function ComplexSelector({ estructura_anatomica, onChange }) {
+  const [expandido, setExpandido] = useState(null)
+
+  function handleToggleGrupo(grupo) {
+    const nextEst = toggleGrupo(grupo, estructura_anatomica)
+    onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
+  }
+
+  function handleToggleHijo(hijo, grupo) {
+    const nextEst = toggleEstructura(hijo.id, grupo, estructura_anatomica)
+    onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
+  }
+
   return (
     <div>
-      {config.grupos.map(({ grupo, items }) => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {COMPLEJOS.map(c => {
+          const tieneSeleccion = estructura_anatomica.some(id => id.startsWith(c.id + ':'))
+          const activo = expandido === c.id
+          const nHojas = idsHojaDeEstructura(estructura_anatomica.filter(id => id.startsWith(c.id + ':'))).length
+          return (
+            <button key={c.id} type="button"
+              onClick={() => setExpandido(activo ? null : c.id)}
+              style={{
+                fontSize: 12, padding: '5px 11px', borderRadius: 20,
+                border: `1.5px solid ${tieneSeleccion ? c.color : activo ? c.color + '80' : 'var(--border)'}`,
+                background: activo ? c.color + '18' : tieneSeleccion ? c.color + '10' : 'transparent',
+                color: tieneSeleccion || activo ? c.color : 'var(--text2)',
+                cursor: 'pointer', fontWeight: tieneSeleccion ? 600 : 400,
+                display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s',
+              }}>
+              <span>{c.emoji}</span>
+              <span>{c.label}</span>
+              {nHojas > 0 && (
+                <span style={{ fontSize: 9, background: c.color, color: '#fff', borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>
+                  {nHojas}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {expandido && (() => {
+        const complejo = COMPLEJOS.find(c => c.id === expandido)
+        if (!complejo) return null
+        return (
+          <div style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {complejo.emoji} {complejo.label}
+            </div>
+            {complejo.grupos.map(grupo => {
+              const estado = estadoGrupo(grupo, estructura_anatomica)
+              return (
+                <div key={grupo.id} style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                    <button type="button" onClick={() => handleToggleGrupo(grupo)}
+                      style={{
+                        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+                        border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`,
+                        background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                      {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+                      {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
+                    </button>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {grupo.label}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+                    {grupo.children.map(hijo => {
+                      const sel = estructura_anatomica.includes(hijo.id)
+                      return (
+                        <button key={hijo.id} type="button"
+                          onClick={() => handleToggleHijo(hijo, grupo)}
+                          style={{
+                            fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                            border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`,
+                            background: sel ? complejo.color + '22' : 'transparent',
+                            color: sel ? complejo.color : 'var(--text2)',
+                            cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s',
+                          }}>
+                          {hijo.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+// ── TAG SELECTOR (secciones tipo grupos y chips) ──────────────────────────────
+function TagSelector({ seccion, value = [], onChange }) {
+  if (seccion.tipo === 'chips') {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {seccion.items.map(item => {
+          const activo = value.includes(item)
+          return (
+            <button key={item} type="button"
+              onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+              style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+              {item}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+  return (
+    <div>
+      {seccion.grupos.map(({ grupo, items }) => (
         <div key={grupo} style={{ marginBottom: 8 }}>
           {grupo && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{grupo}</div>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -36,8 +157,8 @@ function TagSelector({ campo, value = [], onChange }) {
               const activo = value.includes(item)
               return (
                 <button key={item} type="button"
-                  onClick={() => onChange(isSingle ? (activo ? [] : [item]) : (activo ? value.filter(v => v !== item) : [...value, item]))}
-                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, background: activo ? 'var(--accent-light)' : 'transparent', color: activo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                  onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+                  style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
                   {item}
                 </button>
               )
@@ -49,6 +170,7 @@ function TagSelector({ campo, value = [], onChange }) {
   )
 }
 
+// ── MINI CHIPS (display) ──────────────────────────────────────────────────────
 function MiniChips({ values = [], color }) {
   if (!values?.length) return <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
   return (
@@ -60,15 +182,31 @@ function MiniChips({ values = [], color }) {
   )
 }
 
-// Etiquetas editables: con × para quitar y + para añadir
-function InlineTags({ campo, values = [], onChange }) {
-  const color = TAG_COLORS[campo]
-  const config = ETIQUETAS[campo]
-  const isSingle = config.single || false
+// Chips de estructura anatómica con color por complejo
+function EstructuraChips({ estructuraIds = [] }) {
+  const hojas = idsHojaDeEstructura(estructuraIds)
+  if (!hojas.length) return <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+      {hojas.map(id => {
+        const color = colorDeId(id)
+        return (
+          <span key={id} style={{ fontSize: 10, padding: '1px 6px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}33`, fontWeight: 500, whiteSpace: 'nowrap' }}>
+            {labelDeId(id)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── INLINE TAGS (editable, tabla) ─────────────────────────────────────────────
+function InlineTags({ seccion, values = [], onChange }) {
+  const color = seccion.color
+  const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
+  const disponibles = allItems.filter(i => !values.includes(i))
   const [abierto, setAbierto] = useState(false)
   const ref = useRef()
-  const todosItems = config.grupos.flatMap(g => g.items)
-  const disponibles = isSingle ? todosItems : todosItems.filter(i => !values.includes(i))
 
   useEffect(() => {
     if (!abierto) return
@@ -83,7 +221,7 @@ function InlineTags({ campo, values = [], onChange }) {
         <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '2px 6px 2px 8px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}55`, fontWeight: 500 }}>
           {v}
           <button type="button" onClick={() => onChange(values.filter(x => x !== v))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7, lineHeight: 1 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
             <X size={9} />
           </button>
         </span>
@@ -96,7 +234,17 @@ function InlineTags({ campo, values = [], onChange }) {
       )}
       {abierto && (
         <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 10, marginTop: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 200, maxWidth: 320 }}>
-          {ETIQUETAS[campo].grupos.map(({ grupo, items }) => {
+          {seccion.tipo === 'chips' ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {disponibles.map(item => (
+                <button key={item} type="button"
+                  onClick={() => { onChange([...values, item]); setAbierto(false) }}
+                  style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          ) : seccion.grupos.map(({ grupo, items }) => {
             const disp = items.filter(i => !values.includes(i))
             if (!disp.length) return null
             return (
@@ -105,7 +253,7 @@ function InlineTags({ campo, values = [], onChange }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {disp.map(item => (
                     <button key={item} type="button"
-                      onClick={() => { onChange(isSingle ? [item] : [...values, item]); setAbierto(false) }}
+                      onClick={() => { onChange([...values, item]); setAbierto(false) }}
                       style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${color}55`, background: color + '10', color, cursor: 'pointer', fontWeight: 500 }}>
                       {item}
                     </button>
@@ -120,29 +268,61 @@ function InlineTags({ campo, values = [], onChange }) {
   )
 }
 
-// Panel de edición inline de etiquetas de un ejercicio
+// ── INLINE TAGS PANEL (dentro de cards/lista en edición rápida) ───────────────
 function InlineTagsPanel({ ej, onChange }) {
+  // Para estructura_anatomica mostramos chips removibles (sin selector complejo inline)
+  const hojas = idsHojaDeEstructura(ej.estructura_anatomica || [])
   return (
     <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {Object.keys(ETIQUETAS).map(campo => (
-        <div key={campo}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{ETIQUETAS[campo].label}</div>
-          <InlineTags campo={campo} values={ej[campo] || []} onChange={v => onChange(campo, v)} />
+      {hojas.length > 0 && (
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>Estructura implicada</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {hojas.map(id => {
+              const color = colorDeId(id)
+              return (
+                <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '2px 6px 2px 8px', borderRadius: 20, background: color + '18', color, border: `1px solid ${color}55`, fontWeight: 500 }}>
+                  {labelDeId(id)}
+                  <button type="button" onClick={() => {
+                    const nextEst = (ej.estructura_anatomica || []).filter(x => x !== id)
+                    const grupoId = ej.estructura_anatomica.find(x => {
+                      const prefijo = id.split(':')[0]
+                      const nombreGrupo = id.split(':')[1]
+                      return x === prefijo + ':' + nombreGrupo.split('_')[0]
+                    })
+                    onChange('estructura_anatomica', nextEst)
+                    onChange('complejo_articular', derivarComplejos(nextEst))
+                  }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                    <X size={9} />
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>Usa ⚙ para editar la jerarquía completa</div>
+        </div>
+      )}
+      {SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos').map(seccion => (
+        <div key={seccion.campo}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: seccion.color, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{seccion.label}</div>
+          <InlineTags seccion={seccion} values={ej[seccion.campo] || []} onChange={v => onChange(seccion.campo, v)} />
         </div>
       ))}
     </div>
   )
 }
 
-function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios }) {
+// ── COLUMN FILTER (tabla) ─────────────────────────────────────────────────────
+function ColumnFilter({ seccion, filtros, toggleFiltro, clearFiltro, ejercicios }) {
   const [abierto, setAbierto] = useState(false)
   const ref = useRef(null)
+  const campo = seccion.campo
   const activos = filtros[campo] || []
-
-  // valores que realmente existen en los datos
+  const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
   const valoresUsados = new Set()
   ejercicios.forEach(e => (e[campo] || []).forEach(v => valoresUsados.add(v)))
-  const items = ETIQUETAS[campo].grupos.flatMap(g => g.items).filter(v => valoresUsados.has(v))
+  const items = allItems.filter(v => valoresUsados.has(v))
 
   useEffect(() => {
     if (!abierto) return
@@ -155,19 +335,16 @@ function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios })
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <button
-        type="button"
-        onClick={e => { e.stopPropagation(); setAbierto(v => !v) }}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', borderRadius: 4, color: activos.length ? TAG_COLORS[campo] : 'var(--text3)', display: 'flex', alignItems: 'center' }}
-        title="Filtrar por esta columna"
-      >
-        <Filter size={10} style={{ fill: activos.length ? TAG_COLORS[campo] : 'none' }} />
+      <button type="button" onClick={e => { e.stopPropagation(); setAbierto(v => !v) }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', borderRadius: 4, color: activos.length ? seccion.color : 'var(--text3)', display: 'flex', alignItems: 'center' }}
+        title="Filtrar por esta columna">
+        <Filter size={10} style={{ fill: activos.length ? seccion.color : 'none' }} />
         {activos.length > 0 && <span style={{ fontSize: 9, marginLeft: 1, fontWeight: 700 }}>{activos.length}</span>}
       </button>
       {abierto && (
         <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 999, minWidth: 200, maxWidth: 280, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.14)', padding: 10, marginTop: 4 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em' }}>{ETIQUETAS[campo].label}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: seccion.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{seccion.label}</span>
             {activos.length > 0 && (
               <button type="button" onClick={() => clearFiltro(campo)} style={{ fontSize: 10, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer' }}>✕ limpiar</button>
             )}
@@ -176,9 +353,9 @@ function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios })
             {items.map(item => {
               const sel = activos.includes(item)
               return (
-                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '3px 4px', borderRadius: 5, background: sel ? TAG_COLORS[campo] + '14' : 'transparent' }}>
-                  <input type="checkbox" checked={sel} onChange={() => toggleFiltro(campo, item)} style={{ accentColor: TAG_COLORS[campo], cursor: 'pointer', width: 13, height: 13 }} />
-                  <span style={{ fontSize: 11.5, color: sel ? TAG_COLORS[campo] : 'var(--text2)', fontWeight: sel ? 600 : 400 }}>{item}</span>
+                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '3px 4px', borderRadius: 5, background: sel ? seccion.color + '14' : 'transparent' }}>
+                  <input type="checkbox" checked={sel} onChange={() => toggleFiltro(campo, item)} style={{ accentColor: seccion.color, cursor: 'pointer', width: 13, height: 13 }} />
+                  <span style={{ fontSize: 11.5, color: sel ? seccion.color : 'var(--text2)', fontWeight: sel ? 600 : 400 }}>{item}</span>
                 </label>
               )
             })}
@@ -189,6 +366,7 @@ function ColumnFilter({ campo, filtros, toggleFiltro, clearFiltro, ejercicios })
   )
 }
 
+// ── BIBLIOTECA BLOQUES (sin cambios) ─────────────────────────────────────────
 function BibliotecaBloques() {
   const [bloques, setBloques] = useState([])
   const [loading, setLoading] = useState(true)
@@ -245,7 +423,6 @@ function BibliotecaBloques() {
       }
     } else {
       await supabase.from('bloques_biblioteca').update({ nombre: form.nombre.trim(), descripcion: form.descripcion || null, foco: form.foco || null, color: form.color || '#2d6a4f' }).eq('id', modal.id)
-      // Borrar ejercicios existentes y reinsertar
       await supabase.from('bloques_biblioteca_ejercicios').delete().eq('bloque_bib_id', modal.id)
       for (let i = 0; i < formEjs.length; i++) {
         const { _key, id, bloque_bib_id, ...p } = formEjs[i]
@@ -305,7 +482,6 @@ function BibliotecaBloques() {
         {bloques.length === 0 && <p style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', padding: '32px 0' }}>No hay bloques guardados. Usa 🧱 en un bloque de sesión para guardarlo aquí.</p>}
       </div>
 
-      {/* Modal crear/editar */}
       {modal && (
         <div className="modal-backdrop" onClick={() => setModal(null)}>
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
@@ -353,7 +529,6 @@ function BibliotecaBloques() {
         </div>
       )}
 
-      {/* Confirmar eliminar */}
       {confirmEliminar && (
         <div className="modal-backdrop" onClick={() => setConfirmEliminar(null)}>
           <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
@@ -373,6 +548,7 @@ function BibliotecaBloques() {
   )
 }
 
+// ── BIBLIOTECA PRINCIPAL ──────────────────────────────────────────────────────
 export default function Biblioteca({ setPage, setSesionesContext }) {
   const [tabPrincipal, setTabPrincipal] = useState('ejercicios')
   const [ejercicios, setEjercicios] = useState([])
@@ -387,10 +563,10 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
   const [vista, setVista] = useState('cards')
   const [sortBy, setSortBy] = useState('nombre')
   const [sortDir, setSortDir] = useState('asc')
-  const [inlineEj, setInlineEj] = useState(null) // { id, nombre, ...campos } ejercicio en edición inline
+  const [inlineEj, setInlineEj] = useState(null)
   const [inlineSaving, setInlineSaving] = useState(false)
-  const [toast, setToast] = useState(null) // 'ok' | 'error'
-  const [videoConflicto, setVideoConflicto] = useState(null) // { nombre, id } del ejercicio con el mismo vídeo
+  const [toast, setToast] = useState(null)
+  const [videoConflicto, setVideoConflicto] = useState(null)
 
   useEffect(() => { cargar() }, [])
 
@@ -414,9 +590,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
 
   async function comprobarVideoConflicto(url, idActual) {
     setVideoConflicto(null)
-    const ytId = extraerYtId(url)
-    if (!ytId) return
-    const { data } = await supabase.from('ejercicios_biblioteca').select('id, nombre, media_url').ilike('media_url', `%${ytId}%`)
+    const id = extraerYtId(url)
+    if (!id) return
+    const { data } = await supabase.from('ejercicios_biblioteca').select('id, nombre, media_url').ilike('media_url', `%${id}%`)
     if (!data) return
     const conflicto = data.find(e => e.id !== idActual)
     setVideoConflicto(conflicto || null)
@@ -431,10 +607,13 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       nombre: e.nombre || '', descripcion: e.descripcion || '',
       media_tipo: e.media_tipo || '', media_url: e.media_url || '',
       video_url: e.video_url || '', notas: e.notas || '',
-      zona_corporal: e.zona_corporal || [], patron_movimiento: e.patron_movimiento || [],
-      lateralidad_apoyo: e.lateralidad_apoyo || [], objetivo: e.objetivo || [],
-      nivel_aproximacion: e.nivel_aproximacion || [],
-      tipo_contraccion: e.tipo_contraccion || [], material: e.material || [],
+      complejo_articular: e.complejo_articular || [],
+      estructura_anatomica: e.estructura_anatomica || [],
+      patron_movimiento: e.patron_movimiento || [],
+      lateralidad_apoyo: e.lateralidad_apoyo || [],
+      plano_movimiento: e.plano_movimiento || [],
+      tipo_contraccion: e.tipo_contraccion || [],
+      material: e.material || [],
     })
     setModal(e)
   }
@@ -442,16 +621,27 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
   function activarInline(e) {
     setInlineEj({
       id: e.id, nombre: e.nombre || '',
-      zona_corporal: [...(e.zona_corporal || [])], patron_movimiento: [...(e.patron_movimiento || [])],
-      lateralidad_apoyo: [...(e.lateralidad_apoyo || [])], objetivo: [...(e.objetivo || [])],
-      nivel_aproximacion: [...(e.nivel_aproximacion || [])],
-      tipo_contraccion: [...(e.tipo_contraccion || [])], material: [...(e.material || [])],
+      complejo_articular: [...(e.complejo_articular || [])],
+      estructura_anatomica: [...(e.estructura_anatomica || [])],
+      patron_movimiento: [...(e.patron_movimiento || [])],
+      lateralidad_apoyo: [...(e.lateralidad_apoyo || [])],
+      plano_movimiento: [...(e.plano_movimiento || [])],
+      tipo_contraccion: [...(e.tipo_contraccion || [])],
+      material: [...(e.material || [])],
     })
   }
 
   function cancelarInline() { setInlineEj(null) }
 
-  function fd(campo, valor) { setForm(f => ({ ...f, [campo]: valor })) }
+  function fd(campo, valor) {
+    if (campo === 'estructura_anatomica') {
+      setForm(f => ({ ...f, estructura_anatomica: valor, complejo_articular: derivarComplejos(valor) }))
+    } else if (campo === 'complejo_articular') {
+      setForm(f => ({ ...f, complejo_articular: valor }))
+    } else {
+      setForm(f => ({ ...f, [campo]: valor }))
+    }
+  }
 
   async function guardar() {
     if (!form.nombre.trim()) return
@@ -460,10 +650,13 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       nombre: form.nombre.trim(), descripcion: form.descripcion || null,
       media_tipo: form.media_tipo || null, media_url: form.media_url || null,
       video_url: form.video_url || null, notas: form.notas || null,
-      zona_corporal: form.zona_corporal, patron_movimiento: form.patron_movimiento,
-      lateralidad_apoyo: form.lateralidad_apoyo, objetivo: form.objetivo,
-      nivel_aproximacion: form.nivel_aproximacion,
-      tipo_contraccion: form.tipo_contraccion, material: form.material,
+      complejo_articular: form.complejo_articular,
+      estructura_anatomica: form.estructura_anatomica,
+      patron_movimiento: form.patron_movimiento,
+      lateralidad_apoyo: form.lateralidad_apoyo,
+      plano_movimiento: form.plano_movimiento,
+      tipo_contraccion: form.tipo_contraccion,
+      material: form.material,
     }
     const { error } = modal === 'nuevo'
       ? await supabase.from('ejercicios_biblioteca').insert(datos)
@@ -480,11 +673,11 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
     setInlineSaving(true)
     const { error } = await supabase.from('ejercicios_biblioteca').update({
       nombre: inlineEj.nombre.trim(),
-      zona_corporal: inlineEj.zona_corporal,
+      complejo_articular: inlineEj.complejo_articular,
+      estructura_anatomica: inlineEj.estructura_anatomica,
       patron_movimiento: inlineEj.patron_movimiento,
       lateralidad_apoyo: inlineEj.lateralidad_apoyo,
-      objetivo: inlineEj.objetivo,
-      nivel_aproximacion: inlineEj.nivel_aproximacion,
+      plano_movimiento: inlineEj.plano_movimiento,
       tipo_contraccion: inlineEj.tipo_contraccion,
       material: inlineEj.material,
     }).eq('id', inlineEj.id)
@@ -521,6 +714,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
 
   const hayFiltros = Object.values(filtros).some(v => v.length > 0)
 
+  // Secciones de filtro (solo las que tienen campo plano, no complejos)
+  const seccionesFiltro = SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos')
+
   const filtrados = ejercicios.filter(e => {
     if (busquedaTexto && !e.nombre.toLowerCase().includes(busquedaTexto.toLowerCase()) && !(e.descripcion || '').toLowerCase().includes(busquedaTexto.toLowerCase())) return false
     for (const [campo, vals] of Object.entries(filtros)) {
@@ -542,7 +738,6 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
     return <span style={{ fontSize: 10 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>
   }
 
-  // Renderiza acciones de edición inline (botones guardar/cancelar)
   function InlineActions() {
     return (
       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
@@ -554,9 +749,18 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
     )
   }
 
+  // Columnas tabla (excluye estructura_anatomica compleja, usa patron+material)
+  const TABLA_COLUMNAS = [
+    { campo: 'nombre', label: 'Ejercicio', filtrable: false },
+    { campo: 'patron_movimiento', label: 'Patrón', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'patron_movimiento') },
+    { campo: 'lateralidad_apoyo', label: 'Apoyo', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'lateralidad_apoyo') },
+    { campo: 'plano_movimiento', label: 'Plano', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'plano_movimiento') },
+    { campo: 'tipo_contraccion', label: 'Contracción', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'tipo_contraccion') },
+    { campo: 'material', label: 'Material', filtrable: true, seccion: seccionesFiltro.find(s => s.campo === 'material') },
+  ]
+
   return (
     <div className="page">
-      {/* Toast */}
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 10, background: toast === 'ok' ? '#166534' : '#991b1b', color: '#fff', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 16px rgba(0,0,0,0.2)', animation: 'fadeIn 0.2s' }}>
           {toast === 'ok' ? <><Check size={15} /> Guardado</> : '✕ Error al guardar'}
@@ -564,12 +768,9 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
       )}
 
       <div className="page-header">
-        <div>
-          <h2 className="page-title">Biblioteca</h2>
-        </div>
+        <h2 className="page-title">Biblioteca</h2>
       </div>
 
-      {/* Tabs principales */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
         {[['ejercicios', '🏋️ Ejercicios'], ['bloques', '🧱 Bloques'], ['sesiones', '📋 Sesiones']].map(([id, label]) => (
           <button key={id} onClick={() => setTabPrincipal(id)}
@@ -579,216 +780,125 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
         ))}
       </div>
 
-      {tabPrincipal === 'sesiones' && (
-        <BibliotecaSesiones setPage={setPage} setSesionesContext={setSesionesContext} />
-      )}
-
+      {tabPrincipal === 'sesiones' && <BibliotecaSesiones setPage={setPage} setSesionesContext={setSesionesContext} />}
       {tabPrincipal === 'bloques' && <BibliotecaBloques />}
 
       {tabPrincipal === 'ejercicios' && (<>
-      <div className="page-header" style={{ marginTop: 0, paddingTop: 0 }}>
-        <div>
+        <div className="page-header" style={{ marginTop: 0, paddingTop: 0 }}>
           <p className="page-subtitle">{filtrados.length} de {ejercicios.length} ejercicios</p>
-        </div>
-        <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo ejercicio</button>
-      </div>
-
-      {/* Búsqueda, filtros y selector de vista */}
-      <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 360 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-            <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Buscar ejercicio..." value={busquedaTexto} onChange={e => setBusquedaTexto(e.target.value)} />
-            {busquedaTexto && <button onClick={() => setBusquedaTexto('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}><X size={13} /></button>}
-          </div>
-          <button className="btn btn-ghost" onClick={() => setFiltroAbierto(o => !o)} style={{ gap: 5, color: hayFiltros ? 'var(--accent)' : undefined, borderColor: hayFiltros ? 'var(--accent)' : undefined }}>
-            Filtros {hayFiltros ? `(activos)` : ''} {filtroAbierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-          {hayFiltros && <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({})}>Limpiar</button>}
-
-          <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', background: 'var(--bg2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
-            {[
-              { id: 'cards', icon: <LayoutGrid size={14} />, title: 'Cards' },
-              { id: 'lista', icon: <List size={14} />, title: 'Lista' },
-              { id: 'tabla', icon: <Table2 size={14} />, title: 'Tabla' },
-            ].map(({ id, icon, title }) => (
-              <button key={id} title={title} onClick={() => setVista(id)}
-                style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: vista === id ? 'var(--bg)' : 'transparent', color: vista === id ? 'var(--accent)' : 'var(--text3)', boxShadow: vista === id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.1s', display: 'flex', alignItems: 'center' }}>
-                {icon}
-              </button>
-            ))}
-          </div>
+          <button className="btn btn-primary" onClick={abrirNuevo}><Plus size={14} /> Nuevo ejercicio</button>
         </div>
 
-        {vista === 'lista' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ordenar por:</span>
-            {SORT_OPTIONS.map(({ value, label }) => (
-              <button key={value} onClick={() => toggleSort(value)}
-                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sortBy === value ? 'var(--accent)' : 'var(--border)'}`, background: sortBy === value ? 'var(--accent-light)' : 'transparent', color: sortBy === value ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: sortBy === value ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4 }}>
-                {label} {sortBy === value && <SortArrow campo={value} />}
-              </button>
-            ))}
+        {/* Búsqueda, filtros y vista */}
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 360 }}>
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+              <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Buscar ejercicio..." value={busquedaTexto} onChange={e => setBusquedaTexto(e.target.value)} />
+              {busquedaTexto && <button onClick={() => setBusquedaTexto('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)' }}><X size={13} /></button>}
+            </div>
+            <button className="btn btn-ghost" onClick={() => setFiltroAbierto(o => !o)} style={{ gap: 5, color: hayFiltros ? 'var(--accent)' : undefined, borderColor: hayFiltros ? 'var(--accent)' : undefined }}>
+              Filtros {hayFiltros ? '(activos)' : ''} {filtroAbierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            {hayFiltros && <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({})}>Limpiar</button>}
+            <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', background: 'var(--bg2)', borderRadius: 8, padding: 3, border: '1px solid var(--border)' }}>
+              {[{ id: 'cards', icon: <LayoutGrid size={14} />, title: 'Cards' }, { id: 'lista', icon: <List size={14} />, title: 'Lista' }, { id: 'tabla', icon: <Table2 size={14} />, title: 'Tabla' }].map(({ id, icon, title }) => (
+                <button key={id} title={title} onClick={() => setVista(id)}
+                  style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: vista === id ? 'var(--bg)' : 'transparent', color: vista === id ? 'var(--accent)' : 'var(--text3)', boxShadow: vista === id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.1s', display: 'flex', alignItems: 'center' }}>
+                  {icon}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        {filtroAbierto && (
-          <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 12px', fontStyle: 'italic' }}>
-              Seleccionar varias etiquetas de <strong>distintas categorías</strong> filtra con AND (debe cumplir todas). Dentro de la <strong>misma categoría</strong>, con OR (cualquiera vale).
-            </p>
-            {Object.entries(ETIQUETAS).map(([campo, config], idx, arr) => (
-              <div key={campo}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: TAG_COLORS[campo], textTransform: 'uppercase', letterSpacing: '0.05em' }}>{config.label}</div>
-                  {(filtros[campo] || []).length > 0 && (
-                    <button type="button" onClick={() => setFiltros(f => ({ ...f, [campo]: [] }))}
-                      style={{ fontSize: 10, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕ limpiar</button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: idx < arr.length - 1 ? 0 : 0 }}>
-                  {config.grupos.flatMap(g => g.items).map(item => {
-                    const activo = (filtros[campo] || []).includes(item)
-                    return (
-                      <button key={item} type="button" onClick={() => toggleFiltro(campo, item)}
-                        style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? TAG_COLORS[campo] : 'var(--border)'}`, background: activo ? TAG_COLORS[campo] + '18' : 'transparent', color: activo ? TAG_COLORS[campo] : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
-                        {item}
-                      </button>
-                    )
-                  })}
-                </div>
-                {idx < arr.length - 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
-                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                    {(filtros[campo] || []).length > 0 && Object.entries(filtros).some(([k, v]) => k !== campo && v.length > 0) ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', padding: '1px 8px', borderRadius: 20, background: 'var(--accent-light)', border: '1px solid var(--accent)' }}>AND</span>
-                    ) : (
-                      <span style={{ fontSize: 10, color: 'var(--text3)', padding: '1px 8px' }}>+</span>
+          {vista === 'lista' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Ordenar por:</span>
+              {SORT_OPTIONS.map(({ value, label }) => (
+                <button key={value} onClick={() => toggleSort(value)}
+                  style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sortBy === value ? 'var(--accent)' : 'var(--border)'}`, background: sortBy === value ? 'var(--accent-light)' : 'transparent', color: sortBy === value ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontWeight: sortBy === value ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {label} {sortBy === value && <SortArrow campo={value} />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filtroAbierto && (
+            <div style={{ padding: 16, background: 'var(--bg2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 12px', fontStyle: 'italic' }}>
+                Distintas categorías filtran con AND. Dentro de la misma categoría, con OR.
+              </p>
+              {seccionesFiltro.map((seccion, idx, arr) => (
+                <div key={seccion.campo}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: seccion.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{seccion.label}</div>
+                    {(filtros[seccion.campo] || []).length > 0 && (
+                      <button type="button" onClick={() => setFiltros(f => ({ ...f, [seccion.campo]: [] }))}
+                        style={{ fontSize: 10, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕ limpiar</button>
                     )}
-                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="empty"><p>Cargando...</p></div>
-      ) : filtrados.length === 0 ? (
-        <div className="empty"><p>No hay ejercicios{busquedaTexto || hayFiltros ? ' con esos filtros' : ''}.</p></div>
-      ) : vista === 'cards' ? (
-        /* ── VISTA CARDS ── */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-          {filtrados.map(e => {
-            const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-            const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
-            const abierto = expandido === e.id
-            const editando = inlineEj?.id === e.id
-            return (
-              <div key={e.id} className="card" style={{ padding: 0, overflow: 'hidden', border: editando ? '2px solid var(--accent)' : undefined }}>
-                {thumb && !editando && (
-                  <div style={{ position: 'relative', paddingBottom: '40%', background: '#000', cursor: ytid ? 'pointer' : 'default' }}
-                    onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
-                    <img src={thumb} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
-                    {ytid && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>
-                      </div>
-                    </div>}
-                  </div>
-                )}
-                <div style={{ padding: '10px 12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                    {editando ? (
-                      <input className="form-input" value={inlineEj.nombre} autoFocus
-                        onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
-                        style={{ flex: 1, fontWeight: 600, fontSize: 13, padding: '3px 8px' }} />
-                    ) : (
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', flex: 1, cursor: 'text' }}
-                        onDoubleClick={() => activarInline(e)}
-                        title="Doble clic para editar">
-                        {e.nombre}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      {!editando && <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>}
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
-                    </div>
-                  </div>
-
-                  {!editando && e.descripcion && (
-                    <div style={{ marginTop: 5 }}>
-                      <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'block' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 2, WebkitBoxOrient: 'vertical' }}>
-                        {e.descripcion}
-                      </div>
-                      {e.descripcion.length > 80 && (
-                        <button onClick={() => setExpandido(abierto ? null : e.id)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2 }}>
-                          {abierto ? 'Ver menos' : 'Ver más'}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 0 }}>
+                    {(seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)).map(item => {
+                      const activo = (filtros[seccion.campo] || []).includes(item)
+                      return (
+                        <button key={item} type="button" onClick={() => toggleFiltro(seccion.campo, item)}
+                          style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '18' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
+                          {item}
                         </button>
-                      )}
+                      )
+                    })}
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
+                      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                      {(filtros[seccion.campo] || []).length > 0 && Object.entries(filtros).some(([k, v]) => k !== seccion.campo && v.length > 0)
+                        ? <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', padding: '1px 8px', borderRadius: 20, background: 'var(--accent-light)', border: '1px solid var(--accent)' }}>AND</span>
+                        : <span style={{ fontSize: 10, color: 'var(--text3)', padding: '1px 8px' }}>+</span>}
+                      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                     </div>
                   )}
-
-                  {editando ? (
-                    <>
-                      <InlineTagsPanel ej={inlineEj} onChange={(campo, v) => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
-                      <InlineActions />
-                    </>
-                  ) : (
-                    <>
-                      {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
-                      {Object.keys(ETIQUETAS).map(campo => {
-                        const vals = e[campo] || []
-                        if (!vals.length) return null
-                        return (
-                          <div key={campo} style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
-                            {vals.map(v => (
-                              <span key={v} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: TAG_COLORS[campo] + '18', color: TAG_COLORS[campo], border: `1px solid ${TAG_COLORS[campo]}33`, fontWeight: 500 }}>{v}</span>
-                            ))}
-                          </div>
-                        )
-                      })}
-                    </>
-                  )}
                 </div>
-              </div>
-            )
-          })}
+              ))}
+            </div>
+          )}
         </div>
-      ) : vista === 'lista' ? (
-        /* ── VISTA LISTA ── */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {filtrados.map(e => {
-            const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-            const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
-            const abierto = expandido === e.id
-            const editando = inlineEj?.id === e.id
-            return (
-              <div key={e.id} className="card" style={{ padding: '10px 14px', border: editando ? '2px solid var(--accent)' : undefined }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+
+        {loading ? (
+          <div className="empty"><p>Cargando...</p></div>
+        ) : filtrados.length === 0 ? (
+          <div className="empty"><p>No hay ejercicios{busquedaTexto || hayFiltros ? ' con esos filtros' : ''}.</p></div>
+        ) : vista === 'cards' ? (
+          /* ── CARDS ── */
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {filtrados.map(e => {
+              const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+              const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
+              const abierto = expandido === e.id
+              const editando = inlineEj?.id === e.id
+              return (
+                <div key={e.id} className="card" style={{ padding: 0, overflow: 'hidden', border: editando ? '2px solid var(--accent)' : undefined }}>
                   {thumb && !editando && (
-                    <div style={{ width: 56, height: 40, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#000', cursor: ytid ? 'pointer' : 'default', position: 'relative' }}
+                    <div style={{ position: 'relative', paddingBottom: '40%', background: '#000', cursor: ytid ? 'pointer' : 'default' }}
                       onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
-                      <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                      <img src={thumb} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
                       {ytid && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg viewBox="0 0 24 24" fill="white" width="10" height="10"><polygon points="5,3 19,12 5,21"/></svg>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>
+                        </div>
                       </div>}
                     </div>
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       {editando ? (
                         <input className="form-input" value={inlineEj.nombre} autoFocus
                           onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
                           style={{ flex: 1, fontWeight: 600, fontSize: 13, padding: '3px 8px' }} />
                       ) : (
-                        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', cursor: 'text' }}
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', flex: 1, cursor: 'text' }}
                           onDoubleClick={() => activarInline(e)} title="Doble clic para editar">
                           {e.nombre}
-                        </span>
+                        </div>
                       )}
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {!editando && <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>}
@@ -798,13 +908,13 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                     </div>
 
                     {!editando && e.descripcion && (
-                      <div style={{ marginTop: 3 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'inline' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 1, WebkitBoxOrient: 'vertical' }}>
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'block' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 2, WebkitBoxOrient: 'vertical' }}>
                           {e.descripcion}
-                        </span>
-                        {e.descripcion.length > 60 && (
-                          <button onClick={() => setExpandido(abierto ? null : e.id)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
-                            {abierto ? 'menos' : 'más'}
+                        </div>
+                        {e.descripcion.length > 80 && (
+                          <button onClick={() => setExpandido(abierto ? null : e.id)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2 }}>
+                            {abierto ? 'Ver menos' : 'Ver más'}
                           </button>
                         )}
                       </div>
@@ -816,186 +926,260 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
                         <InlineActions />
                       </>
                     ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                        {Object.keys(ETIQUETAS).map(campo => {
-                          const vals = e[campo] || []
+                      <>
+                        {e.video_url && <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 11, color: 'var(--accent)' }}>▶ Ver vídeo</a>}
+                        <EstructuraChips estructuraIds={e.estructura_anatomica || []} />
+                        {seccionesFiltro.filter(s => s.campo !== 'material').map(seccion => {
+                          const vals = e[seccion.campo] || []
                           if (!vals.length) return null
-                          return <MiniChips key={campo} values={vals} color={TAG_COLORS[campo]} />
+                          return <MiniChips key={seccion.campo} values={vals} color={seccion.color} />
                         })}
-                      </div>
+                        {(e.material || []).length > 0 && <MiniChips values={e.material} color="#475569" />}
+                      </>
                     )}
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        /* ── VISTA TABLA ── */
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                {[
-                  { campo: 'nombre', label: 'Ejercicio' },
-                  { campo: 'zona_corporal', label: 'Zona corporal' },
-                  { campo: 'patron_movimiento', label: 'Patrón' },
-                  { campo: 'lateralidad_apoyo', label: 'Apoyo' },
-                  { campo: 'objetivo', label: 'Objetivo' },
-                  { campo: 'nivel_aproximacion', label: 'Nivel' },
-                  { campo: 'tipo_contraccion', label: 'Contracción' },
-                  { campo: 'material', label: 'Material' },
-                ].map(({ campo, label }) => (
-                  <th key={campo}
-                    style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', userSelect: 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span onClick={() => toggleSort(campo)} style={{ cursor: 'pointer' }}>{label} <SortArrow campo={campo} /></span>
-                      {campo !== 'nombre' && (
-                        <ColumnFilter campo={campo} filtros={filtros} toggleFiltro={toggleFiltro} clearFiltro={clearFiltro} ejercicios={ejercicios} />
-                      )}
-                    </div>
-                  </th>
-                ))}
-                <th style={{ padding: '8px 10px', width: 80 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map((e, i) => {
-                const editando = inlineEj?.id === e.id
-                return (
-                  <tr key={e.id} style={{ borderBottom: '1px solid var(--border)', background: editando ? 'var(--accent-light)' : i % 2 === 0 ? 'transparent' : 'var(--bg2)', verticalAlign: 'top' }}>
-                    <td style={{ padding: '8px 10px', minWidth: 180 }}>
-                      {editando ? (
-                        <input className="form-input" value={inlineEj.nombre} autoFocus
-                          onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
-                          style={{ fontWeight: 600, fontSize: 13, padding: '3px 8px', width: '100%' }} />
-                      ) : (
-                        <>
-                          <span style={{ fontWeight: 600, color: 'var(--text)', cursor: 'text' }}
+              )
+            })}
+          </div>
+        ) : vista === 'lista' ? (
+          /* ── LISTA ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {filtrados.map(e => {
+              const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+              const thumb = ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_url && e.media_tipo !== 'youtube' ? e.media_url : null)
+              const abierto = expandido === e.id
+              const editando = inlineEj?.id === e.id
+              return (
+                <div key={e.id} className="card" style={{ padding: '10px 14px', border: editando ? '2px solid var(--accent)' : undefined }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {thumb && !editando && (
+                      <div style={{ width: 56, height: 40, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: '#000', cursor: ytid ? 'pointer' : 'default', position: 'relative' }}
+                        onClick={() => ytid && window.open(`https://www.youtube.com/watch?v=${ytid}`, '_blank')}>
+                        <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                        {ytid && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg viewBox="0 0 24 24" fill="white" width="10" height="10"><polygon points="5,3 19,12 5,21"/></svg>
+                        </div>}
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        {editando ? (
+                          <input className="form-input" value={inlineEj.nombre} autoFocus
+                            onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
+                            style={{ flex: 1, fontWeight: 600, fontSize: 13, padding: '3px 8px' }} />
+                        ) : (
+                          <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', cursor: 'text' }}
                             onDoubleClick={() => activarInline(e)} title="Doble clic para editar">
                             {e.nombre}
                           </span>
-                          {e.descripcion && <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text3)', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.descripcion}</div>}
-                        </>
-                      )}
-                    </td>
-                    {['zona_corporal', 'patron_movimiento', 'lateralidad_apoyo', 'objetivo', 'nivel_aproximacion', 'tipo_contraccion', 'material'].map(campo => (
-                      <td key={campo} style={{ padding: '8px 10px', maxWidth: 180 }}>
-                        {editando
-                          ? <InlineTags campo={campo} values={inlineEj[campo] || []} onChange={v => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
-                          : <MiniChips values={e[campo]} color={TAG_COLORS[campo]} />
-                        }
-                      </td>
-                    ))}
-                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
-                      {editando ? (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-primary btn-sm" onClick={guardarInline} disabled={inlineSaving}><Check size={11} /></button>
-                          <button className="btn btn-ghost btn-sm" onClick={cancelarInline}><X size={11} /></button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>
+                        )}
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          {!editando && <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>}
                           <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
                           <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
                         </div>
+                      </div>
+                      {!editando && e.descripcion && (
+                        <div style={{ marginTop: 3 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.4, overflow: abierto ? 'visible' : 'hidden', display: abierto ? 'inline' : '-webkit-box', WebkitLineClamp: abierto ? undefined : 1, WebkitBoxOrient: 'vertical' }}>
+                            {e.descripcion}
+                          </span>
+                          {e.descripcion.length > 60 && (
+                            <button onClick={() => setExpandido(abierto ? null : e.id)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
+                              {abierto ? 'menos' : 'más'}
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      {editando ? (
+                        <>
+                          <InlineTagsPanel ej={inlineEj} onChange={(campo, v) => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
+                          <InlineActions />
+                        </>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                          <EstructuraChips estructuraIds={e.estructura_anatomica || []} />
+                          {seccionesFiltro.map(seccion => {
+                            const vals = e[seccion.campo] || []
+                            if (!vals.length) return null
+                            return <MiniChips key={seccion.campo} values={vals} color={seccion.color} />
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          /* ── TABLA ── */
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  {TABLA_COLUMNAS.map(({ campo, label, filtrable, seccion }) => (
+                    <th key={campo}
+                      style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: sortBy === campo ? 'var(--accent)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', userSelect: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span onClick={() => toggleSort(campo)} style={{ cursor: 'pointer' }}>{label} <SortArrow campo={campo} /></span>
+                        {filtrable && seccion && <ColumnFilter seccion={seccion} filtros={filtros} toggleFiltro={toggleFiltro} clearFiltro={clearFiltro} ejercicios={ejercicios} />}
+                      </div>
+                    </th>
+                  ))}
+                  <th style={{ padding: '8px 10px', width: 80 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map((e, i) => {
+                  const editando = inlineEj?.id === e.id
+                  return (
+                    <tr key={e.id} style={{ borderBottom: '1px solid var(--border)', background: editando ? 'var(--accent-light)' : i % 2 === 0 ? 'transparent' : 'var(--bg2)', verticalAlign: 'top' }}>
+                      <td style={{ padding: '8px 10px', minWidth: 180 }}>
+                        {editando ? (
+                          <input className="form-input" value={inlineEj.nombre} autoFocus
+                            onChange={ev => setInlineEj(ie => ({ ...ie, nombre: ev.target.value }))}
+                            style={{ fontWeight: 600, fontSize: 13, padding: '3px 8px', width: '100%' }} />
+                        ) : (
+                          <>
+                            <span style={{ fontWeight: 600, color: 'var(--text)', cursor: 'text' }}
+                              onDoubleClick={() => activarInline(e)} title="Doble clic para editar">
+                              {e.nombre}
+                            </span>
+                            {e.descripcion && <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--text3)', marginTop: 2, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.descripcion}</div>}
+                          </>
+                        )}
+                      </td>
+                      {TABLA_COLUMNAS.slice(1).map(({ campo, seccion: col }) => (
+                        <td key={campo} style={{ padding: '8px 10px', maxWidth: 180 }}>
+                          {editando
+                            ? col && <InlineTags seccion={col} values={inlineEj[campo] || []} onChange={v => setInlineEj(ie => ({ ...ie, [campo]: v }))} />
+                            : <MiniChips values={e[campo]} color={col?.color || '#6b7280'} />
+                          }
+                        </td>
+                      ))}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                        {editando ? (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button className="btn btn-primary btn-sm" onClick={guardarInline} disabled={inlineSaving}><Check size={11} /></button>
+                            <button className="btn btn-ghost btn-sm" onClick={cancelarInline}><X size={11} /></button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => activarInline(e)} style={{ padding: '2px 6px' }} title="Edición rápida"><Pencil size={11} /></button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} style={{ padding: '2px 6px' }} title="Editar todo">⚙</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => eliminar(e.id)} style={{ padding: '2px 6px', color: 'var(--danger)' }}><Trash2 size={11} /></button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {modal && (
-        <div className="modal-backdrop" onClick={() => setModal(null)}>
-          <div className="modal" style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{modal === 'nuevo' ? 'Nuevo ejercicio' : 'Editar ejercicio'}</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModal(null)}><X size={14} /></button>
-            </div>
+        {/* ── MODAL NUEVO/EDITAR ── */}
+        {modal && (
+          <div className="modal-backdrop" onClick={() => setModal(null)}>
+            <div className="modal" style={{ maxWidth: 640, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <span className="modal-title">{modal === 'nuevo' ? 'Nuevo ejercicio' : 'Editar ejercicio'}</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => setModal(null)}><X size={14} /></button>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Nombre *</label>
-              <input className="form-input" value={form.nombre} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Sentadilla búlgara" autoFocus />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Descripción</label>
-              <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Tipo de media</label>
-              <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)}>
-                <option value="">Sin media</option>
-                <option value="youtube">YouTube</option>
-                <option value="imagen">Imagen</option>
-                <option value="video">Vídeo</option>
-                <option value="gif">GIF</option>
-              </select>
-            </div>
-            {form.media_tipo && (
               <div className="form-group">
-                <label className="form-label">{form.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="form-input" value={form.media_url}
-                    onChange={e => {
-                      fd('media_url', e.target.value)
-                      if (form.media_tipo === 'youtube') comprobarVideoConflicto(e.target.value, modal?.id)
-                    }}
-                    placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
-                    style={{ flex: 1, borderColor: videoConflicto ? '#f59e0b' : undefined }} />
-                  {form.media_tipo !== 'youtube' && (
-                    <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                      <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
-                        onChange={async ev => {
-                          const file = ev.target.files?.[0]; if (!file) return
-                          const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
-                          const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
-                          if (error) { alert('Error: ' + error.message); return }
-                          const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
-                          fd('media_url', publicUrl); ev.target.value = ''
-                        }} />
-                      <span className="btn btn-ghost btn-sm">📁 Subir</span>
-                    </label>
+                <label className="form-label">Nombre *</label>
+                <input className="form-input" value={form.nombre} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Sentadilla búlgara" autoFocus />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Descripción</label>
+                <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
+              </div>
+
+              {/* Media */}
+              <div className="form-group">
+                <label className="form-label">Tipo de media</label>
+                <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)}>
+                  <option value="">Sin media</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="imagen">Imagen</option>
+                  <option value="video">Vídeo</option>
+                  <option value="gif">GIF</option>
+                </select>
+              </div>
+              {form.media_tipo && (
+                <div className="form-group">
+                  <label className="form-label">{form.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input className="form-input" value={form.media_url}
+                      onChange={e => {
+                        fd('media_url', e.target.value)
+                        if (form.media_tipo === 'youtube') comprobarVideoConflicto(e.target.value, modal?.id)
+                      }}
+                      placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
+                      style={{ flex: 1, borderColor: videoConflicto ? '#f59e0b' : undefined }} />
+                    {form.media_tipo !== 'youtube' && (
+                      <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                        <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                          onChange={async ev => {
+                            const file = ev.target.files?.[0]; if (!file) return
+                            const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
+                            const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                            if (error) { alert('Error: ' + error.message); return }
+                            const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                            fd('media_url', publicUrl); ev.target.value = ''
+                          }} />
+                        <span className="btn btn-ghost btn-sm">📁 Subir</span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
+              {videoConflicto && (
+                <div style={{ margin: '-8px 0 12px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+                  <span>Este vídeo ya está en uso por: <strong>{videoConflicto.nombre}</strong>. Puedes continuar si es un ejercicio diferente.</span>
+                </div>
+              )}
+              {form.media_tipo && form.media_tipo !== 'youtube' && (
+                <div className="form-group">
+                  <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
+                  <input className="form-input" value={form.video_url} onChange={e => fd('video_url', e.target.value)} placeholder="https://..." />
+                </div>
+              )}
+
+              {/* Clasificación — iteración declarativa sobre SECCIONES_CLASIFICACION */}
+              {SECCIONES_CLASIFICACION.map(seccion => (
+                <div key={seccion.tipo === 'complejos' ? 'complejos' : seccion.campo} className="form-group">
+                  <label className="form-label" style={{ color: seccion.color }}>{seccion.label}</label>
+                  {seccion.tipo === 'complejos' ? (
+                    <ComplexSelector
+                      estructura_anatomica={form.estructura_anatomica}
+                      onChange={({ estructura_anatomica, complejo_articular }) => {
+                        setForm(f => ({ ...f, estructura_anatomica, complejo_articular }))
+                      }}
+                    />
+                  ) : (
+                    <TagSelector seccion={seccion} value={form[seccion.campo]} onChange={v => fd(seccion.campo, v)} />
                   )}
                 </div>
-              </div>
-            )}
-            {videoConflicto && (
-              <div style={{ margin: '-8px 0 12px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
-                <span>Este vídeo ya está en uso por: <strong>{videoConflicto.nombre}</strong>. Puedes continuar si es un ejercicio diferente.</span>
-              </div>
-            )}
-            {form.media_tipo && form.media_tipo !== 'youtube' && (
+              ))}
+
               <div className="form-group">
-                <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
-                <input className="form-input" value={form.video_url} onChange={e => fd('video_url', e.target.value)} placeholder="https://..." />
+                <label className="form-label">Notas internas</label>
+                <textarea className="form-input" value={form.notas} onChange={e => fd('notas', e.target.value)} placeholder="Apuntes, cuidados, variantes..." rows={2} style={{ resize: 'vertical' }} />
               </div>
-            )}
 
-            {Object.entries(ETIQUETAS).map(([campo, config]) => (
-              <div key={campo} className="form-group">
-                <label className="form-label" style={{ color: TAG_COLORS[campo] }}>{config.label}</label>
-                <TagSelector campo={campo} value={form[campo]} onChange={v => fd(campo, v)} />
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
+                <button className="btn btn-primary" disabled={saving || !form.nombre.trim()} onClick={guardar}>{saving ? 'Guardando...' : <><Check size={13} /> Guardar</>}</button>
               </div>
-            ))}
-
-            <div className="form-group">
-              <label className="form-label">Notas internas</label>
-              <textarea className="form-input" value={form.notas} onChange={e => fd('notas', e.target.value)} placeholder="Apuntes, cuidados, variantes..." rows={2} style={{ resize: 'vertical' }} />
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={saving || !form.nombre.trim()} onClick={guardar}>{saving ? 'Guardando...' : <><Check size={13} /> Guardar</>}</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </>)}
     </div>
   )

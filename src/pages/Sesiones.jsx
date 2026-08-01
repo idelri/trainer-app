@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { clasificarEjercicio } from '../lib/clasificarEjercicio'
-import { ETIQUETAS, TAG_COLORS } from '../lib/taxonomia'
+import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura } from '../lib/taxonomia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
@@ -352,7 +351,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla,
   const sesionInicialCargada = useRef(false)
   const [bloques, setBloques] = useState([])
 
-  const FORM_CREAR_EJ_EMPTY = { nombre: '', descripcion: '', notas: '', ejecucion_tipo: '', media_tipo: 'youtube', media_url: '', video_url: '', zona_corporal: [], patron_movimiento: [], lateralidad_apoyo: [], objetivo: [], tipo_contraccion: [], material: [], nivel_aproximacion: [] }
+  const FORM_CREAR_EJ_EMPTY = { nombre: '', descripcion: '', notas: '', ejecucion_tipo: '', media_tipo: 'youtube', media_url: '', video_url: '', complejo_articular: [], estructura_anatomica: [], patron_movimiento: [], lateralidad_apoyo: [], plano_movimiento: [], tipo_contraccion: [], material: [] }
   const [modalCrearEj, setModalCrearEj] = useState(null) // { bloqueId, variablesDefault }
   const [formCrearEj, setFormCrearEj] = useState(FORM_CREAR_EJ_EMPTY)
   const [guardandoCrearEj, setGuardandoCrearEj] = useState(false)
@@ -951,17 +950,10 @@ async function guardarSesion() {
     setErrorCrearEj(null)
     const { bloqueId } = modalCrearEj
 
-    const tags = clasificarEjercicio({
-      nombre: formCrearEj.nombre.trim(),
-      notas: formCrearEj.notas || '',
-      ejecucion_tipo: formCrearEj.ejecucion_tipo || '',
-      ejecucion_texto: '',
-    })
     const camposTags = {}
-    for (const campo of Object.keys(ETIQUETAS)) {
-      const valForm = formCrearEj[campo]
-      if (valForm && valForm.length > 0) camposTags[campo] = valForm
-      else if (tags[campo] && tags[campo].length > 0) camposTags[campo] = tags[campo]
+    for (const campo of CAMPOS_CLASIFICACION) {
+      const val = formCrearEj[campo]
+      if (val && val.length > 0) camposTags[campo] = val
     }
 
     const insertBib = {
@@ -2355,31 +2347,7 @@ async function guardarSesion() {
       )}
 
       {modalBiblioteca && (() => {
-        const BIB_VARS = [
-          { campo: 'patron_movimiento', label: 'Patrón', color: '#7c3aed', grupos: [
-            { grupo: 'Tren inferior', items: ['Dominante de rodilla','Dominante de cadera','Dominante de tobillo','Abducción / Rotación externa','Aducción / Plano medial','Pliometría y salto','Carrera y locomoción','Cambio de dirección / Desaceleración'] },
-            { grupo: 'Tren superior', items: ['Empuje horizontal','Empuje vertical','Tracción horizontal','Tracción vertical','Estabilidad escapular'] },
-            { grupo: 'Core', items: ['Anti-extensión','Anti-rotación','Anti-flexión lateral','Anti-flexión frontal','Rotación','Flexión de tronco','Control lumbopélvico'] },
-          ]},
-          { campo: 'objetivo', label: 'Objetivo', color: '#b45309', grupos: ETIQUETAS.objetivo.grupos },
-          { campo: 'nivel_aproximacion', label: 'Nivel', color: '#0f766e', single: true, grupos: ETIQUETAS.nivel_aproximacion.grupos },
-          { campo: 'zona_corporal', label: 'Zona corporal', color: '#0369a1', grupos: [
-            { grupo: 'Cadenas principales', items: ['Cadena Anterior','Cadena Posterior','Estabilizadores de Cadera','Cadena Medial / Aductores'] },
-            { grupo: 'CORE / Tronco', items: ['Lumbo-pélvico','Abdominal','Dorsal / Torácico','Cervical'] },
-            { grupo: 'Pie / Tobillo', items: ['Gemelos / Sóleos','Tibial anterior','Peroneos','Intrínsecos del pie'] },
-          ]},
-          { campo: 'tipo_contraccion', label: 'Contracción', color: '#be185d', grupos: [
-            { grupo: '', items: ['Dinámica (Concéntrica + Excéntrica)','Excéntrica acentuada','Isométrica','Isoinercial / Isocinética'] },
-          ]},
-          { campo: 'material', label: 'Material', color: '#475569', grupos: [
-            { grupo: 'Sin equipamiento', items: ['Sin material / peso corporal','Colchoneta / esterilla'] },
-            { grupo: 'Pesos libres', items: ['Mancuernas','Kettlebell','Barra','Discos','Balón medicinal'] },
-            { grupo: 'Máquinas y poleas', items: ['Máquina guiada','Polea'] },
-            { grupo: 'Elásticos y suspensión', items: ['Goma elástica','Mini-band','TRX / suspensión'] },
-            { grupo: 'Accesorios', items: ['Fitball','Foam roller','Cajón / step','Banco','Bosu / superficie inestable','Sliders / plataforma deslizante','Trineo','Valla / cono / escalera'] },
-            { grupo: 'Cardio', items: ['Cinta de correr','Bicicleta','Remoergómetro','Assault bike / air bike','Ergómetro ski','Elíptica'] },
-          ]},
-        ]
+        const BIB_VARS = SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos')
 
         const hayFiltrosBib = Object.keys(bibFiltros).length > 0
 
@@ -2440,14 +2408,14 @@ async function guardarSesion() {
                 {/* Columna izquierda: subvariables (solo si hay filtros activos) */}
                 {varsActivas.length > 0 && (
                   <div style={{ width: 280, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
-                    {varsActivas.map(v => (
-                      <div key={v.campo} style={{ padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33` }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
-                        {v.grupos.map(({ grupo, items }) => (
-                          <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
-                            {grupo && <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>{grupo}</div>}
+                    {varsActivas.map(v => {
+                      const allItems = v.tipo === 'chips' ? v.items : v.grupos.flatMap(g => g.items)
+                      return (
+                        <div key={v.campo} style={{ padding: '8px 10px', background: v.color + '0a', borderRadius: 8, border: `1px solid ${v.color}33` }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: v.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{v.label}</div>
+                          {v.tipo === 'chips' ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {items.map(item => {
+                              {allItems.map(item => {
                                 const activo = bibFiltros[v.campo] === item
                                 return (
                                   <button key={item} type="button"
@@ -2458,10 +2426,26 @@ async function guardarSesion() {
                                 )
                               })}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                          ) : v.grupos.map(({ grupo, items }) => (
+                            <div key={grupo} style={{ marginBottom: grupo ? 6 : 0 }}>
+                              {grupo && <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 3 }}>{grupo}</div>}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {items.map(item => {
+                                  const activo = bibFiltros[v.campo] === item
+                                  return (
+                                    <button key={item} type="button"
+                                      onClick={() => setBibFiltros(f => ({ ...f, [v.campo]: activo ? null : item }))}
+                                      style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, border: `1.5px solid ${activo ? v.color : 'var(--border)'}`, background: activo ? v.color : 'transparent', color: activo ? '#fff' : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400, transition: 'all 0.1s' }}>
+                                      {item}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
@@ -2684,26 +2668,22 @@ async function guardarSesion() {
                 </div>
               )}
               {/* Etiquetas taxonómicas */}
-              {Object.entries(ETIQUETAS).map(([campo, config]) => {
-                const isSingle = config.single === true
-                const seleccionados = formCrearEj[campo] || []
+              {SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos').map(seccion => {
+                const seleccionados = formCrearEj[seccion.campo] || []
+                const allItems = seccion.tipo === 'chips' ? seccion.items : seccion.grupos.flatMap(g => g.items)
                 return (
-                  <div key={campo}>
-                    <label className="form-label" style={{ color: TAG_COLORS[campo] }}>{config.label}{isSingle ? ' (1 máx.)' : ''}</label>
+                  <div key={seccion.campo}>
+                    <label className="form-label" style={{ color: seccion.color }}>{seccion.label}</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {config.grupos.flatMap(g => g.items).map(item => {
+                      {allItems.map(item => {
                         const activo = seleccionados.includes(item)
                         return (
                           <button key={item} type="button"
                             onClick={() => setFormCrearEj(f => {
-                              const actual = f[campo] || []
-                              let next
-                              if (activo) next = actual.filter(v => v !== item)
-                              else if (isSingle) next = [item]
-                              else next = [...actual, item]
-                              return { ...f, [campo]: next }
+                              const actual = f[seccion.campo] || []
+                              return { ...f, [seccion.campo]: activo ? actual.filter(v => v !== item) : [...actual, item] }
                             })}
-                            style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? TAG_COLORS[campo] : 'var(--border)'}`, background: activo ? TAG_COLORS[campo] + '22' : 'transparent', color: activo ? TAG_COLORS[campo] : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
+                            style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
                             {item}
                           </button>
                         )
