@@ -7,7 +7,7 @@ import {
   labelDeId, colorDeId, idsHojaDeEstructura,
   labelDePatronId, colorDePatronId, patronesRecomendadosActivos,
 } from '../lib/taxonomia'
-import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check, Filter } from 'lucide-react'
+import { Search, Plus, X, Pencil, Trash2, ChevronDown, ChevronUp, LayoutGrid, List, Table2, Check, Filter, Play } from 'lucide-react'
 import BibliotecaSesiones from './BibliotecaSesiones'
 
 function ytId(url) {
@@ -227,9 +227,28 @@ function PatronSelector({ value = [], onChange, complejosSeleccionados = [], est
 }
 
 // ── TAG SELECTOR (secciones tipo grupos y chips) ──────────────────────────────
-function TagSelector({ seccion, value = [], onChange }) {
+function TagSelector({ seccion, value = [], onChange, listMode }) {
   if (seccion.tipo === 'chips') {
     const getLabel = seccion.labelFn || (id => id)
+    if (listMode) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {seccion.items.map(item => {
+            const activo = value.includes(item)
+            return (
+              <div key={item}
+                onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', borderRadius: 5, cursor: 'pointer', background: activo ? '#f0fdf4' : 'transparent', transition: 'background 0.1s' }}>
+                <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${activo ? '#2d6a4f' : 'var(--border-strong, #cbd5e1)'}`, background: activo ? '#2d6a4f' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {activo && <Check size={8} color="#fff" strokeWidth={3} />}
+                </span>
+                <span style={{ fontSize: 11.5, color: activo ? '#065f46' : 'var(--text2)', fontWeight: activo ? 500 : 400 }}>{getLabel(item)}</span>
+              </div>
+            )
+          })}
+        </div>
+      )
+    }
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {seccion.items.map(item => {
@@ -242,6 +261,32 @@ function TagSelector({ seccion, value = [], onChange }) {
             </button>
           )
         })}
+      </div>
+    )
+  }
+  if (listMode) {
+    return (
+      <div>
+        {seccion.grupos.map(({ grupo, items }) => (
+          <div key={grupo} style={{ marginBottom: 6 }}>
+            {grupo && <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{grupo}</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {items.map(item => {
+                const activo = value.includes(item)
+                return (
+                  <div key={item}
+                    onClick={() => onChange(activo ? value.filter(v => v !== item) : [...value, item])}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', borderRadius: 5, cursor: 'pointer', background: activo ? '#f0fdf4' : 'transparent', transition: 'background 0.1s' }}>
+                    <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${activo ? '#2d6a4f' : 'var(--border-strong, #cbd5e1)'}`, background: activo ? '#2d6a4f' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {activo && <Check size={8} color="#fff" strokeWidth={3} />}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: activo ? '#065f46' : 'var(--text2)', fontWeight: activo ? 500 : 400 }}>{item}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
@@ -1253,100 +1298,184 @@ export default function Biblioteca({ setPage, setSesionesContext }) {
         {/* ── MODAL NUEVO/EDITAR ── */}
         {modal && (
           <div className="modal-backdrop" onClick={() => setModal(null)}>
-            <div className="modal" style={{ maxWidth: 640, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth: 'min(96vw, 1160px)', width: '100%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <span className="modal-title">{modal === 'nuevo' ? 'Nuevo ejercicio' : 'Editar ejercicio'}</span>
                 <button className="btn btn-ghost btn-sm" onClick={() => setModal(null)}><X size={14} /></button>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Nombre *</label>
-                <input className="form-input" value={form.nombre} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Sentadilla búlgara" autoFocus />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Descripción</label>
-                <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={3} style={{ resize: 'vertical' }} />
-              </div>
+              {/* ── Cuerpo en dos columnas ── */}
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-              {/* Media */}
-              <div className="form-group">
-                <label className="form-label">Tipo de media</label>
-                <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)}>
-                  <option value="">Sin media</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="imagen">Imagen</option>
-                  <option value="video">Vídeo</option>
-                  <option value="gif">GIF</option>
-                </select>
-              </div>
-              {form.media_tipo && (
-                <div className="form-group">
-                  <label className="form-label">{form.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input className="form-input" value={form.media_url}
-                      onChange={e => {
-                        fd('media_url', e.target.value)
-                        if (form.media_tipo === 'youtube') comprobarVideoConflicto(e.target.value, modal?.id)
-                      }}
-                      placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
-                      style={{ flex: 1, borderColor: videoConflicto ? '#f59e0b' : undefined }} />
-                    {form.media_tipo !== 'youtube' && (
-                      <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                        <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
-                          onChange={async ev => {
-                            const file = ev.target.files?.[0]; if (!file) return
-                            const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
-                            const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
-                            if (error) { alert('Error: ' + error.message); return }
-                            const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
-                            fd('media_url', publicUrl); ev.target.value = ''
-                          }} />
-                        <span className="btn btn-ghost btn-sm">📁 Subir</span>
-                      </label>
-                    )}
+                {/* Columna izquierda: nombre + descripción + clasificación */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Nombre *</label>
+                    <input className="form-input" value={form.nombre} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Sentadilla búlgara" autoFocus />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Descripción</label>
+                    <textarea className="form-input" value={form.descripcion} onChange={e => fd('descripcion', e.target.value)} placeholder="Explicación del ejercicio..." rows={2} style={{ resize: 'vertical' }} />
+                  </div>
+
+                  {/* ── Clasificación principal ─────────────────────────────────── */}
+                  <div style={{ borderLeft: '3px solid #2d6a4f', paddingLeft: 10, marginBottom: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>Clasificación principal</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+                    {[0, 1, 2].map((idx, i) => {
+                      const s = SECCIONES_CLASIFICACION[idx]
+                      return (
+                        <div key={s.tipo === 'complejos' ? 'complejos' : s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{i + 1}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
+                          </div>
+                          <div style={{ padding: 10, flex: 1 }}>
+                            {s.tipo === 'complejos' ? (
+                              <ComplexSelector estructura_anatomica={form.estructura_anatomica} onChange={({ estructura_anatomica, complejo_articular }) => setForm(f => ({ ...f, estructura_anatomica, complejo_articular }))} />
+                            ) : s.tipo === 'patron' ? (
+                              <PatronSelector value={form.patron_movimiento} onChange={v => fd('patron_movimiento', v)} complejosSeleccionados={form.complejo_articular} estructurasSeleccionadas={form.estructura_anatomica} />
+                            ) : (
+                              <TagSelector seccion={s} value={form[s.campo]} onChange={v => fd(s.campo, v)} listMode />
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* ── Características del ejercicio ──────────────────────────────── */}
+                  <div style={{ borderLeft: '3px solid #64748b', paddingLeft: 10, marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>Características del ejercicio</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                    {SECCIONES_CLASIFICACION.slice(3).map((s, i) => (
+                      <div key={s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#64748b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{4 + i}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
+                        </div>
+                        <div style={{ padding: 10, flex: 1 }}>
+                          <TagSelector seccion={s} value={form[s.campo]} onChange={v => fd(s.campo, v)} listMode />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-              {videoConflicto && (
-                <div style={{ margin: '-8px 0 12px', padding: '8px 12px', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 8, fontSize: 12, color: '#92400e', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
-                  <span>Este vídeo ya está en uso por: <strong>{videoConflicto.nombre}</strong>. Puedes continuar si es un ejercicio diferente.</span>
-                </div>
-              )}
-              {form.media_tipo && form.media_tipo !== 'youtube' && (
-                <div className="form-group">
-                  <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
-                  <input className="form-input" value={form.video_url} onChange={e => fd('video_url', e.target.value)} placeholder="https://..." />
-                </div>
-              )}
 
-              {/* Clasificación — iteración declarativa sobre SECCIONES_CLASIFICACION */}
-              {SECCIONES_CLASIFICACION.map(seccion => (
-                <div key={seccion.tipo === 'complejos' ? 'complejos' : seccion.campo} className="form-group">
-                  <label className="form-label" style={{ color: seccion.color }}>{seccion.label}</label>
-                  {seccion.tipo === 'complejos' ? (
-                    <ComplexSelector
-                      estructura_anatomica={form.estructura_anatomica}
-                      onChange={({ estructura_anatomica, complejo_articular }) => {
-                        setForm(f => ({ ...f, estructura_anatomica, complejo_articular }))
-                      }}
-                    />
-                  ) : seccion.tipo === 'patron' ? (
-                    <PatronSelector
-                      value={form.patron_movimiento}
-                      onChange={v => fd('patron_movimiento', v)}
-                      complejosSeleccionados={form.complejo_articular}
-                      estructurasSeleccionadas={form.estructura_anatomica}
-                    />
-                  ) : (
-                    <TagSelector seccion={seccion} value={form[seccion.campo]} onChange={v => fd(seccion.campo, v)} />
-                  )}
-                </div>
-              ))}
+                {/* Columna derecha: media + notas + resumen */}
+                <div style={{ width: 264, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-              <div className="form-group">
-                <label className="form-label">Notas internas</label>
-                <textarea className="form-input" value={form.notas} onChange={e => fd('notas', e.target.value)} placeholder="Apuntes, cuidados, variantes..." rows={2} style={{ resize: 'vertical' }} />
+                  {/* ── Vista previa de media — siempre visible ── */}
+                  <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#0f172a', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {(!form.media_url || !form.media_tipo) ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#334155' }}>
+                        <Play size={30} strokeWidth={1.5} />
+                        <span style={{ fontSize: 11 }}>Vista previa</span>
+                      </div>
+                    ) : form.media_tipo === 'imagen' ? (
+                      <img src={form.media_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : form.media_tipo === 'gif' ? (
+                      <img src={form.media_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : form.media_tipo === 'video' ? (
+                      <video src={form.media_url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : form.media_tipo === 'youtube' ? (() => {
+                      const yId = form.media_url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1]
+                      return yId
+                        ? <iframe src={`https://www.youtube.com/embed/${yId}`} style={{ width: '100%', height: '100%', border: 'none' }} title="preview" allowFullScreen />
+                        : <span style={{ fontSize: 11, color: '#475569', padding: 12, textAlign: 'center' }}>URL de YouTube no válida</span>
+                    })() : null}
+                  </div>
+
+                  {/* Archivo */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div className="form-label" style={{ marginBottom: 4 }}>Archivo</div>
+                    <select className="form-select" value={form.media_tipo} onChange={e => fd('media_tipo', e.target.value)} style={{ marginBottom: 6 }}>
+                      <option value="">Sin media</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="imagen">Imagen</option>
+                      <option value="video">Vídeo</option>
+                      <option value="gif">GIF</option>
+                    </select>
+                    {form.media_tipo && (
+                      <>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                          <input className="form-input" value={form.media_url}
+                            onChange={e => {
+                              fd('media_url', e.target.value)
+                              if (form.media_tipo === 'youtube') comprobarVideoConflicto(e.target.value, modal?.id)
+                            }}
+                            placeholder={form.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
+                            style={{ flex: 1, fontSize: 12, borderColor: videoConflicto ? '#f59e0b' : undefined }} />
+                          {form.media_tipo !== 'youtube' && (
+                            <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                              <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                                onChange={async ev => {
+                                  const file = ev.target.files?.[0]; if (!file) return
+                                  const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
+                                  const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                                  if (error) { alert('Error: ' + error.message); return }
+                                  const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                                  fd('media_url', publicUrl); ev.target.value = ''
+                                }} />
+                              <span className="btn btn-ghost btn-sm">📁</span>
+                            </label>
+                          )}
+                        </div>
+                        {videoConflicto && (
+                          <div style={{ padding: '6px 8px', background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: 6, fontSize: 11, color: '#92400e', marginBottom: 4 }}>
+                            ⚠️ Ya en uso: <strong>{videoConflicto.nombre}</strong>
+                          </div>
+                        )}
+                        {form.media_tipo !== 'youtube' && (
+                          <input className="form-input" value={form.video_url} onChange={e => fd('video_url', e.target.value)} placeholder='Enlace "Ver vídeo" (opcional)' style={{ fontSize: 12 }} />
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Notas internas */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="form-label" style={{ marginBottom: 4 }}>Notas internas</div>
+                    <textarea className="form-input" value={form.notas} onChange={e => fd('notas', e.target.value)} placeholder="Apuntes, cuidados, variantes..." rows={3} style={{ resize: 'vertical', fontSize: 12 }} />
+                  </div>
+
+                  {/* Resumen de etiquetas */}
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8 }}>Resumen</div>
+                    {(() => {
+                      const labelFromId = id => id.split(':').pop().replace(/_/g, ' ')
+                      const secciones = [
+                        { label: 'Complejo', color: SECCIONES_CLASIFICACION[0].color, vals: form.complejo_articular || [] },
+                        { label: 'Estructura', color: SECCIONES_CLASIFICACION[0].color, vals: form.estructura_anatomica || [] },
+                        ...SECCIONES_CLASIFICACION.slice(1).map(s => ({
+                          label: s.label, color: s.color,
+                          vals: form[s.campo] || [],
+                          labelFn: s.labelFn || labelFromId,
+                        })),
+                      ]
+                      const conValores = secciones.filter(s => s.vals.length > 0)
+                      if (!conValores.length) return <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin etiquetas seleccionadas</div>
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          {conValores.map(s => (
+                            <div key={s.label}>
+                              <div style={{ fontSize: 9.5, fontWeight: 600, color: s.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{s.label}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                {s.vals.map(v => (
+                                  <span key={v} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 12, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33`, fontWeight: 500 }}>
+                                    {(s.labelFn || labelFromId)(v)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
