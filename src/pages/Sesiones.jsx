@@ -225,7 +225,8 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
   const [menu, setMenu] = useState(null)
-  const [dragWithin, setDragWithin] = useState(null) // { itemId, fecha }
+  const [dragWithin, setDragWithin] = useState(null) // { itemId, fecha } — para opacidad visual
+  const dragWithinRef = useRef(null)                  // misma info pero síncrona (evita stale closure)
   const [dragOver, setDragOver] = useState(null)     // { itemId, pos: 'before'|'after' }
   const [localOrder, setLocalOrder] = useState({})   // { fecha: id[] } orden optimista
 
@@ -442,19 +443,23 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         els.push(
                           <div key={item.id}
                             draggable
-                            onDragStart={() => { setArrastrando(item); setDragWithin({ itemId: item.id, fecha: key }) }}
-                            onDragEnd={() => { setArrastrando(null); setDragWithin(null); setDragOver(null) }}
+                            onDragStart={() => { const dw = { itemId: item.id, fecha: key }; dragWithinRef.current = dw; setDragWithin(dw); setArrastrando(item) }}
+                            onDragEnd={() => { dragWithinRef.current = null; setArrastrando(null); setDragWithin(null); setDragOver(null) }}
                             onDragOver={e => {
-                              if (dragWithin && dragWithin.fecha === key && dragWithin.itemId !== item.id) {
-                                e.preventDefault(); e.stopPropagation()
+                              e.preventDefault()
+                              const dw = dragWithinRef.current
+                              if (dw && dw.fecha === key && dw.itemId !== item.id) {
+                                e.stopPropagation()
                                 const rect = e.currentTarget.getBoundingClientRect()
                                 setDragOver({ itemId: item.id, pos: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after' })
                               }
                             }}
                             onDrop={e => {
-                              if (dragWithin && dragWithin.fecha === key && dragWithin.itemId !== item.id) {
-                                e.preventDefault(); e.stopPropagation()
-                                reordenarEnDia(key, dragWithin.itemId, item.id, dragOver?.pos || 'after')
+                              e.preventDefault(); e.stopPropagation()
+                              const dw = dragWithinRef.current
+                              if (dw && dw.fecha === key && dw.itemId !== item.id) {
+                                reordenarEnDia(key, dw.itemId, item.id, dragOver?.pos || 'after')
+                                dragWithinRef.current = null
                                 setDragWithin(null); setDragOver(null); setArrastrando(null)
                               }
                             }}
