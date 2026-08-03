@@ -7,6 +7,72 @@ import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy, Check, Play } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
+// ── COMPLEX SELECTOR (replicado de Biblioteca.jsx) ───────────────────────────
+function ComplexSelector({ estructura_anatomica, onChange }) {
+  const [expandido, setExpandido] = useState(null)
+  function handleToggleGrupo(grupo) {
+    const nextEst = toggleGrupo(grupo, estructura_anatomica)
+    onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
+  }
+  function handleToggleHijo(hijo, grupo) {
+    const nextEst = toggleEstructura(hijo.id, grupo, estructura_anatomica)
+    onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {COMPLEJOS.map(c => {
+          const tieneSeleccion = estructura_anatomica.some(id => id.startsWith(c.id + ':'))
+          const activo = expandido === c.id
+          const nHojas = idsHojaDeEstructura(estructura_anatomica.filter(id => id.startsWith(c.id + ':'))).length
+          return (
+            <button key={c.id} type="button" onClick={() => setExpandido(activo ? null : c.id)}
+              style={{ fontSize: 12, padding: '5px 11px', borderRadius: 20, border: `1.5px solid ${tieneSeleccion ? c.color : activo ? c.color + '80' : 'var(--border)'}`, background: activo ? c.color + '18' : tieneSeleccion ? c.color + '10' : 'transparent', color: tieneSeleccion || activo ? c.color : 'var(--text2)', cursor: 'pointer', fontWeight: tieneSeleccion ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s' }}>
+              <span>{c.emoji}</span><span>{c.label}</span>
+              {nHojas > 0 && <span style={{ fontSize: 9, background: c.color, color: '#fff', borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{nHojas}</span>}
+            </button>
+          )
+        })}
+      </div>
+      {expandido && (() => {
+        const complejo = COMPLEJOS.find(c => c.id === expandido)
+        if (!complejo) return null
+        return (
+          <div style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{complejo.emoji} {complejo.label}</div>
+            {complejo.grupos.map(grupo => {
+              const estado = estadoGrupo(grupo, estructura_anatomica)
+              return (
+                <div key={grupo.id} style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                    <button type="button" onClick={() => handleToggleGrupo(grupo)}
+                      style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`, background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+                      {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
+                    </button>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{grupo.label}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+                    {grupo.children.map(hijo => {
+                      const sel = estructura_anatomica.includes(hijo.id)
+                      return (
+                        <button key={hijo.id} type="button" onClick={() => handleToggleHijo(hijo, grupo)}
+                          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`, background: sel ? complejo.color + '22' : 'transparent', color: sel ? complejo.color : 'var(--text2)', cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s' }}>
+                          {hijo.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
 const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
 function ytId(url) {
@@ -2598,6 +2664,7 @@ async function guardarSesion() {
       {/* Modal: Crear ejercicio personalizado */}
       {modalCrearEj && (() => {
         const seccionesFiltradas = SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos')
+        const seccionComplejos = SECCIONES_CLASIFICACION.find(s => s.tipo === 'complejos')
         const principal = seccionesFiltradas.slice(0, 2)   // familia + patron
         const caracteristicas = seccionesFiltradas.slice(2) // posicion, plano, contraccion, material
         const labelFromId = id => id.split(':').pop().replace(/_/g, ' ')
@@ -2673,11 +2740,26 @@ async function guardarSesion() {
                   <div style={{ borderLeft: '3px solid #2d6a4f', paddingLeft: 10, marginBottom: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>Clasificación principal</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+                    {/* Complejo articular */}
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>1</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: seccionComplejos.color }}>{seccionComplejos.label}</span>
+                      </div>
+                      <div style={{ padding: 10, flex: 1 }}>
+                        <ComplexSelector
+                          estructura_anatomica={formCrearEj.estructura_anatomica}
+                          onChange={({ estructura_anatomica, complejo_articular }) =>
+                            setFormCrearEj(f => ({ ...f, estructura_anatomica, complejo_articular }))}
+                        />
+                      </div>
+                    </div>
+                    {/* Familia + Patrón */}
                     {principal.map((s, i) => (
                       <div key={s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{i + 1}</span>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{i + 2}</span>
                           <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
                         </div>
                         <div style={{ padding: 10, flex: 1 }}>{renderListaItems(s)}</div>
@@ -2693,7 +2775,7 @@ async function guardarSesion() {
                     {caracteristicas.map((s, i) => (
                       <div key={s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#64748b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{3 + i}</span>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#64748b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{4 + i}</span>
                           <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
                         </div>
                         <div style={{ padding: 10, flex: 1 }}>{renderListaItems(s)}</div>
@@ -2786,25 +2868,27 @@ async function guardarSesion() {
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8 }}>Resumen</div>
                     {(() => {
-                      const conValores = seccionesFiltradas.filter(s => (formCrearEj[s.campo] || []).length > 0)
+                      const todasSecciones = [
+                        { label: 'Complejo', color: seccionComplejos.color, vals: formCrearEj.complejo_articular || [], labelFn: labelFromId },
+                        { label: 'Estructura', color: seccionComplejos.color, vals: formCrearEj.estructura_anatomica || [], labelFn: id => labelDeId(id) || labelFromId(id) },
+                        ...seccionesFiltradas.map(s => ({ label: s.label, color: s.color, vals: formCrearEj[s.campo] || [], labelFn: s.tipo === 'patron' ? labelDePatronId : (s.labelFn || labelFromId) })),
+                      ]
+                      const conValores = todasSecciones.filter(s => s.vals.length > 0)
                       if (!conValores.length) return <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin etiquetas seleccionadas</div>
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                          {conValores.map(s => {
-                            const getLabel = s.tipo === 'patron' ? labelDePatronId : (s.labelFn || labelFromId)
-                            return (
-                              <div key={s.campo}>
-                                <div style={{ fontSize: 9.5, fontWeight: 600, color: s.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{s.label}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                  {(formCrearEj[s.campo] || []).map(v => (
-                                    <span key={v} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 12, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33`, fontWeight: 500 }}>
-                                      {getLabel(v)}
-                                    </span>
-                                  ))}
-                                </div>
+                          {conValores.map(s => (
+                            <div key={s.label}>
+                              <div style={{ fontSize: 9.5, fontWeight: 600, color: s.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{s.label}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                {s.vals.map(v => (
+                                  <span key={v} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 12, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33`, fontWeight: 500 }}>
+                                    {s.labelFn(v)}
+                                  </span>
+                                ))}
                               </div>
-                            )
-                          })}
+                            </div>
+                          ))}
                         </div>
                       )
                     })()}
