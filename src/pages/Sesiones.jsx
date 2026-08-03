@@ -225,6 +225,9 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
   const [menu, setMenu] = useState(null)
+  const [dragWithin, setDragWithin] = useState(null) // { itemId, fecha }
+  const [dragOver, setDragOver] = useState(null)     // { itemId, pos: 'before'|'after' }
+  const [localOrder, setLocalOrder] = useState({})   // { fecha: id[] } orden optimista
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
   const inicioSemana = new Date(cursor)
@@ -307,6 +310,17 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
 
   function cerrarMenu() { setMenu(null) }
 
+  async function reordenarEnDia(fecha, fromId, toId, pos) {
+    const rawItems = sesionPorDia[fecha] || []
+    const ids = (localOrder[fecha] || rawItems.filter(s => s._tipo === 'sesion').map(s => s.id))
+    const withoutFrom = ids.filter(id => id !== fromId)
+    const targetIdx = withoutFrom.indexOf(toId)
+    if (targetIdx < 0) return
+    withoutFrom.splice(pos === 'before' ? targetIdx : targetIdx + 1, 0, fromId)
+    setLocalOrder(prev => ({ ...prev, [fecha]: withoutFrom }))
+    await Promise.all(withoutFrom.map((id, i) => supabase.from('sesiones').update({ orden: i }).eq('id', id)))
+  }
+
   return (
     <div onClick={cerrarMenu}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -358,7 +372,11 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                   const key = fKey(dia)
                   const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
                   const esHoy = fKey(dia) === fKey(hoy)
-                  const sesDia = sesionPorDia[key] || []
+                  const rawSesDia = sesionPorDia[key] || []
+                  const orderOverride = localOrder[key]
+                  const sesDia = orderOverride
+                    ? [...orderOverride.map(id => rawSesDia.find(s => s.id === id && s._tipo === 'sesion')).filter(Boolean), ...rawSesDia.filter(s => s._tipo !== 'sesion')]
+                    : rawSesDia
                   const colorLinea = info?.bloque?.color || null
                   return (
                     <div key={i}
@@ -373,8 +391,10 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         <DiaMenu fecha={key} onNuevaSesion={onNuevaSesion} onNuevaCompeticion={onNuevaCompeticion} onNuevaNota={onNuevaNota} />
                       </div>
                       {sesDia.map(item => {
-                       if (item._tipo === 'nota') return (
-                          <div key={item.id}
+                        const isDragTarget = dragOver?.itemId === item.id
+                        const lineStyle = { height: 2, background: '#2d6a4f', borderRadius: 1, flexShrink: 0, pointerEvents: 'none' }
+                        if (item._tipo === 'nota') return (
+                          <div key={`nota-${item.id}`}
                             draggable
                             onDragStart={() => setArrastrando(item)}
                             onDragEnd={() => setArrastrando(null)}
@@ -389,7 +409,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                           </div>
                         )
                         if (item._tipo === 'competicion') return (
-                          <div key={item.id}
+                          <div key={`comp-${item.id}`}
                             draggable
                             onDragStart={() => setArrastrando(item)}
                             onDragEnd={() => setArrastrando(null)}
@@ -404,7 +424,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                           </div>
                         )
                         if (item._tipo === 'control') return (
-                          <div key={item.id}
+                          <div key={`ctrl-${item.id}`}
                             draggable
                             onDragStart={() => setArrastrando(item)}
                             onDragEnd={() => setArrastrando(null)}
@@ -416,17 +436,36 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                             </span>
                           </div>
                         )
+                        // Sesión — soporta reordenación dentro del mismo día
                         return (
-                          <div key={item.id}
-                            draggable
-                            onDragStart={() => setArrastrando(item)}
-                            onDragEnd={() => setArrastrando(null)}
-                            onClick={() => onAbrirSesion(item)}
-                            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
-                            <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
-                          </div>
+                          <>
+                            {isDragTarget && dragOver.pos === 'before' && <div key={`line-before-${item.id}`} style={lineStyle} />}
+                            <div key={item.id}
+                              draggable
+                              onDragStart={e => { setArrastrando(item); setDragWithin({ itemId: item.id, fecha: key }) }}
+                              onDragEnd={() => { setArrastrando(null); setDragWithin(null); setDragOver(null) }}
+                              onDragOver={e => {
+                                if (dragWithin && dragWithin.fecha === key && dragWithin.itemId !== item.id) {
+                                  e.preventDefault(); e.stopPropagation()
+                                  const rect = e.currentTarget.getBoundingClientRect()
+                                  setDragOver({ itemId: item.id, pos: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after' })
+                                }
+                              }}
+                              onDrop={e => {
+                                if (dragWithin && dragWithin.fecha === key && dragWithin.itemId !== item.id) {
+                                  e.preventDefault(); e.stopPropagation()
+                                  reordenarEnDia(key, dragWithin.itemId, item.id, dragOver?.pos || 'after')
+                                  setDragWithin(null); setDragOver(null); setArrastrando(null)
+                                }
+                              }}
+                              onClick={() => onAbrirSesion(item)}
+                              onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                              style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1 }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
+                              <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            </div>
+                            {isDragTarget && dragOver.pos === 'after' && <div key={`line-after-${item.id}`} style={lineStyle} />}
+                          </>
                         )
                       })}
                     </div>
@@ -715,7 +754,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   async function cargarSesiones() {
     setLoading(true)
     const [{ data: ses }, { data: nots }, { data: comps }, { data: ctrls }, { data: plan }, { data: pks }] = await Promise.all([
-      supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: false }),
+      supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: true }).order('orden', { ascending: true }),
       supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
       supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha'),
