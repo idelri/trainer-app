@@ -35,13 +35,15 @@ const EMPTY = {
 
 // ── COMPLEX SELECTOR ─────────────────────────────────────────────────────────
 function ComplexSelector({ estructura_anatomica, onChange }) {
-  const [expandido, setExpandido] = useState(null)
+  const [expandidos, setExpandidos] = useState(new Set())
 
+  function toggleExpandido(id) {
+    setExpandidos(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
+  }
   function handleToggleGrupo(grupo) {
     const nextEst = toggleGrupo(grupo, estructura_anatomica)
     onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
   }
-
   function handleToggleHijo(hijo, grupo) {
     const nextEst = toggleEstructura(hijo.id, grupo, estructura_anatomica)
     onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
@@ -52,82 +54,51 @@ function ComplexSelector({ estructura_anatomica, onChange }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
         {COMPLEJOS.map(c => {
           const tieneSeleccion = estructura_anatomica.some(id => id.startsWith(c.id + ':'))
-          const activo = expandido === c.id
+          const activo = expandidos.has(c.id)
           const nHojas = idsHojaDeEstructura(estructura_anatomica.filter(id => id.startsWith(c.id + ':'))).length
           return (
-            <button key={c.id} type="button"
-              onClick={() => setExpandido(activo ? null : c.id)}
-              style={{
-                fontSize: 12, padding: '5px 11px', borderRadius: 20,
-                border: `1.5px solid ${tieneSeleccion ? c.color : activo ? c.color + '80' : 'var(--border)'}`,
-                background: activo ? c.color + '18' : tieneSeleccion ? c.color + '10' : 'transparent',
-                color: tieneSeleccion || activo ? c.color : 'var(--text2)',
-                cursor: 'pointer', fontWeight: tieneSeleccion ? 600 : 400,
-                display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s',
-              }}>
-              <span>{c.emoji}</span>
-              <span>{c.label}</span>
-              {nHojas > 0 && (
-                <span style={{ fontSize: 9, background: c.color, color: '#fff', borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>
-                  {nHojas}
-                </span>
-              )}
+            <button key={c.id} type="button" onClick={() => toggleExpandido(c.id)}
+              style={{ fontSize: 12, padding: '5px 11px', borderRadius: 20, border: `1.5px solid ${tieneSeleccion ? c.color : activo ? c.color + '80' : 'var(--border)'}`, background: activo ? c.color + '18' : tieneSeleccion ? c.color + '10' : 'transparent', color: tieneSeleccion || activo ? c.color : 'var(--text2)', cursor: 'pointer', fontWeight: tieneSeleccion ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s' }}>
+              <span>{c.emoji}</span><span>{c.label}</span>
+              {nHojas > 0 && <span style={{ fontSize: 9, background: c.color, color: '#fff', borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{nHojas}</span>}
             </button>
           )
         })}
       </div>
 
-      {expandido && (() => {
-        const complejo = COMPLEJOS.find(c => c.id === expandido)
-        if (!complejo) return null
-        return (
-          <div style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 4 }}>
-            <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {complejo.emoji} {complejo.label}
-            </div>
-            {complejo.grupos.map(grupo => {
-              const estado = estadoGrupo(grupo, estructura_anatomica)
-              return (
-                <div key={grupo.id} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                    <button type="button" onClick={() => handleToggleGrupo(grupo)}
-                      style={{
-                        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-                        border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`,
-                        background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                      {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
-                      {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
-                    </button>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {grupo.label}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
-                    {grupo.children.map(hijo => {
-                      const sel = estructura_anatomica.includes(hijo.id)
-                      return (
-                        <button key={hijo.id} type="button"
-                          onClick={() => handleToggleHijo(hijo, grupo)}
-                          style={{
-                            fontSize: 11, padding: '3px 10px', borderRadius: 20,
-                            border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`,
-                            background: sel ? complejo.color + '22' : 'transparent',
-                            color: sel ? complejo.color : 'var(--text2)',
-                            cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s',
-                          }}>
-                          {hijo.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+      {COMPLEJOS.filter(c => expandidos.has(c.id)).map(complejo => (
+        <div key={complejo.id} style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {complejo.emoji} {complejo.label}
           </div>
-        )
-      })()}
+          {complejo.grupos.map(grupo => {
+            const estado = estadoGrupo(grupo, estructura_anatomica)
+            return (
+              <div key={grupo.id} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                  <button type="button" onClick={() => handleToggleGrupo(grupo)}
+                    style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`, background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+                    {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
+                  </button>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{grupo.label}</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+                  {grupo.children.map(hijo => {
+                    const sel = estructura_anatomica.includes(hijo.id)
+                    return (
+                      <button key={hijo.id} type="button" onClick={() => handleToggleHijo(hijo, grupo)}
+                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`, background: sel ? complejo.color + '22' : 'transparent', color: sel ? complejo.color : 'var(--text2)', cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s' }}>
+                        {hijo.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }

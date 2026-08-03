@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId } from '../lib/taxonomia'
+import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId, colorDePatronId, patronesRecomendadosActivos } from '../lib/taxonomia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
-import { Plus, X, Trash2, Copy, Check, Play } from 'lucide-react'
+import { Plus, X, Trash2, Copy, Check, Play, ChevronDown, ChevronUp } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 // ── COMPLEX SELECTOR (replicado de Biblioteca.jsx) ───────────────────────────
 function ComplexSelector({ estructura_anatomica, onChange }) {
-  const [expandido, setExpandido] = useState(null)
+  const [expandidos, setExpandidos] = useState(new Set())
+  function toggleExpandido(id) {
+    setExpandidos(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
+  }
   function handleToggleGrupo(grupo) {
     const nextEst = toggleGrupo(grupo, estructura_anatomica)
     onChange({ estructura_anatomica: nextEst, complejo_articular: derivarComplejos(nextEst) })
@@ -23,10 +26,10 @@ function ComplexSelector({ estructura_anatomica, onChange }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
         {COMPLEJOS.map(c => {
           const tieneSeleccion = estructura_anatomica.some(id => id.startsWith(c.id + ':'))
-          const activo = expandido === c.id
+          const activo = expandidos.has(c.id)
           const nHojas = idsHojaDeEstructura(estructura_anatomica.filter(id => id.startsWith(c.id + ':'))).length
           return (
-            <button key={c.id} type="button" onClick={() => setExpandido(activo ? null : c.id)}
+            <button key={c.id} type="button" onClick={() => toggleExpandido(c.id)}
               style={{ fontSize: 12, padding: '5px 11px', borderRadius: 20, border: `1.5px solid ${tieneSeleccion ? c.color : activo ? c.color + '80' : 'var(--border)'}`, background: activo ? c.color + '18' : tieneSeleccion ? c.color + '10' : 'transparent', color: tieneSeleccion || activo ? c.color : 'var(--text2)', cursor: 'pointer', fontWeight: tieneSeleccion ? 600 : 400, display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.1s' }}>
               <span>{c.emoji}</span><span>{c.label}</span>
               {nHojas > 0 && <span style={{ fontSize: 9, background: c.color, color: '#fff', borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{nHojas}</span>}
@@ -34,41 +37,102 @@ function ComplexSelector({ estructura_anatomica, onChange }) {
           )
         })}
       </div>
-      {expandido && (() => {
-        const complejo = COMPLEJOS.find(c => c.id === expandido)
-        if (!complejo) return null
-        return (
-          <div style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 4 }}>
-            <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{complejo.emoji} {complejo.label}</div>
-            {complejo.grupos.map(grupo => {
-              const estado = estadoGrupo(grupo, estructura_anatomica)
-              return (
-                <div key={grupo.id} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                    <button type="button" onClick={() => handleToggleGrupo(grupo)}
-                      style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`, background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
-                      {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
-                    </button>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{grupo.label}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
-                    {grupo.children.map(hijo => {
-                      const sel = estructura_anatomica.includes(hijo.id)
-                      return (
-                        <button key={hijo.id} type="button" onClick={() => handleToggleHijo(hijo, grupo)}
-                          style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`, background: sel ? complejo.color + '22' : 'transparent', color: sel ? complejo.color : 'var(--text2)', cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s' }}>
-                          {hijo.label}
-                        </button>
-                      )
-                    })}
-                  </div>
+      {COMPLEJOS.filter(c => expandidos.has(c.id)).map(complejo => (
+        <div key={complejo.id} style={{ border: `1.5px solid ${complejo.color}44`, borderRadius: 10, padding: '12px 14px', background: complejo.color + '08', marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 11, color: complejo.color, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{complejo.emoji} {complejo.label}</div>
+          {complejo.grupos.map(grupo => {
+            const estado = estadoGrupo(grupo, estructura_anatomica)
+            return (
+              <div key={grupo.id} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                  <button type="button" onClick={() => handleToggleGrupo(grupo)}
+                    style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : complejo.color}`, background: estado === 'full' ? complejo.color : estado === 'partial' ? complejo.color + '44' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+                    {estado === 'partial' && <span style={{ color: complejo.color, fontSize: 10, lineHeight: 1 }}>−</span>}
+                  </button>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{grupo.label}</span>
                 </div>
-              )
-            })}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+                  {grupo.children.map(hijo => {
+                    const sel = estructura_anatomica.includes(hijo.id)
+                    return (
+                      <button key={hijo.id} type="button" onClick={() => handleToggleHijo(hijo, grupo)}
+                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sel ? complejo.color : 'var(--border)'}`, background: sel ? complejo.color + '22' : 'transparent', color: sel ? complejo.color : 'var(--text2)', cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s' }}>
+                        {hijo.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── PATRON SELECTOR (replicado de Biblioteca.jsx) ────────────────────────────
+function PatronSelector({ value = [], onChange, complejosSeleccionados = [], estructurasSeleccionadas = [] }) {
+  const [todosAbierto, setTodosAbierto] = useState(false)
+  const recomSet = new Set(patronesRecomendadosActivos(complejosSeleccionados, estructurasSeleccionadas))
+  const bloquesRec = PATRON_MOVIMIENTO
+    .map(b => ({ ...b, grupos: b.grupos.map(g => ({ ...g, children: g.children.filter(c => recomSet.has(c.id)) })).filter(g => g.children.length > 0) }))
+    .filter(b => b.grupos.length > 0)
+
+  function renderGrupo(grupo, color) {
+    const estado = estadoGrupo(grupo, value)
+    return (
+      <div key={grupo.id} style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+          <button type="button" onClick={() => onChange(toggleGrupo(grupo, value))}
+            style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${estado === 'empty' ? 'var(--border)' : color}`, background: estado === 'full' ? color : estado === 'partial' ? color + '44' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {estado === 'full' && <span style={{ color: '#fff', fontSize: 8, lineHeight: 1 }}>✓</span>}
+            {estado === 'partial' && <span style={{ color, fontSize: 10, lineHeight: 1 }}>−</span>}
+          </button>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{grupo.label}</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, paddingLeft: 23 }}>
+          {grupo.children.map(hijo => {
+            const sel = value.includes(hijo.id)
+            return (
+              <button key={hijo.id} type="button" onClick={() => onChange(toggleEstructura(hijo.id, grupo, value))}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${sel ? color : 'var(--border)'}`, background: sel ? color + '22' : 'transparent', color: sel ? color : 'var(--text2)', cursor: 'pointer', fontWeight: sel ? 600 : 400, transition: 'all 0.1s' }}>
+                {hijo.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {bloquesRec.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>💡 Sugeridos según anatomía</div>
+          {bloquesRec.map(bloque => (
+            <div key={bloque.id}>
+              {bloquesRec.length > 1 && <div style={{ fontSize: 10, color: bloque.color, fontWeight: 600, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{bloque.label}</div>}
+              {bloque.grupos.map(grupo => renderGrupo(grupo, bloque.color))}
+            </div>
+          ))}
+        </div>
+      )}
+      <div>
+        <button type="button" onClick={() => setTodosAbierto(o => !o)}
+          style={{ fontSize: 11, padding: '4px 12px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, marginBottom: todosAbierto ? 10 : 0 }}>
+          {todosAbierto ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          Todos los patrones
+        </button>
+        {todosAbierto && PATRON_MOVIMIENTO.map(bloque => (
+          <div key={bloque.id} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: bloque.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>{bloque.label}</div>
+            {bloque.grupos.map(grupo => renderGrupo(grupo, bloque.color))}
           </div>
-        )
-      })()}
+        ))}
+      </div>
     </div>
   )
 }
@@ -2762,7 +2826,16 @@ async function guardarSesion() {
                           <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{i + 2}</span>
                           <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
                         </div>
-                        <div style={{ padding: 10, flex: 1 }}>{renderListaItems(s)}</div>
+                        <div style={{ padding: 10, flex: 1 }}>
+                          {s.tipo === 'patron'
+                            ? <PatronSelector
+                                value={formCrearEj.patron_movimiento}
+                                onChange={v => setFormCrearEj(f => ({ ...f, patron_movimiento: v }))}
+                                complejosSeleccionados={formCrearEj.complejo_articular}
+                                estructurasSeleccionadas={formCrearEj.estructura_anatomica}
+                              />
+                            : renderListaItems(s)}
+                        </div>
                       </div>
                     ))}
                   </div>
