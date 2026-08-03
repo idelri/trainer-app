@@ -4,7 +4,7 @@ import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, deriv
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
-import { Plus, X, Trash2, Copy } from 'lucide-react'
+import { Plus, X, Trash2, Copy, Check, Play } from 'lucide-react'
 
 const COLORES = ['#E29A2E', '#4C82E8', '#2FAE76', '#8B6CE0', '#34AEB8', '#DD6F97']
 const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
@@ -2596,126 +2596,234 @@ async function guardarSesion() {
       )}
 
       {/* Modal: Crear ejercicio personalizado */}
-      {modalCrearEj && (
-        <div className="modal-backdrop" onClick={() => setModalCrearEj(null)}>
-          <div className="modal" style={{ maxWidth: 640, width: '95vw', maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">Crear ejercicio personalizado</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrearEj(null)}>✕</button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Nombre */}
-              <div>
-                <label className="form-label">Nombre *</label>
-                <input className="form-input" autoFocus placeholder="Nombre del ejercicio" value={formCrearEj.nombre}
-                  onChange={e => setFormCrearEj(f => ({ ...f, nombre: e.target.value }))} />
+      {modalCrearEj && (() => {
+        const seccionesFiltradas = SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos')
+        const principal = seccionesFiltradas.slice(0, 2)   // familia + patron
+        const caracteristicas = seccionesFiltradas.slice(2) // posicion, plano, contraccion, material
+        const labelFromId = id => id.split(':').pop().replace(/_/g, ' ')
+        const renderListaItems = (seccion) => {
+          const seleccionados = formCrearEj[seccion.campo] || []
+          const getLabel = seccion.tipo === 'patron' ? labelDePatronId : (seccion.labelFn || labelFromId)
+          const allItems = seccion.tipo === 'patron'
+            ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
+            : seccion.tipo === 'chips' ? seccion.items
+            : seccion.grupos.flatMap(g => g.items)
+          const grupos = seccion.tipo === 'grupos' ? seccion.grupos : null
+          const toggle = item => setFormCrearEj(f => {
+            const actual = f[seccion.campo] || []
+            const activo = actual.includes(item)
+            return { ...f, [seccion.campo]: activo ? actual.filter(v => v !== item) : [...actual, item] }
+          })
+          if (grupos) {
+            return grupos.map(({ grupo, items }) => (
+              <div key={grupo} style={{ marginBottom: 6 }}>
+                {grupo && <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{grupo}</div>}
+                {items.map(item => {
+                  const activo = seleccionados.includes(item)
+                  return (
+                    <div key={item} onClick={() => toggle(item)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', borderRadius: 5, cursor: 'pointer', background: activo ? '#f0fdf4' : 'transparent' }}>
+                      <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${activo ? '#2d6a4f' : 'var(--border-strong, #cbd5e1)'}`, background: activo ? '#2d6a4f' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {activo && <Check size={8} color="#fff" strokeWidth={3} />}
+                      </span>
+                      <span style={{ fontSize: 11.5, color: activo ? '#065f46' : 'var(--text2)', fontWeight: activo ? 500 : 400 }}>{item}</span>
+                    </div>
+                  )
+                })}
               </div>
-              {/* Descripción */}
-              <div>
-                <label className="form-label">Descripción</label>
-                <textarea className="form-input" placeholder="Descripción del ejercicio" value={formCrearEj.descripcion}
-                  onChange={e => setFormCrearEj(f => ({ ...f, descripcion: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+            ))
+          }
+          return allItems.map(item => {
+            const activo = seleccionados.includes(item)
+            return (
+              <div key={item} onClick={() => toggle(item)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 6px', borderRadius: 5, cursor: 'pointer', background: activo ? '#f0fdf4' : 'transparent' }}>
+                <span style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0, border: `1.5px solid ${activo ? '#2d6a4f' : 'var(--border-strong, #cbd5e1)'}`, background: activo ? '#2d6a4f' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {activo && <Check size={8} color="#fff" strokeWidth={3} />}
+                </span>
+                <span style={{ fontSize: 11.5, color: activo ? '#065f46' : 'var(--text2)', fontWeight: activo ? 500 : 400 }}>{getLabel(item)}</span>
               </div>
-              {/* Notas / ejecución */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label className="form-label">Notas de ejecución</label>
-                  <textarea className="form-input" placeholder="Indicaciones técnicas..." value={formCrearEj.notas}
-                    onChange={e => setFormCrearEj(f => ({ ...f, notas: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+            )
+          })
+        }
+        return (
+          <div className="modal-backdrop" onClick={() => setModalCrearEj(null)}>
+            <div className="modal" style={{ maxWidth: 'min(96vw, 1100px)', width: '100%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <span className="modal-title">Crear ejercicio personalizado</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => setModalCrearEj(null)}>✕</button>
+              </div>
+
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                {/* Columna izquierda */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Nombre *</label>
+                    <input className="form-input" autoFocus placeholder="Nombre del ejercicio" value={formCrearEj.nombre}
+                      onChange={e => setFormCrearEj(f => ({ ...f, nombre: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Descripción</label>
+                    <textarea className="form-input" placeholder="Descripción del ejercicio" value={formCrearEj.descripcion}
+                      onChange={e => setFormCrearEj(f => ({ ...f, descripcion: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+                  </div>
+
+                  {/* Clasificación principal */}
+                  <div style={{ borderLeft: '3px solid #2d6a4f', paddingLeft: 10, marginBottom: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>Clasificación principal</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                    {principal.map((s, i) => (
+                      <div key={s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#1e293b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{i + 1}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
+                        </div>
+                        <div style={{ padding: 10, flex: 1 }}>{renderListaItems(s)}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Características */}
+                  <div style={{ borderLeft: '3px solid #64748b', paddingLeft: 10, marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text2)' }}>Características del ejercicio</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                    {caracteristicas.map((s, i) => (
+                      <div key={s.campo} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '6px 10px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#64748b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{3 + i}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</span>
+                        </div>
+                        <div style={{ padding: 10, flex: 1 }}>{renderListaItems(s)}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="form-label">Tipo de ejecución</label>
-                  <input className="form-input" placeholder="Ej: Excéntrico lento, pausa..." value={formCrearEj.ejecucion_tipo}
-                    onChange={e => setFormCrearEj(f => ({ ...f, ejecucion_tipo: e.target.value }))} />
-                </div>
-              </div>
-              {/* Multimedia */}
-              <div className="form-group">
-                <label className="form-label">Tipo de media</label>
-                <select className="form-select" value={formCrearEj.media_tipo}
-                  onChange={e => setFormCrearEj(f => ({ ...f, media_tipo: e.target.value, media_url: '', video_url: '' }))}>
-                  <option value="">Sin media</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="imagen">Imagen</option>
-                  <option value="video">Vídeo</option>
-                  <option value="gif">GIF</option>
-                </select>
-              </div>
-              {formCrearEj.media_tipo && (
-                <div className="form-group">
-                  <label className="form-label">{formCrearEj.media_tipo === 'youtube' ? 'Enlace de YouTube' : 'URL'}</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input className="form-input" value={formCrearEj.media_url}
-                      onChange={e => setFormCrearEj(f => ({ ...f, media_url: e.target.value }))}
-                      placeholder={formCrearEj.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
-                      style={{ flex: 1 }} />
-                    {formCrearEj.media_tipo !== 'youtube' && (
-                      <label style={{ cursor: 'pointer', flexShrink: 0 }}>
-                        <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
-                          onChange={async ev => {
-                            const file = ev.target.files?.[0]; if (!file) return
-                            const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
-                            const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
-                            if (error) { alert('Error: ' + error.message); return }
-                            const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
-                            setFormCrearEj(f => ({ ...f, media_url: publicUrl }))
-                            ev.target.value = ''
-                          }} />
-                        <span className="btn btn-ghost btn-sm">📁 Subir</span>
-                      </label>
+
+                {/* Columna derecha */}
+                <div style={{ width: 264, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+                  {/* Vista previa 16:9 */}
+                  <div style={{ marginBottom: 12, borderRadius: 8, overflow: 'hidden', background: '#0f172a', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {(!formCrearEj.media_url || !formCrearEj.media_tipo) ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#334155' }}>
+                        <Play size={30} strokeWidth={1.5} />
+                        <span style={{ fontSize: 11 }}>Vista previa</span>
+                      </div>
+                    ) : formCrearEj.media_tipo === 'imagen' ? (
+                      <img src={formCrearEj.media_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : formCrearEj.media_tipo === 'gif' ? (
+                      <img src={formCrearEj.media_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : formCrearEj.media_tipo === 'video' ? (
+                      <video src={formCrearEj.media_url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : formCrearEj.media_tipo === 'youtube' ? (() => {
+                      const yId = formCrearEj.media_url.match(/(?:v=|youtu\.be\/)([^&?]+)/)?.[1]
+                      return yId
+                        ? <iframe src={`https://www.youtube.com/embed/${yId}`} style={{ width: '100%', height: '100%', border: 'none' }} title="preview" allowFullScreen />
+                        : <span style={{ fontSize: 11, color: '#475569', padding: 12, textAlign: 'center' }}>URL no válida</span>
+                    })() : null}
+                  </div>
+
+                  {/* Archivo */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div className="form-label" style={{ marginBottom: 4 }}>Archivo</div>
+                    <select className="form-select" value={formCrearEj.media_tipo}
+                      onChange={e => setFormCrearEj(f => ({ ...f, media_tipo: e.target.value, media_url: '', video_url: '' }))}
+                      style={{ marginBottom: 6 }}>
+                      <option value="">Sin media</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="imagen">Imagen</option>
+                      <option value="video">Vídeo</option>
+                      <option value="gif">GIF</option>
+                    </select>
+                    {formCrearEj.media_tipo && (
+                      <>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                          <input className="form-input" value={formCrearEj.media_url}
+                            onChange={e => setFormCrearEj(f => ({ ...f, media_url: e.target.value }))}
+                            placeholder={formCrearEj.media_tipo === 'youtube' ? 'https://youtube.com/...' : 'https://...'}
+                            style={{ flex: 1, fontSize: 12 }} />
+                          {formCrearEj.media_tipo !== 'youtube' && (
+                            <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                              <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                                onChange={async ev => {
+                                  const file = ev.target.files?.[0]; if (!file) return
+                                  const path = `biblioteca/${Date.now()}.${file.name.split('.').pop()}`
+                                  const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                                  if (error) { alert('Error: ' + error.message); return }
+                                  const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                                  setFormCrearEj(f => ({ ...f, media_url: publicUrl }))
+                                  ev.target.value = ''
+                                }} />
+                              <span className="btn btn-ghost btn-sm">📁</span>
+                            </label>
+                          )}
+                        </div>
+                        {formCrearEj.media_tipo !== 'youtube' && (
+                          <input className="form-input" value={formCrearEj.video_url}
+                            onChange={e => setFormCrearEj(f => ({ ...f, video_url: e.target.value }))}
+                            placeholder='Enlace "Ver vídeo" (opcional)' style={{ fontSize: 12 }} />
+                        )}
+                      </>
                     )}
                   </div>
-                </div>
-              )}
-              {formCrearEj.media_tipo && formCrearEj.media_tipo !== 'youtube' && (
-                <div className="form-group">
-                  <label className="form-label">Enlace "Ver vídeo" (opcional)</label>
-                  <input className="form-input" value={formCrearEj.video_url}
-                    onChange={e => setFormCrearEj(f => ({ ...f, video_url: e.target.value }))}
-                    placeholder="https://..." />
-                </div>
-              )}
-              {/* Etiquetas taxonómicas */}
-              {SECCIONES_CLASIFICACION.filter(s => s.tipo !== 'complejos').map(seccion => {
-                const seleccionados = formCrearEj[seccion.campo] || []
-                const getLabel = seccion.tipo === 'patron' ? labelDePatronId : (seccion.labelFn || (id => id))
-                const allItems = seccion.tipo === 'patron'
-                  ? PATRON_MOVIMIENTO.flatMap(b => b.grupos.flatMap(g => g.children.map(c => c.id)))
-                  : seccion.tipo === 'chips'
-                    ? seccion.items
-                    : seccion.grupos.flatMap(g => g.items)
-                return (
-                  <div key={seccion.campo}>
-                    <label className="form-label" style={{ color: seccion.color }}>{seccion.label}</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {allItems.map(item => {
-                        const activo = seleccionados.includes(item)
-                        return (
-                          <button key={item} type="button"
-                            onClick={() => setFormCrearEj(f => {
-                              const actual = f[seccion.campo] || []
-                              return { ...f, [seccion.campo]: activo ? actual.filter(v => v !== item) : [...actual, item] }
-                            })}
-                            style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: `1.5px solid ${activo ? seccion.color : 'var(--border)'}`, background: activo ? seccion.color + '22' : 'transparent', color: activo ? seccion.color : 'var(--text2)', cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
-                            {getLabel(item)}
-                          </button>
-                        )
-                      })}
-                    </div>
+
+                  {/* Notas de ejecución */}
+                  <div style={{ marginBottom: 8 }}>
+                    <div className="form-label" style={{ marginBottom: 4 }}>Notas de ejecución</div>
+                    <textarea className="form-input" placeholder="Indicaciones técnicas..." value={formCrearEj.notas}
+                      onChange={e => setFormCrearEj(f => ({ ...f, notas: e.target.value }))} rows={2} style={{ resize: 'vertical', fontSize: 12 }} />
                   </div>
-                )
-              })}
-              {errorCrearEj && <p style={{ color: 'var(--error)', fontSize: 12 }}>{errorCrearEj}</p>}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModalCrearEj(null)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={guardandoCrearEj || !formCrearEj.nombre?.trim()} onClick={guardarEjercicioPersonalizado}>
-                {guardandoCrearEj ? 'Guardando...' : 'Guardar ejercicio'}
-              </button>
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="form-label" style={{ marginBottom: 4 }}>Tipo de ejecución</div>
+                    <input className="form-input" placeholder="Ej: Excéntrico lento, pausa..." value={formCrearEj.ejecucion_tipo}
+                      onChange={e => setFormCrearEj(f => ({ ...f, ejecucion_tipo: e.target.value }))} style={{ fontSize: 12 }} />
+                  </div>
+
+                  {/* Resumen etiquetas */}
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 8 }}>Resumen</div>
+                    {(() => {
+                      const conValores = seccionesFiltradas.filter(s => (formCrearEj[s.campo] || []).length > 0)
+                      if (!conValores.length) return <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Sin etiquetas seleccionadas</div>
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          {conValores.map(s => {
+                            const getLabel = s.tipo === 'patron' ? labelDePatronId : (s.labelFn || labelFromId)
+                            return (
+                              <div key={s.campo}>
+                                <div style={{ fontSize: 9.5, fontWeight: 600, color: s.color, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{s.label}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                  {(formCrearEj[s.campo] || []).map(v => (
+                                    <span key={v} style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 12, background: s.color + '18', color: s.color, border: `1px solid ${s.color}33`, fontWeight: 500 }}>
+                                      {getLabel(v)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  {errorCrearEj && <p style={{ color: 'var(--error)', fontSize: 12, marginTop: 8 }}>{errorCrearEj}</p>}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setModalCrearEj(null)}>Cancelar</button>
+                <button className="btn btn-primary" disabled={guardandoCrearEj || !formCrearEj.nombre?.trim()} onClick={guardarEjercicioPersonalizado}>
+                  {guardandoCrearEj ? 'Guardando...' : 'Guardar ejercicio'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Zona de drop para bloques de biblioteca (cuando la sesión es fuerza) */}
       {libDragActive && sesionAbierta?.tipo_editor !== 'carrera' && (
