@@ -1085,7 +1085,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <div className="form-group">
                 <label className="form-label">Estado</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['realizada','○ Realizada','#dbeafe','#1d4ed8','#3b82f6'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['no_realizada','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
+                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['no_realizada','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
                     const active = (formData.estado || 'pendiente') === val
                     return (
                       <button key={val} onClick={() => fd('estado', val)}
