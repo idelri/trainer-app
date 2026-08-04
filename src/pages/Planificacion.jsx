@@ -107,15 +107,20 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   function estadoSesion(s) {
     const estadoPersistido = s.estado
 
-    // 1. Estado persistido (no pendiente)
-    if (estadoPersistido && estadoPersistido !== 'pendiente') return estadoPersistido
-
     const hoy = new Date(new Date().toDateString())
+    const esFutura = s.fecha ? new Date(s.fecha) > hoy : false
+
+    // 1. Estado persistido (no pendiente) — ignorar completados en sesiones futuras
+    if (estadoPersistido && estadoPersistido !== 'pendiente') {
+      if (esFutura && ['completada', 'parcial', 'realizada'].includes(estadoPersistido)) return 'pendiente'
+      return estadoPersistido
+    }
+
     const fb = feedbacks.find(f => f.sesion_id === s.id)
     const fbStatus = fb?.data?.completion?.status
 
-    // 2. Cliente guardó la sesión (completada_el set)
-    if (s.completada_el) {
+    // 2. Cliente guardó la sesión (completada_el set) — solo si no es futura
+    if (s.completada_el && !esFutura) {
       if (fbStatus === 'completed') return 'completada'
       if (fbStatus === 'partial')   return 'parcial'
       return 'realizada'
