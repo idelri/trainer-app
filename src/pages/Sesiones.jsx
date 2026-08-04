@@ -926,14 +926,13 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
 
   async function reordenarCarrito(fromIdx, toIdx) {
     if (fromIdx === toIdx) return
-    setCarritoItems(ci => {
-      const n = [...ci]; const [m] = n.splice(fromIdx, 1); n.splice(toIdx, 0, m)
-      n.forEach((it, i) => {
-        if (it.type === 'fase') supabase.from('sesion_fases').update({ orden: i }).eq('id', it.id)
-        else supabase.from('sesion_fase_grupos').update({ orden: i }).eq('id', it.id)
-      })
-      return n
-    })
+    const n = [...carritoItems]; const [m] = n.splice(fromIdx, 1); n.splice(toIdx, 0, m)
+    setCarritoItems(n)
+    await Promise.all(n.map((it, i) =>
+      it.type === 'fase'
+        ? supabase.from('sesion_fases').update({ orden: i }).eq('id', it.id)
+        : supabase.from('sesion_fase_grupos').update({ orden: i }).eq('id', it.id)
+    ))
     setDirty(true)
   }
 
