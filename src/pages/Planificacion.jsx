@@ -208,7 +208,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         setSubbloques({}); setSemanas({})
       }
 
-      const { data: sess } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: true, nullsFirst: false })
+      const { data: sess } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: true, nullsFirst: false }).order('orden', { ascending: true })
       setSesiones(sess || [])
     } else {
       setPlanificacion(null); setBloques([]); setSemanas({}); setSubbloques({}); setSesiones([])
