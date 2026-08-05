@@ -11,7 +11,18 @@ const T = {
 }
 
 const RPE_LABELS = ['Nada de esfuerzo','Muy, muy suave','Muy suave','Suave','Moderada','Algo exigente','Exigente','Muy exigente','Muy dura','Extremadamente dura','Máximo esfuerzo']
-const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
+const BORG_RPE = {
+  1:  { label: 'Muy, muy leve',     desc: 'Esfuerzo casi inapreciable. Conversación completamente fluida.' },
+  2:  { label: 'Leve',              desc: 'Esfuerzo ligero y cómodo. Puedes hablar sin ningún problema.' },
+  3:  { label: 'Moderado',          desc: 'Esfuerzo controlado. Conversación fácil en frases largas. Zona aeróbica baja.' },
+  4:  { label: 'Algo intenso',      desc: 'Esfuerzo notable pero sostenible. Puedes hablar en frases cortas.' },
+  5:  { label: 'Intenso',           desc: 'Claramente exigente. Conversación posible pero entrecortada. Zona aeróbica-umbral.' },
+  6:  { label: 'Intenso-alto',      desc: 'Esfuerzo elevado. Hablar cuesta. Solo frases muy cortas.' },
+  7:  { label: 'Muy intenso',       desc: 'Muy exigente. Solo palabras sueltas. Cerca del umbral anaeróbico.' },
+  8:  { label: 'Muy intenso-alto',  desc: 'Respiración forzada. Sin conversación posible. Difícil de sostener.' },
+  9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
+  10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
+}
 
 function FeedbackResumen({ data, submittedAt, onEditar }) {
   const d = data || {}
@@ -381,7 +392,8 @@ export default function SesionPublica({ token }) {
                         ))}
                         <span style={{ marginLeft: 4, fontSize: 15, fontWeight: 800, color: rpeColor }}>{f.rpe}</span>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: rpeColor }}>{BORG_RPE[f.rpe]}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: rpeColor }}>{BORG_RPE[f.rpe].label}</div>
+                      <div style={{ fontSize: 11, color: T.ink3, marginTop: 3, lineHeight: 1.4 }}>{BORG_RPE[f.rpe].desc}</div>
                     </div>
                   )}
                   {(f.pendiente_cualitativa || f.pendiente_pct_min != null) && (() => {
