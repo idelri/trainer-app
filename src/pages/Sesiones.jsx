@@ -137,7 +137,18 @@ function PatronSelector({ value = [], onChange, complejosSeleccionados = [], est
   )
 }
 
-const BORG_RPE = { 1: 'Muy, muy suave', 2: 'Suave', 3: 'Moderado', 4: 'Algo duro', 5: 'Duro', 6: 'Duro', 7: 'Muy duro', 8: 'Muy duro', 9: 'Muy, muy duro', 10: 'Máximo esfuerzo' }
+const BORG_RPE = {
+  1:  { label: 'Muy, muy leve',     desc: 'Esfuerzo casi inapreciable. Conversación completamente fluida.' },
+  2:  { label: 'Leve',              desc: 'Esfuerzo ligero y cómodo. Puedes hablar sin ningún problema.' },
+  3:  { label: 'Moderado',          desc: 'Esfuerzo controlado. Conversación fácil en frases largas. Zona aeróbica baja.' },
+  4:  { label: 'Algo intenso',      desc: 'Esfuerzo notable pero sostenible. Puedes hablar en frases cortas.' },
+  5:  { label: 'Intenso',           desc: 'Claramente exigente. Conversación posible pero entrecortada. Zona aeróbica-umbral.' },
+  6:  { label: 'Intenso-alto',      desc: 'Esfuerzo elevado. Hablar cuesta. Solo frases muy cortas.' },
+  7:  { label: 'Muy intenso',       desc: 'Muy exigente. Solo palabras sueltas. Cerca del umbral anaeróbico.' },
+  8:  { label: 'Muy intenso-alto',  desc: 'Respiración forzada. Sin conversación posible. Difícil de sostener.' },
+  9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
+  10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
+}
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
 function ytId(url) {
   if (!url) return null
@@ -1581,11 +1592,16 @@ async function guardarSesion() {
                       <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>RPE (1-10)</div>
                       <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                          <button key={n} title={`${n} – ${BORG_RPE[n]}`} onClick={() => actualizarBloqueCarrito(f.id, 'rpe', f.rpe === n ? null : n, grupoId)}
+                          <button key={n} title={`${n} – ${BORG_RPE[n].label}`} onClick={() => actualizarBloqueCarrito(f.id, 'rpe', f.rpe === n ? null : n, grupoId)}
                             style={{ width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${f.rpe === n ? rColor : 'var(--border)'}`, background: f.rpe === n ? rColor : 'var(--bg)', color: f.rpe === n ? '#fff' : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>{n}</button>
                         ))}
                       </div>
-                      {f.rpe && <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: rColor }}>{f.rpe} – {BORG_RPE[f.rpe]}</div>}
+                      {f.rpe && (
+                        <div style={{ marginTop: 5 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: rColor }}>{f.rpe} – {BORG_RPE[f.rpe].label}</span>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2, lineHeight: 1.4 }}>{BORG_RPE[f.rpe].desc}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
