@@ -81,6 +81,20 @@ export default function CalendarioSesiones({
   const setArrastrando = setArrastrandoExterno || setArrastrandoInterno
   const [menu, setMenu] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { x, y, sesionId, data }
+  const [dragOver, setDragOver] = useState(null) // { itemId, pos: 'before'|'after' }
+  const [localOrder, setLocalOrder] = useState({}) // { fecha: id[] } orden optimista
+  const dragWithinRef = useRef(null) // { itemId, fecha } — síncrono, evita stale closure
+
+  async function reordenarEnDia(fecha, fromId, toId, pos) {
+    const rawIds = (sesionPorDia[fecha] || []).filter(s => s._tipo === 'sesion').map(s => s.id)
+    const ids = localOrder[fecha] || rawIds
+    const sin = ids.filter(id => id !== fromId)
+    const idx = sin.indexOf(toId)
+    if (idx < 0) return
+    sin.splice(pos === 'before' ? idx : idx + 1, 0, fromId)
+    setLocalOrder(prev => ({ ...prev, [fecha]: sin }))
+    await Promise.all(sin.map((id, i) => supabase.from('sesiones').update({ orden: i }).eq('id', id)))
+  }
   const tooltipTimer = useRef(null)
 
   async function mostrarTooltip(e, sesion) {
@@ -257,7 +271,12 @@ export default function CalendarioSesiones({
                   const key = fKey(dia)
                   const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
                   const esHoy = fKey(dia) === fKey(hoy)
-                  const sesDia = sesionPorDia[key] || []
+                  const rawSesDia = sesionPorDia[key] || []
+                  const orderOverride = localOrder[key]
+                  const sesDia = orderOverride
+                    ? [...orderOverride.map(id => rawSesDia.find(s => s.id === id && s._tipo === 'sesion')).filter(Boolean),
+                       ...rawSesDia.filter(s => s._tipo !== 'sesion')]
+                    : rawSesDia
                   const colorLinea = info?.bloque?.color || null
                   const packDia = packs.find(p => key >= p.fecha_inicio && key <= p.fecha_fin)
                   return (
@@ -285,21 +304,50 @@ export default function CalendarioSesiones({
                             }[item._tipo]
                         const icono = item._tipo === 'sesion' ? iconoSesion(item) : { competicion: '🏆', control: '🔬', nota: '📝' }[item._tipo]
                         const texto = item._tipo === 'nota' ? item.texto : (item.nombre || item.titulo)
-                        return (
+                        const isDragTarget = dragOver?.itemId === item.id
+                        const lineStyle = { height: 2, background: '#2d6a4f', borderRadius: 1, flexShrink: 0, pointerEvents: 'none' }
+                        const els = []
+                        if (isDragTarget && dragOver.pos === 'before') els.push(<div key={`lb-${item.id}`} style={lineStyle} />)
+                        els.push(
                           <div key={item.id}
                             draggable
-                            onDragStart={() => { setArrastrando(item); ocultarTooltip() }}
-                            onDragEnd={() => setArrastrando(null)}
+                            onDragStart={() => {
+                              const dw = item._tipo === 'sesion' ? { itemId: item.id, fecha: key } : null
+                              dragWithinRef.current = dw
+                              setArrastrando(item); ocultarTooltip()
+                            }}
+                            onDragEnd={() => { dragWithinRef.current = null; setArrastrando(null); setDragOver(null) }}
+                            onDragOver={e => {
+                              e.preventDefault()
+                              const dw = dragWithinRef.current
+                              if (item._tipo === 'sesion' && dw && dw.fecha === key && dw.itemId !== item.id) {
+                                e.stopPropagation()
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                setDragOver({ itemId: item.id, pos: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after' })
+                              }
+                            }}
+                            onDrop={e => {
+                              e.preventDefault(); e.stopPropagation()
+                              const dw = dragWithinRef.current
+                              if (item._tipo === 'sesion' && dw && dw.fecha === key && dw.itemId !== item.id) {
+                                reordenarEnDia(key, dw.itemId, item.id, dragOver?.pos || 'after')
+                              } else if (arrastrando) {
+                                onMoverSesion(arrastrando, key)
+                              }
+                              dragWithinRef.current = null; setArrastrando(null); setDragOver(null)
+                            }}
                             onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item); else if (item._tipo === 'nota' && onAbrirNota) onAbrirNota(item) }}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
                             onMouseEnter={e => { if (item._tipo === 'sesion' || item._tipo === 'nota') mostrarTooltip(e, item) }}
                             onMouseLeave={ocultarTooltip}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative' }}>
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative', opacity: dragWithinRef.current?.itemId === item.id ? 0.4 : 1 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
                             <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
                         )
-                      })}
+                        if (isDragTarget && dragOver.pos === 'after') els.push(<div key={`la-${item.id}`} style={lineStyle} />)
+                        return els
+                      }).flat()}
                     </div>
                   )
                 })}
