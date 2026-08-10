@@ -395,13 +395,16 @@ export default function ClientePortal({ token }) {
       return pi <= domNav && pf >= lunNav
     })
 
-    // Extras (competiciones, controles, notas sin fecha o sin fecha exacta) de la semana navegada
-    // Las notas CON fecha aparecen integradas en cada día; aquí solo van las sin fecha y el resto de tipos
+    // Extras (competiciones, controles) de la semana navegada — sin notas, van integradas en cada día
     const extrasNav = [
       ...competiciones.map(x => ({ ...x, _tipo: 'comp' })),
       ...controles.map(x => ({ ...x, _tipo: 'control' })),
-      ...notas.filter(x => !x.fecha).map(x => ({ ...x, _tipo: 'nota' })),
-    ].filter(x => !x.fecha || (parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav))
+    ].filter(x => x.fecha && parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav)
+
+    // Notas de la semana navegada (separadas para integrarlas en cada día)
+    const notasNavSem = notas
+      .filter(x => x.fecha && parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav)
+      .map(x => ({ ...x, _tipo: 'nota' }))
 
     const hechas = sesNav.filter(s => ['completed', 'partial', 'realizada'].includes(s.estado_efectivo)).length
 
@@ -651,7 +654,7 @@ export default function ClientePortal({ token }) {
 
                   const { idx, dia } = item
                   const sesDia = sesNav.filter(s => s.fecha && isSameDay(parseISO(s.fecha), dia))
-                  const notasDia = extrasNav.filter(x => x._tipo === 'nota' && isSameDay(parseISO(x.fecha), dia))
+                  const notasDia = notasNavSem.filter(x => isSameDay(parseISO(x.fecha), dia))
                   const hoyDia = isToday(dia)
                   const nombreDia = DIAS_SEM[idx]
                   const fechaStr = format(dia, 'd MMM', { locale: es })
