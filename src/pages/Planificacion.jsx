@@ -209,9 +209,17 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       }
 
       const { data: sess } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: true, nullsFirst: false }).order('orden', { ascending: true })
-      setSesiones(sess || [])
+      const sesArr = sess || []
+      let fbsArr = []
+      if (sesArr.length > 0) {
+        const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at, data').in('sesion_id', sesArr.map(s => s.id))
+        fbsArr = fbs || []
+      }
+      // Set both in the same synchronous block so React batches into one render
+      setSesiones(sesArr)
+      setFeedbacks(fbsArr)
     } else {
-      setPlanificacion(null); setBloques([]); setSemanas({}); setSubbloques({}); setSesiones([])
+      setPlanificacion(null); setBloques([]); setSemanas({}); setSubbloques({}); setSesiones([]); setFeedbacks([])
     }
 
     const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
@@ -222,13 +230,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setNotas(nts || [])
     const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha_inicio')
     setPacks(pks || [])
-    const { data: allSess } = await supabase.from('sesiones').select('id').eq('cliente_id', clienteSeleccionado)
-    if (allSess && allSess.length > 0) {
-      const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, submitted_at, data').in('sesion_id', allSess.map(s => s.id))
-      setFeedbacks(fbs || [])
-    } else {
-      setFeedbacks([])
-    }
     setLoading(false)
   }
 

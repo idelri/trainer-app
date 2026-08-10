@@ -449,6 +449,19 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                           </div>
                         )
                         // Sesión — soporta reordenación dentro del mismo día
+                        const hoyKey = fKey(hoy)
+                        const sesColor = (() => {
+                          const e = item.estado
+                          const esFutura = item.fecha ? item.fecha > hoyKey : false
+                          if (e && e !== 'pendiente' && !esFutura) {
+                            if (e === 'completada') return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
+                            if (e === 'parcial')    return { bg: '#fef9c322', fg: '#ca8a04', border: '#ca8a0455' }
+                            if (e === 'no_realizada') return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
+                          }
+                          if (item.completada_el && !esFutura) return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
+                          if (item.fecha && item.fecha < hoyKey) return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
+                          return null
+                        })()
                         const els = []
                         if (isDragTarget && dragOver.pos === 'before') els.push(<div key={`lb-${item.id}`} style={lineStyle} />)
                         els.push(
@@ -476,7 +489,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                             }}
                             onClick={() => onAbrirSesion(item)}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1 }}>
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: sesColor ? sesColor.bg : 'var(--accent-light)', color: sesColor ? sesColor.fg : 'var(--accent)', border: sesColor ? `1px solid ${sesColor.border}` : undefined, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
                             <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
                           </div>
@@ -787,7 +800,8 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       const sesInicial = (ses || []).find(s => s.id === sesionInicialId)
       setSesionAbierta(sesInicial || null)
     } else {
-      setSesionAbierta(null)
+      // Solo cerrar la sesión abierta si no hay ninguna actualmente
+      setSesionAbierta(prev => prev ? prev : null)
     }
 
     if (plan) {
@@ -1008,8 +1022,9 @@ async function guardarSesion() {
     const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
+      setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datos } : s))
       setSesionAbierta(s => s ? { ...s, ...datos } : s)
-      setSaving(false); setModalSesion(null); cargarSesiones()
+      setSaving(false); setModalSesion(null)
       return
     }
     // Nueva sesión: si es fuerza crear 4 bloques x 3 ejercicios; si es carrera crear 3 fases
