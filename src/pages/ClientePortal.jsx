@@ -395,12 +395,13 @@ export default function ClientePortal({ token }) {
       return pi <= domNav && pf >= lunNav
     })
 
-    // Extras (competiciones, controles, notas) de la semana navegada
+    // Extras (competiciones, controles, notas sin fecha o sin fecha exacta) de la semana navegada
+    // Las notas CON fecha aparecen integradas en cada día; aquí solo van las sin fecha y el resto de tipos
     const extrasNav = [
       ...competiciones.map(x => ({ ...x, _tipo: 'comp' })),
       ...controles.map(x => ({ ...x, _tipo: 'control' })),
-      ...notas.map(x => ({ ...x, _tipo: 'nota' })),
-    ].filter(x => x.fecha && parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav)
+      ...notas.filter(x => !x.fecha).map(x => ({ ...x, _tipo: 'nota' })),
+    ].filter(x => !x.fecha || (parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav))
 
     const hechas = sesNav.filter(s => ['completed', 'partial', 'realizada'].includes(s.estado_efectivo)).length
 
@@ -650,11 +651,12 @@ export default function ClientePortal({ token }) {
 
                   const { idx, dia } = item
                   const sesDia = sesNav.filter(s => s.fecha && isSameDay(parseISO(s.fecha), dia))
+                  const notasDia = extrasNav.filter(x => x._tipo === 'nota' && isSameDay(parseISO(x.fecha), dia))
                   const hoyDia = isToday(dia)
                   const nombreDia = DIAS_SEM[idx]
                   const fechaStr = format(dia, 'd MMM', { locale: es })
 
-                  if (sesDia.length === 0) {
+                  if (sesDia.length === 0 && notasDia.length === 0) {
                     return (
                       <div key={`day-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.surface, borderRadius: 10, border: `1px solid ${T.border}`, padding: '7px 12px', opacity: hoyDia ? 1 : 0.6 }}>
                         <div style={{ width: 32, height: 32, borderRadius: 7, background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>😴</div>
@@ -667,6 +669,7 @@ export default function ClientePortal({ token }) {
                     )
                   }
 
+                  const totalItems = sesDia.length + notasDia.length
                   return (
                     <div key={`day-${idx}`} style={{ ...card, border: hoyDia ? `1.5px solid ${colNav}` : `1px solid ${T.border}` }}>
                       <div style={{ background: hoyDia ? `${colNav}18` : T.bg, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${hoyDia ? colNav + '30' : T.border}` }}>
@@ -679,9 +682,10 @@ export default function ClientePortal({ token }) {
                       {sesDia.map((s, si) => {
                         const bd = badgeEstado(s.estado_efectivo)
                         const bf = badgeFeedback(s)
+                        const isLast = si === sesDia.length - 1 && notasDia.length === 0
                         return (
                           <div key={s.id} onClick={() => abrirSesion(s)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: si < sesDia.length - 1 ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: !isLast ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
                             <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colNav}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{iconoSesion(s)}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 12, fontWeight: 500, color: T.ink }}>{s.titulo}</div>
@@ -696,6 +700,15 @@ export default function ClientePortal({ token }) {
                           </div>
                         )
                       })}
+                      {notasDia.map((n, ni) => (
+                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderTop: `1px solid ${T.bg2}`, background: '#FEFCE8' }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 7, background: '#FEF08A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📝</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: T.mono, fontSize: 8, color: '#854d0e', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 3 }}>Nota</div>
+                            <div style={{ fontSize: 12, color: '#5a3600', lineHeight: 1.45 }}>{n.texto}</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )
                 })

@@ -226,7 +226,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setCompeticiones(comps || [])
     const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setControles(ctrls || [])
-    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
+    const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha').order('orden', { ascending: true })
     setNotas(nts || [])
     const { data: pks } = await supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha_inicio')
     setPacks(pks || [])

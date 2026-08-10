@@ -86,14 +86,21 @@ export default function CalendarioSesiones({
   const dragWithinRef = useRef(null) // { itemId, fecha } — síncrono, evita stale closure
 
   async function reordenarEnDia(fecha, fromId, toId, pos) {
-    const rawIds = (sesionPorDia[fecha] || []).filter(s => s._tipo === 'sesion').map(s => s.id)
+    const rawItems = sesionPorDia[fecha] || []
+    const sortable = rawItems.filter(s => s._tipo === 'sesion' || s._tipo === 'nota')
+    const rawIds = sortable.map(s => s.id)
     const ids = localOrder[fecha] || rawIds
     const sin = ids.filter(id => id !== fromId)
     const idx = sin.indexOf(toId)
     if (idx < 0) return
     sin.splice(pos === 'before' ? idx : idx + 1, 0, fromId)
     setLocalOrder(prev => ({ ...prev, [fecha]: sin }))
-    await Promise.all(sin.map((id, i) => supabase.from('sesiones').update({ orden: i }).eq('id', id)))
+    await Promise.all(sin.map((id, i) => {
+      const it = rawItems.find(s => s.id === id)
+      if (!it) return Promise.resolve()
+      const tabla = it._tipo === 'sesion' ? 'sesiones' : 'sesion_notas'
+      return supabase.from(tabla).update({ orden: i }).eq('id', id)
+    }))
   }
   const tooltipTimer = useRef(null)
 
@@ -274,8 +281,10 @@ export default function CalendarioSesiones({
                   const rawSesDia = sesionPorDia[key] || []
                   const orderOverride = localOrder[key]
                   const sesDia = orderOverride
-                    ? [...orderOverride.map(id => rawSesDia.find(s => s.id === id && s._tipo === 'sesion')).filter(Boolean),
-                       ...rawSesDia.filter(s => s._tipo !== 'sesion')]
+                    ? [
+                        ...orderOverride.map(id => rawSesDia.find(s => s.id === id)).filter(Boolean),
+                        ...rawSesDia.filter(s => !orderOverride.includes(s.id)),
+                      ]
                     : rawSesDia
                   const colorLinea = info?.bloque?.color || null
                   const packDia = packs.find(p => key >= p.fecha_inicio && key <= p.fecha_fin)
@@ -312,7 +321,8 @@ export default function CalendarioSesiones({
                           <div key={item.id}
                             draggable
                             onDragStart={() => {
-                              const dw = item._tipo === 'sesion' ? { itemId: item.id, fecha: key } : null
+                              const sortable = item._tipo === 'sesion' || item._tipo === 'nota'
+                              const dw = sortable ? { itemId: item.id, fecha: key } : null
                               dragWithinRef.current = dw
                               setArrastrando(item); ocultarTooltip()
                             }}
@@ -320,7 +330,8 @@ export default function CalendarioSesiones({
                             onDragOver={e => {
                               e.preventDefault()
                               const dw = dragWithinRef.current
-                              if (item._tipo === 'sesion' && dw && dw.fecha === key && dw.itemId !== item.id) {
+                              const sortable = item._tipo === 'sesion' || item._tipo === 'nota'
+                              if (sortable && dw && dw.fecha === key && dw.itemId !== item.id) {
                                 e.stopPropagation()
                                 const rect = e.currentTarget.getBoundingClientRect()
                                 setDragOver({ itemId: item.id, pos: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after' })
@@ -329,7 +340,8 @@ export default function CalendarioSesiones({
                             onDrop={e => {
                               e.preventDefault(); e.stopPropagation()
                               const dw = dragWithinRef.current
-                              if (item._tipo === 'sesion' && dw && dw.fecha === key && dw.itemId !== item.id) {
+                              const sortable = item._tipo === 'sesion' || item._tipo === 'nota'
+                              if (sortable && dw && dw.fecha === key && dw.itemId !== item.id) {
                                 reordenarEnDia(key, dw.itemId, item.id, dragOver?.pos || 'after')
                               } else if (arrastrando) {
                                 onMoverSesion(arrastrando, key)
