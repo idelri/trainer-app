@@ -278,7 +278,12 @@ export default function CalendarioSesiones({
                   const key = fKey(dia)
                   const esMesActual = vista === 'semana' || dia.getMonth() === cursor.getMonth()
                   const esHoy = fKey(dia) === fKey(hoy)
-                  const rawSesDia = sesionPorDia[key] || []
+                  const rawSesDia = (sesionPorDia[key] || []).slice().sort((a, b) => {
+                    // Ordenar por `orden` si ambos lo tienen; si no, mantener posición relativa
+                    const ao = a.orden ?? 9999
+                    const bo = b.orden ?? 9999
+                    return ao - bo
+                  })
                   const orderOverride = localOrder[key]
                   const sesDia = orderOverride
                     ? [

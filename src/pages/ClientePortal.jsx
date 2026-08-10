@@ -404,6 +404,7 @@ export default function ClientePortal({ token }) {
     // Notas de la semana navegada (separadas para integrarlas en cada día)
     const notasNavSem = notas
       .filter(x => x.fecha && parseISO(x.fecha) >= lunNav && parseISO(x.fecha) <= domNav)
+      .slice().sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
       .map(x => ({ ...x, _tipo: 'nota' }))
 
     const hechas = sesNav.filter(s => ['completed', 'partial', 'realizada'].includes(s.estado_efectivo)).length
