@@ -673,7 +673,12 @@ export default function ClientePortal({ token }) {
                     )
                   }
 
-                  const totalItems = sesDia.length + notasDia.length
+                  // Mezclar sesiones y notas en una lista ordenada por `orden` para respetar el arrastre del admin
+                  const itemsDia = [
+                    ...sesDia.map(s => ({ ...s, _tipo: 'sesion' })),
+                    ...notasDia,
+                  ].sort((a, b) => (a.orden ?? 9999) - (b.orden ?? 9999))
+
                   return (
                     <div key={`day-${idx}`} style={{ ...card, border: hoyDia ? `1.5px solid ${colNav}` : `1px solid ${T.border}` }}>
                       <div style={{ background: hoyDia ? `${colNav}18` : T.bg, padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${hoyDia ? colNav + '30' : T.border}` }}>
@@ -683,18 +688,29 @@ export default function ClientePortal({ token }) {
                         </div>
                         <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>{fechaStr}</span>
                       </div>
-                      {sesDia.map((s, si) => {
-                        const bd = badgeEstado(s.estado_efectivo)
-                        const bf = badgeFeedback(s)
-                        const isLast = si === sesDia.length - 1 && notasDia.length === 0
+                      {itemsDia.map((item, ii) => {
+                        const isLast = ii === itemsDia.length - 1
+                        if (item._tipo === 'nota') {
+                          return (
+                            <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderTop: ii > 0 ? `1px solid ${T.bg2}` : 'none', background: '#FEFCE8' }}>
+                              <div style={{ width: 28, height: 28, borderRadius: 7, background: '#FEF08A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📝</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontFamily: T.mono, fontSize: 8, color: '#854d0e', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 3 }}>Nota</div>
+                                <div style={{ fontSize: 12, color: '#5a3600', lineHeight: 1.45 }}>{item.texto}</div>
+                              </div>
+                            </div>
+                          )
+                        }
+                        const bd = badgeEstado(item.estado_efectivo)
+                        const bf = badgeFeedback(item)
                         return (
-                          <div key={s.id} onClick={() => abrirSesion(s)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: !isLast ? `1px solid ${T.bg2}` : 'none', cursor: s.token_publico ? 'pointer' : 'default' }}>
-                            <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colNav}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{iconoSesion(s)}</div>
+                          <div key={item.id} onClick={() => abrirSesion(item)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: !isLast ? `1px solid ${T.bg2}` : 'none', cursor: item.token_publico ? 'pointer' : 'default' }}>
+                            <div style={{ width: 34, height: 34, borderRadius: 8, background: `${colNav}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{iconoSesion(item)}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 500, color: T.ink }}>{s.titulo}</div>
+                              <div style={{ fontSize: 12, fontWeight: 500, color: T.ink }}>{item.titulo}</div>
                               <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>
-                                {s.duracion_min ? `${s.duracion_min} min` : ''}{s.duracion_min && s.tipo_sesion ? ' · ' : ''}{s.tipo_sesion === 'opcional' ? 'Opcional' : s.tipo_sesion === 'flexible' ? 'Flexible' : s.tipo_sesion === 'programada' ? 'Programada' : ''}
+                                {item.duracion_min ? `${item.duracion_min} min` : ''}{item.duracion_min && item.tipo_sesion ? ' · ' : ''}{item.tipo_sesion === 'opcional' ? 'Opcional' : item.tipo_sesion === 'flexible' ? 'Flexible' : item.tipo_sesion === 'programada' ? 'Programada' : ''}
                               </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
@@ -704,15 +720,6 @@ export default function ClientePortal({ token }) {
                           </div>
                         )
                       })}
-                      {notasDia.map((n, ni) => (
-                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderTop: `1px solid ${T.bg2}`, background: '#FEFCE8' }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 7, background: '#FEF08A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>📝</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: T.mono, fontSize: 8, color: '#854d0e', letterSpacing: '.4px', textTransform: 'uppercase', marginBottom: 3 }}>Nota</div>
-                            <div style={{ fontSize: 12, color: '#5a3600', lineHeight: 1.45 }}>{n.texto}</div>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )
                 })
