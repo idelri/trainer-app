@@ -1750,13 +1750,24 @@ async function guardarSesion() {
                   <div style={{ position: 'relative', height: 86, display: 'flex', alignItems: 'flex-end', gap: 2, paddingBottom: 26 }}
                     onContextMenu={e => e.preventDefault()}>
                     {expanded.map((b, i) => {
-                      const zona = b.fc_zona || 1
-                      const h = Math.round((zona / 5) * maxH)
+                      // RPE tiene prioridad sobre fc_zona cuando está presente
+                      const usaRPE = b.rpe != null && b.rpe > 0
+                      const zonaEq = usaRPE
+                        ? (b.rpe <= 2 ? 1 : b.rpe <= 4 ? 2 : b.rpe <= 6 ? 3 : b.rpe <= 8 ? 4 : 5)
+                        : (b.fc_zona || 1)
+                      const h = usaRPE
+                        ? Math.max(4, Math.round((b.rpe / 10) * maxH))
+                        : Math.round((zonaEq / 5) * maxH)
                       const w = Math.max(4, Math.round((widths[i] / totalW) * 560))
-                      const color = FC_COLORS[zona - 1]
+                      const color = FC_COLORS[zonaEq - 1]
+                      const tooltipLabel = usaRPE
+                        ? `${b.nombre || 'Bloque'} — RPE ${b.rpe}${b.fc_zona ? ` (Z${b.fc_zona})` : ''}${b.volumen_min ? ` · ${b.volumen_min}min` : ''}${b.volumen_km ? ` · ${b.volumen_km}km` : ''}`
+                        : `${b.nombre || 'Bloque'} — Z${zonaEq}${b.volumen_min ? ` · ${b.volumen_min}min` : ''}${b.volumen_km ? ` · ${b.volumen_km}km` : ''}`
                       return (
-                        <div key={i} style={{ position: 'relative', flexShrink: 0, width: w, height: h, background: color, opacity: b.grupoId ? 0.72 : 0.92, borderRadius: '3px 3px 0 0', cursor: 'context-menu', transition: 'opacity 0.12s' }}
-                          title={`${b.nombre || 'Bloque'} — Z${zona}${b.volumen_min ? ` · ${b.volumen_min}min` : ''}${b.volumen_km ? ` · ${b.volumen_km}km` : ''}`}
+                        <div key={i} style={{ position: 'relative', flexShrink: 0, width: w, height: h, background: color, opacity: b.grupoId ? 0.72 : 0.92, borderRadius: '3px 3px 0 0', cursor: 'context-menu', transition: 'opacity 0.12s',
+                          // Barra estriada cuando usa RPE para distinguirla visualmente
+                          backgroundImage: usaRPE ? `repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.15) 3px, rgba(255,255,255,0.15) 6px)` : 'none' }}
+                          title={tooltipLabel}
                           onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                           onMouseLeave={e => e.currentTarget.style.opacity = b.grupoId ? '0.72' : '0.92'}
                           onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxCarrito({ x: e.clientX, y: e.clientY, item: b, grupoId: b.grupoId }) }} />
@@ -1771,12 +1782,18 @@ async function guardarSesion() {
                     ))}
                   </div>
                   <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, marginBottom: 8 }} />
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                     {[['#10b981','Z1'],['#84cc16','Z2'],['#f59e0b','Z3'],['#ef4444','Z4'],['#7c3aed','Z5']].map(([c, l]) => (
                       <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text3)' }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />{l}
                       </div>
                     ))}
+                    {expanded.some(b => b.rpe != null && b.rpe > 0) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--text3)', marginLeft: 4, paddingLeft: 8, borderLeft: '1px solid var(--border)' }}>
+                        <div style={{ width: 14, height: 8, borderRadius: 2, background: '#f59e0b', backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px)' }} />
+                        RPE
+                      </div>
+                    )}
                     {(totMin > 0 || totKm > 0) && <div style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>
                       {totMin > 0 && `${totMin} min`}{totMin > 0 && totKm > 0 && ' · '}{totKm > 0 && `${totKm.toFixed(1)} km`}
                     </div>}
