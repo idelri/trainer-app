@@ -150,7 +150,7 @@ const BORG_RPE = {
   9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
   10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
 }
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [] }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [] }
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -990,7 +990,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [] })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [] })
     setModalSesion(s)
   }
 
@@ -1020,7 +1020,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [] }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [] }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datos } : s))
@@ -1498,16 +1498,12 @@ async function guardarSesion() {
 
       {sesionAbierta && (
         <div style={{ paddingRight: panelBiblioteca ? 306 : 0, transition: 'padding-right 0.2s' }}>
-        <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>Objetivo general</div>
-            <InlineInput
-              value={sesionAbierta.objetivo}
-              placeholder="Ej: Seguir construyendo base de movilidad y fuerza general..."
-              textarea
-              fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ objetivo: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, objetivo: v })); setDirty(true) }}
-            />
+        {sesionAbierta.objetivo && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>📋 Notas para el cliente</div>
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{sesionAbierta.objetivo}</div>
           </div>
+        )}
 
           <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>🎒 Material necesario</div>
@@ -2508,8 +2504,12 @@ async function guardarSesion() {
               </div>
             )}
             <div className="form-group">
-              <label className="form-label">Objetivo</label>
-              <textarea className="form-textarea" value={formSesion.objetivo} onChange={e => setFormSesion(f => ({ ...f, objetivo: e.target.value }))} rows={2} />
+              <label className="form-label">📋 Observaciones para el cliente</label>
+              <textarea className="form-textarea" value={formSesion.objetivo} onChange={e => setFormSesion(f => ({ ...f, objetivo: e.target.value }))} rows={2} placeholder="Descripción o notas que verá el cliente en su vista..." />
+            </div>
+            <div className="form-group">
+              <label className="form-label">🔒 Notas de entrenadora <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>(solo tú)</span></label>
+              <textarea className="form-textarea" value={formSesion.notas_entrenador} onChange={e => setFormSesion(f => ({ ...f, notas_entrenador: e.target.value }))} rows={2} placeholder="Notas internas, contexto, recordatorios..." />
             </div>
             <div className="form-group">
               <label className="form-label">Duración (min)</label>
