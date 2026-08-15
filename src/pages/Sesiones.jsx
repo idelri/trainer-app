@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId, colorDePatronId, patronesRecomendadosActivos } from '../lib/taxonomia'
+import { FUNCIONES_SESION, GRUPOS_CAPACIDAD, objetivosAgrupados, filtrarObjetivosCompatibles } from '../lib/metodologia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import { es } from 'date-fns/locale'
@@ -149,7 +150,7 @@ const BORG_RPE = {
   9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
   10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
 }
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '' }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [] }
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -989,7 +990,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '' })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [] })
     setModalSesion(s)
   }
 
@@ -1019,7 +1020,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [] }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datos } : s))
@@ -2360,6 +2361,87 @@ async function guardarSesion() {
               <span className="modal-title">{modalSesion === 'nueva' ? 'Nueva sesión' : 'Editar sesión'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSesion(null)}><X size={14} /></button>
             </div>
+            {/* ① Función de sesión */}
+            <div className="form-group">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>①</span>
+                Función de sesión
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {FUNCIONES_SESION.map(f => {
+                  const active = formSesion.funcion_sesion === f.id
+                  return (
+                    <button key={f.id} type="button"
+                      onClick={() => setFormSesion(s => ({ ...s, funcion_sesion: active ? null : f.id }))}
+                      style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
+                      {f.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ② Capacidades */}
+            <div className="form-group">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>②</span>
+                Capacidades
+              </label>
+              {GRUPOS_CAPACIDAD.map(grupo => (
+                <div key={grupo.grupo} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{grupo.grupo}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {grupo.items.map(cap => {
+                      const active = (formSesion.capacidades || []).includes(cap.id)
+                      return (
+                        <button key={cap.id} type="button"
+                          onClick={() => setFormSesion(s => {
+                            const caps = s.capacidades || []
+                            const next = active ? caps.filter(c => c !== cap.id) : [...caps, cap.id]
+                            return { ...s, capacidades: next, objetivos_sesion: filtrarObjetivosCompatibles(s.objetivos_sesion || [], next) }
+                          })}
+                          style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
+                          {cap.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ③ Objetivos (solo visible si hay capacidades seleccionadas) */}
+            {(formSesion.capacidades || []).length > 0 && (
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>③</span>
+                  Objetivos
+                </label>
+                {objetivosAgrupados(formSesion.capacidades || []).map(({ capacidadId, capacidadLabel, objetivos }) => (
+                  <div key={capacidadId} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{capacidadLabel}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {objetivos.map(obj => {
+                        const active = (formSesion.objetivos_sesion || []).includes(obj.id)
+                        return (
+                          <button key={obj.id} type="button"
+                            onClick={() => setFormSesion(s => {
+                              const objs = s.objetivos_sesion || []
+                              const next = active ? objs.filter(o => o !== obj.id) : [...objs, obj.id]
+                              return { ...s, objetivos_sesion: next }
+                            })}
+                            style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
+                            {obj.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Estructura */}
             <div className="form-group">
               <label className="form-label">Tipo de editor</label>
               <div style={{ display: 'flex', gap: 8 }}>
