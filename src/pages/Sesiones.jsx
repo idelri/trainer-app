@@ -1449,7 +1449,7 @@ async function guardarSesion() {
             await supabase.from(tabla).update({ fecha: nuevaFecha }).eq('id', item.id)
             cargarSesiones()
           }}
-          onAbrirSesion={setSesionAbierta}
+          onAbrirSesion={abrirEditarSesion}
           onNuevaSesion={(fecha) => {
             setFormSesion({ ...EMPTY_SESION, fecha })
             setModalSesion('nueva')
@@ -2530,8 +2530,18 @@ async function guardarSesion() {
             {modalSesion === 'nueva' && (
               <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{(formSesion.tipo_editor || 'fuerza') === 'carrera' ? 'Se crearán 3 fases de ejemplo (calentamiento, trabajo, vuelta a la calma).' : 'Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar.'}</p>
             )}
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ flexWrap: 'wrap', gap: 8 }}>
               <button className="btn btn-ghost" onClick={() => setModalSesion(null)}>Cancelar</button>
+              {modalSesion !== 'nueva' && (
+                <button className="btn btn-ghost" onClick={async () => {
+                  const sesParaAbrir = typeof modalSesion === 'object' ? { ...modalSesion } : null
+                  if (!sesParaAbrir || !formSesion.titulo.trim()) return
+                  await guardarSesion()
+                  setSesionAbierta(sesParaAbrir)
+                }} disabled={saving}>
+                  ✏️ Editar ejercicios →
+                </button>
+              )}
               <button className="btn btn-primary" onClick={guardarSesion} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
