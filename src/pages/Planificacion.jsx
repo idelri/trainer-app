@@ -1741,7 +1741,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 packs={packs}
                 bloquesPlan={bloques}
                 subbloquesPlan={subbloques}
-                onAbrirSesion={s => openModal('sesion', s)}
+                onAbrirSesion={s => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
                 onNuevaSesion={fecha => openModal('sesion', { fecha })}
                 onNuevaCompeticion={fecha => openModal('comp', { fecha })}
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
