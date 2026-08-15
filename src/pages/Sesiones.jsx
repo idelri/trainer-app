@@ -796,7 +796,10 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setCompeticionesCal(comps || [])
     setControlesCal(ctrls || [])
     setPacks(pks || [])
-    if (sesionInicialId && !sesionInicialCargada.current) {
+    if (sesionInicialId === 'nueva' && !sesionInicialCargada.current) {
+      sesionInicialCargada.current = true
+      abrirNuevaSesion()
+    } else if (sesionInicialId && sesionInicialId !== 'nueva' && !sesionInicialCargada.current) {
       sesionInicialCargada.current = true
       const sesInicial = (ses || []).find(s => s.id === sesionInicialId)
       setSesionAbierta(sesInicial || null)

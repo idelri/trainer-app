@@ -302,19 +302,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           comentario:   sem?.comentario   || '',
         }
       }
-      case 'sesion':
-        return {
-          titulo:       item?.titulo       || '',
-          fecha:        item?.fecha        || '',
-          sinFecha:     !item?.fecha,
-          tipo_sesion:  item?.tipo_sesion  || 'programada',
-          estado:       item?.estado       || 'pendiente',
-          objetivo:     item?.objetivo     || '',
-          duracion_min: item?.duracion_min || '',
-          icono:        item?.icono        || '',
-          tipo_editor:  item?.tipo_editor  || 'fuerza',
-          con_feedback: item?.con_feedback !== false,
-        }
       case 'comp':
         return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', objetivo: item?.objetivo || '', notas: item?.notas || '', visibilidad: item?.visibilidad || 'entrenadora' }
       case 'control':
@@ -487,15 +474,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           }
           if (semanaExistente?.id) await supabase.from('semanas').update(datos).eq('id', semanaExistente.id)
           else await supabase.from('semanas').insert({ bloque_id, numero, ...datos })
-          closeModal(); cargarPlanificacion()
-          break
-        }
-
-        case 'sesion': {
-          if (!formData.titulo) break
-          const datos = { titulo: formData.titulo, fecha: formData.sinFecha ? null : (formData.fecha || null), tipo_sesion: formData.tipo_sesion || 'programada', estado: formData.estado || 'pendiente', objetivo: formData.objetivo || null, duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null, icono: formData.icono || null, tipo_editor: formData.tipo_editor || 'fuerza', con_feedback: formData.con_feedback !== false }
-          if (modalItem?.id) await supabase.from('sesiones').update(datos).eq('id', modalItem.id)
-          else await supabase.from('sesiones').insert({ cliente_id: clienteSeleccionado, ...datos })
           closeModal(); cargarPlanificacion()
           break
         }
@@ -1010,126 +988,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           </div>
         )
       }
-
-      // ── SESIÓN ────────────────────────────────────────────────────────────
-      case 'sesion':
-        return (
-          <div style={{ padding: '0 20px 4px' }}>
-            <div className="form-group">
-              <label className="form-label">Tipo de editor</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[['fuerza','💪','Fuerza / salud'],['carrera','🏃','Carrera / resistencia']].map(([val, ico, label]) => {
-                  const active = (formData.tipo_editor || 'fuerza') === val
-                  return (
-                    <button key={val} onClick={() => fd('tipo_editor', val)}
-                      style={{ flex: 1, padding: '9px 8px', borderRadius: 9, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16 }}>{ico}</span> {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Icono de sesión</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {['💪','🏃','🧘','🚴','🏊','⚽','🏀','🎾','🏋️','🤸','🥊','🏇','🎯','🧗','🤽','🏄','🛶','🎿','⛷️','🏌️','🏹','🤺','🛝','🚣','🏇','🦵','🔥','⚡','🌟','🎽'].map(e => (
-                  <button key={e} onClick={() => fd('icono', formData.icono === e ? '' : e)}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: `2px solid ${formData.icono === e ? 'var(--accent)' : 'var(--border)'}`, background: formData.icono === e ? 'var(--accent-light)' : 'var(--bg)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Título *</label>
-              <input className="form-input" value={formData.titulo || ''} onChange={e => fd('titulo', e.target.value)} placeholder="Ej: Fuerza tren superior" autoFocus />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Fecha</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input className="form-input" type="date" value={formData.fecha || ''} onChange={e => fd('fecha', e.target.value)}
-                  disabled={!!formData.sinFecha} style={{ flex: 1, opacity: formData.sinFecha ? 0.4 : 1 }} />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" checked={!!formData.sinFecha} onChange={e => {
-                    const checked = e.target.checked
-                    setFormData(f => ({
-                      ...f,
-                      sinFecha:    checked,
-                      fecha:       checked ? '' : f.fecha,
-                      tipo_sesion: checked
-                        ? (f.tipo_sesion === 'programada' ? 'flexible' : f.tipo_sesion)
-                        : (f.tipo_sesion === 'flexible'   ? 'programada' : f.tipo_sesion),
-                    }))
-                  }} />
-                  Sin fecha asignada
-                </label>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tipo de sesión</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(formData.sinFecha
-                  ? [['flexible', '🔄 Flexible'], ['opcional', '⭐ Opcional']]
-                  : [['programada', '📅 Programada'], ['opcional', '⭐ Opcional']]
-                ).map(([val, label]) => {
-                  const active = (formData.tipo_sesion || 'programada') === val
-                  return (
-                    <button key={val} onClick={() => fd('tipo_sesion', val)}
-                      style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)' }}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            {modalItem?.id && (
-              <div className="form-group">
-                <label className="form-label">Estado</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {[['pendiente','Pendiente','#f3f4f6','#6b7280','#d1d5db'],['completada','✓ Completada','#dcfce7','#166534','#16a34a'],['parcial','〜 Parcial','#fef9c3','#713f12','#ca8a04'],['no_realizada','✗ No realizada','#fee2e2','#7f1d1d','#dc2626']].map(([val, label, bg, color, border]) => {
-                    const active = (formData.estado || 'pendiente') === val
-                    return (
-                      <button key={val} onClick={() => fd('estado', val)}
-                        style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? border : 'var(--border)'}`, background: active ? bg : 'var(--bg)', color: active ? color : 'var(--text3)', fontSize: 11, fontWeight: active ? 700 : 400, cursor: 'pointer' }}>
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-            <div className="form-group">
-              <label className="form-label">Objetivo</label>
-              <textarea className="form-textarea" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} rows={2} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Duración (min)</label>
-              <input className="form-input" type="number" min="1" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} style={{ maxWidth: 120 }} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 4 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                <div onClick={() => fd('con_feedback', !formData.con_feedback)}
-                  style={{ width: 36, height: 20, borderRadius: 10, background: formData.con_feedback !== false ? 'var(--accent)' : 'var(--border)', position: 'relative', flexShrink: 0, transition: 'background .2s', cursor: 'pointer' }}>
-                  <div style={{ position: 'absolute', top: 2, left: formData.con_feedback !== false ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Feedback post-sesión</div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formData.con_feedback !== false ? 'El cliente verá el cuestionario al terminar' : 'No se mostrará cuestionario'}</div>
-                </div>
-              </label>
-            </div>
-            {modalItem?.id && (
-              <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => {
-                  if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: modalItem.id })
-                  if (setPage) setPage('sesiones')
-                  closeModal()
-                }}>✏️ Editar bloques y ejercicios</button>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', marginLeft: 'auto' }} onClick={eliminarItem}>Eliminar</button>
-              </div>
-            )}
-          </div>
-        )
 
       // ── COMPETICIÓN ───────────────────────────────────────────────────────
       case 'comp':
@@ -1672,7 +1530,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                         onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
                         onDragEnd={() => setArrastrando(null)}
                         style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: clipboardSesion?.id === s.id ? 'var(--accent)' : 'var(--accent-light)', color: clipboardSesion?.id === s.id ? '#fff' : 'var(--accent)', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
+                        <span onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}>{iconoSesion(s)} {s.titulo}</span>
                         <span title="Copiar" onClick={e => { e.stopPropagation(); setClipboardSesion({ ...s, _tipo: 'sesion' }) }} style={{ opacity: 0.6, cursor: 'pointer', fontSize: 10 }}>📋</span>
                       </div>
                     ))}
@@ -1719,7 +1577,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                                     onDragStart={() => setArrastrando({ ...s, _tipo: 'sesion' })}
                                     onDragEnd={() => setArrastrando(null)}
                                     style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: clipboardSesion?.id === s.id ? '#0369a1' : '#e0f2fe', color: clipboardSesion?.id === s.id ? '#fff' : '#0369a1', fontWeight: 500, cursor: 'grab', display: 'flex', alignItems: 'center', gap: 5 }}>
-                                    <span onClick={() => openModal('sesion', s)}>{iconoSesion(s)} {s.titulo}</span>
+                                    <span onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}>{iconoSesion(s)} {s.titulo}</span>
                                     <span title="Copiar" onClick={e => { e.stopPropagation(); setClipboardSesion({ ...s, _tipo: 'sesion' }) }} style={{ opacity: 0.7, cursor: 'pointer', fontSize: 10 }}>📋</span>
                                     <span onClick={e => { e.stopPropagation(); eliminarItem('sesion', s.id) }} style={{ opacity: 0.5, cursor: 'pointer' }}>×</span>
                                   </div>
@@ -1742,7 +1600,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 bloquesPlan={bloques}
                 subbloquesPlan={subbloques}
                 onAbrirSesion={s => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
-                onNuevaSesion={fecha => openModal('sesion', { fecha })}
+                onNuevaSesion={fecha => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva' }); if (setPage) setPage('sesiones') }}
                 onNuevaCompeticion={fecha => openModal('comp', { fecha })}
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
                 onNuevaNota={fecha => openModal('nota', { fecha })}
@@ -1999,7 +1857,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                                 const est = iconoEstado(s)
                                 return (
                                   <div key={s.id}
-                                    onClick={() => openModal('sesion', s)}
+                                    onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
                                     onMouseEnter={e => setTooltip({ visible: true, tipo: 'sesion', item: s, x: e.clientX, y: e.clientY })}
                                     onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
                                     style={{ width: 18, height: 18, borderRadius: '50%', background: est ? est.bg : (b.color || '#2d6a4f') + '22', border: est ? `1.5px solid ${est.border}` : s.tipo_sesion === 'flexible' ? `1.5px dashed ${b.color || '#2d6a4f'}` : `1.5px solid ${b.color || '#2d6a4f'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, cursor: 'pointer', color: est?.color }}
@@ -2459,7 +2317,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                             {semAb && sesionesSem.length > 0 && (
                               <div style={{ padding: '8px 16px 8px 24px', background: 'var(--bg2)', borderBottom: '0.5px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {sesionesSem.map(s => (
-                                  <button key={s.id} className="btn btn-ghost btn-sm" onClick={() => { openModal('sesion', s); cambiarVista('calendario') }}
+                                  <button key={s.id} className="btn btn-ghost btn-sm" onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
                                     style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)' }}>
                                     {s.titulo || 'Sesión'}
                                   </button>
@@ -2702,7 +2560,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                       const tipoLabel = s.tipo_sesion === 'flexible' ? 'Flexible' : s.tipo_sesion === 'opcional' ? 'Opcional' : 'Programada'
                                       return (
                                         <div key={s.id}
-                                          onClick={() => openModal('sesion', s)}
+                                          onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
                                           onMouseOver={e => e.currentTarget.style.background = 'var(--bg2)'}
                                           onMouseOut={e => e.currentTarget.style.background = ''}
                                           style={{ display: 'grid', gridTemplateColumns: '20px 1fr 96px 96px 64px 36px', padding: '7px 0', borderBottom: '0.5px solid var(--border)', gap: 8, alignItems: 'center', cursor: 'pointer', borderRadius: 4 }}>
@@ -2728,13 +2586,13 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                           <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{s.duracion_min ? `${s.duracion_min} min` : '—'}</span>
                                           <button
                                             style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
-                                            onClick={e => { e.stopPropagation(); openModal('sesion', s) }}>✎</button>
+                                            onClick={e => { e.stopPropagation(); if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}>✎</button>
                                         </div>
                                       )
                                     })}
 
                                     <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }}
-                                      onClick={() => openModal('sesion', { fecha: format(fIniSem, 'yyyy-MM-dd'), tipo_sesion: 'programada' })}>
+                                      onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva' }); if (setPage) setPage('sesiones') }}>
                                       <Plus size={12} /> Añadir sesión
                                     </button>
                                   </div>
