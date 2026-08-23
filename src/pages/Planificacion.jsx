@@ -1600,7 +1600,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 bloquesPlan={bloques}
                 subbloquesPlan={subbloques}
                 onAbrirSesion={s => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
-                onNuevaSesion={fecha => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva' }); if (setPage) setPage('sesiones') }}
+                onNuevaSesion={fecha => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva', fechaNueva: fecha }); if (setPage) setPage('sesiones') }}
                 onNuevaCompeticion={fecha => openModal('comp', { fecha })}
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
                 onNuevaNota={fecha => openModal('nota', { fecha })}
@@ -2592,7 +2592,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                     })}
 
                                     <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }}
-                                      onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva' }); if (setPage) setPage('sesiones') }}>
+                                      onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva', fechaNueva: format(fIniSem, 'yyyy-MM-dd') }); if (setPage) setPage('sesiones') }}>
                                       <Plus size={12} /> Añadir sesión
                                     </button>
                                   </div>

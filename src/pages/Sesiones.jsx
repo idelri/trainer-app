@@ -541,7 +541,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
     </div>
   )
 }
-export default function Sesiones({ clienteInicial, sesionInicialId, esPlantilla, setPage, setClientePlanificacion, setRecargarPlan }) {
+export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSesion, esPlantilla, setPage, setClientePlanificacion, setRecargarPlan }) {
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(clienteInicial || null)
   const [sesiones, setSesiones] = useState([])
@@ -798,7 +798,12 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     setPacks(pks || [])
     if (sesionInicialId === 'nueva' && !sesionInicialCargada.current) {
       sesionInicialCargada.current = true
-      abrirNuevaSesion()
+      if (fechaNuevaSesion) {
+        setFormSesion({ ...EMPTY_SESION, fecha: fechaNuevaSesion })
+        setModalSesion('nueva')
+      } else {
+        abrirNuevaSesion()
+      }
     } else if (sesionInicialId && sesionInicialId !== 'nueva' && !sesionInicialCargada.current) {
       sesionInicialCargada.current = true
       const sesInicial = (ses || []).find(s => s.id === sesionInicialId)
