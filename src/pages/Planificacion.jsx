@@ -119,12 +119,15 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     const fb = feedbacks.find(f => f.sesion_id === s.id)
     const fbStatus = fb?.data?.completion?.status
 
-    // 2. Cliente guardó la sesión (completada_el set) — solo si no es futura
-    if (s.completada_el && !esFutura) {
+    // 2. Feedback directo del cliente — tiene prioridad sobre todo lo demás (si no es futura)
+    if (!esFutura && fbStatus) {
       if (fbStatus === 'completed') return 'completada'
       if (fbStatus === 'partial')   return 'parcial'
-      return 'realizada'
+      if (fbStatus === 'missed')    return 'no_realizada'
     }
+
+    // 3. Cliente guardó la sesión (completada_el set) — solo si no es futura
+    if (s.completada_el && !esFutura) return 'realizada'
 
     // 3. Fecha expirada sin acción — estado visual solo, no se persiste
     const fechaExpira = s.fecha
@@ -424,8 +427,22 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               enfoque:            formData.enfoque?.length    > 0 ? formData.enfoque : null,
             } : {}),
           }
-          if (modalItem?.id) await supabase.from('bloques').update(datos).eq('id', modalItem.id)
-          else await supabase.from('bloques').insert(datos)
+          if (modalItem?.id) {
+            await supabase.from('bloques').update(datos).eq('id', modalItem.id)
+            // Si cambia el nº de semanas, añadir las que falten
+            const numSem = datos.semanas || semanasCalculadas
+            const { data: semsExist } = await supabase.from('semanas').select('numero').eq('bloque_id', modalItem.id)
+            const existentes = new Set((semsExist || []).map(s => s.numero))
+            const nuevas = Array.from({ length: numSem }, (_, i) => i + 1).filter(n => !existentes.has(n))
+            if (nuevas.length > 0) await supabase.from('semanas').insert(nuevas.map(n => ({ bloque_id: modalItem.id, numero: n })))
+          } else {
+            const { data: nb } = await supabase.from('bloques').insert(datos).select().single()
+            // Auto-generar semanas al crear el bloque
+            if (nb) {
+              const numSem = datos.semanas || 1
+              await supabase.from('semanas').insert(Array.from({ length: numSem }, (_, i) => ({ bloque_id: nb.id, numero: i + 1 })))
+            }
+          }
           closeModal(); cargarPlanificacion()
           break
         }
@@ -1593,6 +1610,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               )}
               <CalendarioSesiones
                 sesiones={sesiones.map(s => ({ ...s, _estadoColor: colorEstado(s) }))}
+                feedbacksMap={Object.fromEntries(feedbacks.map(f => [f.sesion_id, f]))}
                 competiciones={competiciones}
                 controles={controles}
                 notas={notas}

@@ -150,7 +150,7 @@ const BORG_RPE = {
   9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
   10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
 }
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [] }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [], modalidad: 'autonoma', lugar: '', lista: false, publicada: true }
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -232,7 +232,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaNota }) {
     </div>
   )
 }
-function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onEliminarCompeticion, onNuevaNota, onEditarNota, onEliminarNota, onDuplicar, onEliminar, onMoverItem, clipboard, onCopiar, onPegar, clientes, clienteSeleccionado }) {
+function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, subbloquesPlan, onAbrirSesion, onNuevaSesion, onNuevaCompeticion, onEditarCompeticion, onEliminarCompeticion, onNuevaNota, onEditarNota, onEliminarNota, onDuplicar, onEliminar, onMoverItem, clipboard, onCopiar, onPegar, clientes, clienteSeleccionado, feedbacks = {} }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
   const [arrastrando, setArrastrando] = useState(null)
@@ -241,6 +241,20 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
   const dragWithinRef = useRef(null)                  // misma info pero síncrona (evita stale closure)
   const [dragOver, setDragOver] = useState(null)     // { itemId, pos: 'before'|'after' }
   const [localOrder, setLocalOrder] = useState({})   // { fecha: id[] } orden optimista
+  const [feedbackTooltip, setFeedbackTooltip] = useState(null) // { x, y, sesion, fb }
+  const fbTooltipTimer = useRef(null)
+
+  function mostrarFeedbackTooltip(e, sesion, fb) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    clearTimeout(fbTooltipTimer.current)
+    fbTooltipTimer.current = setTimeout(() => {
+      setFeedbackTooltip({ x: rect.right + 8, y: rect.top, sesion, fb })
+    }, 200)
+  }
+  function ocultarFeedbackTooltip() {
+    clearTimeout(fbTooltipTimer.current)
+    setFeedbackTooltip(null)
+  }
 
   const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
   const inicioSemana = new Date(cursor)
@@ -451,15 +465,23 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         )
                         // Sesión — soporta reordenación dentro del mismo día
                         const hoyKey = fKey(hoy)
+                        const fb = feedbacks[item.id]
                         const sesColor = (() => {
-                          const e = item.estado
                           const esFutura = item.fecha ? item.fecha > hoyKey : false
-                          if (e && e !== 'pendiente' && !esFutura) {
-                            if (e === 'completada') return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
-                            if (e === 'parcial')    return { bg: '#fef9c322', fg: '#ca8a04', border: '#ca8a0455' }
-                            if (e === 'no_realizada') return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
+                          if (esFutura) return null
+                          // El feedback del cliente manda sobre el estado manual
+                          const fbStatus = fb?.data?.completion?.status
+                          if (fbStatus === 'completed')  return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
+                          if (fbStatus === 'partial')    return { bg: '#fef9c322', fg: '#ca8a04', border: '#ca8a0455' }
+                          if (fbStatus === 'missed')     return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
+                          // Fallback: estado manual del entrenador
+                          const e = item.estado
+                          if (e && e !== 'pendiente') {
+                            if (e === 'completada')    return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
+                            if (e === 'parcial')       return { bg: '#fef9c322', fg: '#ca8a04', border: '#ca8a0455' }
+                            if (e === 'no_realizada')  return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
                           }
-                          if (item.completada_el && !esFutura) return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
+                          if (item.completada_el) return { bg: '#dcfce722', fg: '#16a34a', border: '#16a34a55' }
                           if (item.fecha && item.fecha < hoyKey) return { bg: '#fee2e222', fg: '#dc2626', border: '#dc262655' }
                           return null
                         })()
@@ -490,9 +512,14 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                             }}
                             onClick={() => onAbrirSesion(item)}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
+                            onMouseEnter={e => fb && mostrarFeedbackTooltip(e, item, fb)}
+                            onMouseLeave={ocultarFeedbackTooltip}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: sesColor ? sesColor.bg : 'var(--accent-light)', color: sesColor ? sesColor.fg : 'var(--accent)', border: sesColor ? `1px solid ${sesColor.border}` : undefined, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
-                            <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                              {fb && <span title="Tiene feedback" style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308', flexShrink: 0, display: 'inline-block' }} />}
+                              <span onClick={e => { e.stopPropagation(); onEliminar(item.id) }} style={{ opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            </span>
                           </div>
                         )
                         if (isDragTarget && dragOver.pos === 'after') els.push(<div key={`la-${item.id}`} style={lineStyle} />)
@@ -538,6 +565,52 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
           )}
         </div>
       )}
+
+      {feedbackTooltip && (() => {
+        const { sesion, fb } = feedbackTooltip
+        const d = fb.data || {}
+        const status = d.completion?.status
+        const rpe = d.rpe?.value
+        const comentario = d.comentario_libre || d.comentario || d.notas_cliente || ''
+        const statusLabel = { completed: '✅ Completada', partial: '⚠️ Parcial', missed: '❌ No realizada' }[status] || null
+        const statusBg = { completed: '#dcfce7', partial: '#fef9c3', missed: '#fee2e2' }[status] || 'var(--bg2)'
+        const statusFg = { completed: '#16a34a', partial: '#ca8a04', missed: '#dc2626' }[status] || 'var(--text2)'
+        return (
+          <div
+            onMouseEnter={() => clearTimeout(fbTooltipTimer.current)}
+            onMouseLeave={ocultarFeedbackTooltip}
+            style={{ position: 'fixed', top: Math.min(feedbackTooltip.y, window.innerHeight - 220), left: Math.min(feedbackTooltip.x, window.innerWidth - 230), zIndex: 300, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.15)', minWidth: 200, maxWidth: 240, padding: '10px 12px', pointerEvents: 'none' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+              💬 Feedback del cliente
+            </div>
+            {statusLabel && (
+              <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: statusBg, color: statusFg, marginBottom: 6 }}>
+                {statusLabel}
+              </div>
+            )}
+            {rpe != null && (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 3 }}>Esfuerzo percibido (RPE)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${rpe * 10}%`, height: '100%', background: rpe >= 8 ? '#ef4444' : rpe >= 6 ? '#eab308' : '#22c55e', borderRadius: 3 }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 22, textAlign: 'right' }}>{rpe}/10</span>
+                </div>
+              </div>
+            )}
+            {comentario && (
+              <div style={{ fontSize: 10.5, color: 'var(--text2)', lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4, fontStyle: 'italic' }}>
+                "{comentario.length > 80 ? comentario.slice(0, 80) + '…' : comentario}"
+              </div>
+            )}
+            {!statusLabel && !rpe && !comentario && (
+              <div style={{ fontSize: 10, color: 'var(--text3)' }}>Sin detalles</div>
+            )}
+            <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 6 }}>Clic en la sesión para ver completo</div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -587,6 +660,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   const [modalPack, setModalPack] = useState(null)
   const [formPack, setFormPack] = useState({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' })
   const [savingPack, setSavingPack] = useState(false)
+  const [feedbacks, setFeedbacks] = useState({}) // { sesion_id: feedback_data }
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => { if (clienteSeleccionado) cargarSesiones() }, [clienteSeleccionado])
   useEffect(() => { if (sesionAbierta) { cargarDetalle(sesionAbierta.id); setDirty(false); setAvisoSinGuardar(false) } }, [sesionAbierta])
@@ -792,6 +866,16 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       supabase.from('packs_flexibles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha_inicio'),
     ])
     setSesiones(ses || [])
+    // Cargar feedbacks de las sesiones de este cliente
+    if (ses && ses.length > 0) {
+      const sesIds = ses.map(s => s.id)
+      const { data: fbs } = await supabase.from('sesion_feedback').select('sesion_id, data, submitted_at').in('sesion_id', sesIds)
+      const fbMap = {}
+      ;(fbs || []).forEach(f => { fbMap[f.sesion_id] = f })
+      setFeedbacks(fbMap)
+    } else {
+      setFeedbacks({})
+    }
     setNotas(nots || [])
     setCompeticionesCal(comps || [])
     setControlesCal(ctrls || [])
@@ -998,7 +1082,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [] })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [], modalidad: s.modalidad || 'autonoma', lugar: s.lugar || '', lista: s.lista || false, publicada: s.publicada !== false })
     setModalSesion(s)
   }
 
@@ -1028,7 +1112,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [] }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [], modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
     if (modalSesion?.id) {
       await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datos } : s))
@@ -1438,6 +1522,7 @@ async function guardarSesion() {
           clipboard={clipboard}
           clientes={clientes}
           clienteSeleccionado={clienteSeleccionado}
+          feedbacks={feedbacks}
           onCopiar={(item) => setClipboard(item)}
           onPegar={async (item, fecha, clienteDestino) => {
             if (item._tipo === 'sesion') {
@@ -2520,6 +2605,24 @@ async function guardarSesion() {
               <textarea className="form-textarea" value={formSesion.notas_entrenador} onChange={e => setFormSesion(f => ({ ...f, notas_entrenador: e.target.value }))} rows={2} placeholder="Notas internas, contexto, recordatorios..." />
             </div>
             <div className="form-group">
+              <label className="form-label">Modalidad</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[{ val: 'presencial', label: '🏋️ Presencial' }, { val: 'online', label: '💻 Online' }, { val: 'autonoma', label: '🏃 Autónoma' }].map(({ val, label }) => (
+                  <button key={val} type="button"
+                    onClick={() => setFormSesion(f => ({ ...f, modalidad: val, lugar: val !== 'presencial' ? '' : f.lugar }))}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, border: '1px solid', cursor: 'pointer', background: (formSesion.modalidad || 'autonoma') === val ? 'var(--accent)' : 'transparent', color: (formSesion.modalidad || 'autonoma') === val ? '#fff' : 'var(--text2)', borderColor: (formSesion.modalidad || 'autonoma') === val ? 'var(--accent)' : 'var(--border)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(formSesion.modalidad || 'autonoma') === 'presencial' && (
+              <div className="form-group">
+                <label className="form-label">Lugar</label>
+                <input className="form-input" type="text" value={formSesion.lugar} onChange={e => setFormSesion(f => ({ ...f, lugar: e.target.value }))} placeholder="Ej: Gym Norte, Centro Deportivo..." />
+              </div>
+            )}
+            <div className="form-group">
               <label className="form-label">Duración (min)</label>
               <input className="form-input" type="number" min="1" value={formSesion.duracion_min} onChange={e => setFormSesion(f => ({ ...f, duracion_min: e.target.value }))} style={{ maxWidth: 120 }} placeholder="Ej: 45" />
             </div>
@@ -2534,6 +2637,28 @@ async function guardarSesion() {
                   <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formSesion.con_feedback !== false ? 'El cliente verá el cuestionario al terminar' : 'Sin cuestionario (sesión de activación, movilidad...)'}</div>
                 </div>
               </label>
+            </div>
+            {/* Toggle: visibilidad cliente */}
+            <div style={{ margin: '8px 0 4px', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${formSesion.publicada !== false ? 'var(--border)' : '#94a3b8'}`, background: formSesion.publicada !== false ? 'var(--bg2)' : '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+              onClick={() => setFormSesion(f => ({ ...f, publicada: f.publicada === false ? true : false }))}>
+              <div style={{ width: 38, height: 22, borderRadius: 11, background: formSesion.publicada !== false ? 'var(--accent)' : '#94a3b8', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 3, left: formSesion.publicada !== false ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: formSesion.publicada !== false ? 'var(--text)' : '#64748b' }}>{formSesion.publicada !== false ? '👁 Visible para el cliente' : '🔒 Oculta al cliente (borrador)'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formSesion.publicada !== false ? 'El cliente puede ver esta sesión' : 'Solo tú la ves, el cliente no'}</div>
+              </div>
+            </div>
+            {/* Toggle: sesión lista */}
+            <div style={{ margin: '4px 0 8px', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${formSesion.lista ? '#16a34a' : 'var(--border)'}`, background: formSesion.lista ? '#f0fdf4' : 'var(--bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+              onClick={() => setFormSesion(f => ({ ...f, lista: !f.lista }))}>
+              <div style={{ width: 38, height: 22, borderRadius: 11, background: formSesion.lista ? '#16a34a' : 'var(--border)', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 3, left: formSesion.lista ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: formSesion.lista ? '#16a34a' : 'var(--text)' }}>{formSesion.lista ? '✅ Sesión lista para el cliente' : '📝 Sesión en preparación'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formSesion.lista ? 'Contenido completo, el cliente puede ejecutarla' : 'Pensada pero pendiente de desarrollar'}</div>
+              </div>
             </div>
             {modalSesion === 'nueva' && (
               <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{(formSesion.tipo_editor || 'fuerza') === 'carrera' ? 'Se crearán 3 fases de ejemplo (calentamiento, trabajo, vuelta a la calma).' : 'Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar.'}</p>

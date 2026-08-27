@@ -73,6 +73,7 @@ export default function CalendarioSesiones({
   clipboardSemana, onCopiarSemana, onPegarSemana, onPegarSemanaOtroCliente,
   arrastrando: arrastandoExterno, setArrastrando: setArrastrandoExterno,
   semanasMap = {}, semanaSeleccionada, onSemanaClick,
+  feedbacksMap = {},
 }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
@@ -81,9 +82,23 @@ export default function CalendarioSesiones({
   const setArrastrando = setArrastrandoExterno || setArrastrandoInterno
   const [menu, setMenu] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { x, y, sesionId, data }
+  const [fbTooltip, setFbTooltip] = useState(null) // { x, y, sesion, fb }
   const [dragOver, setDragOver] = useState(null) // { itemId, pos: 'before'|'after' }
   const [localOrder, setLocalOrder] = useState({}) // { fecha: id[] } orden optimista
   const dragWithinRef = useRef(null) // { itemId, fecha } — síncrono, evita stale closure
+  const fbTooltipTimer = useRef(null)
+
+  function mostrarFbTooltip(e, sesion, fb) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    clearTimeout(fbTooltipTimer.current)
+    fbTooltipTimer.current = setTimeout(() => {
+      setFbTooltip({ x: rect.right + 8, y: rect.top, sesion, fb })
+    }, 200)
+  }
+  function ocultarFbTooltip() {
+    clearTimeout(fbTooltipTimer.current)
+    setFbTooltip(null)
+  }
 
   async function reordenarEnDia(fecha, fromId, toId, pos) {
     const rawItems = sesionPorDia[fecha] || []
@@ -355,11 +370,24 @@ export default function CalendarioSesiones({
                             }}
                             onClick={() => { if (item._tipo === 'sesion') onAbrirSesion(item); else if (item._tipo === 'nota' && onAbrirNota) onAbrirNota(item) }}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
-                            onMouseEnter={e => { if (item._tipo === 'sesion' || item._tipo === 'nota') mostrarTooltip(e, item) }}
-                            onMouseLeave={ocultarTooltip}
+                            onMouseEnter={e => {
+                              const fb = item._tipo === 'sesion' ? feedbacksMap[item.id] : null
+                              if (fb) { ocultarTooltip(); mostrarFbTooltip(e, item, fb) }
+                              else if (item._tipo === 'sesion' || item._tipo === 'nota') mostrarTooltip(e, item)
+                            }}
+                            onMouseLeave={() => { ocultarTooltip(); ocultarFbTooltip() }}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative', opacity: dragWithinRef.current?.itemId === item.id ? 0.4 : 1 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
-                            <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ flexShrink: 0, opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                              {item._tipo === 'sesion' && (
+                                <span title={item.publicada === false ? 'Oculta al cliente 🔒' : item.lista ? 'Sesión lista ✅' : 'En preparación 📝'}
+                                  style={{ width: 6, height: 6, borderRadius: '50%', background: item.publicada === false ? '#94a3b8' : item.lista ? '#16a34a' : '#f97316', display: 'inline-block', flexShrink: 0 }} />
+                              )}
+                              {item._tipo === 'sesion' && feedbacksMap[item.id] && (
+                                <span title="Tiene feedback" style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308', display: 'inline-block', flexShrink: 0 }} />
+                              )}
+                              <span onClick={e => { e.stopPropagation(); onEliminar(item) }} style={{ opacity: 0.6, cursor: 'pointer' }}>×</span>
+                            </span>
                           </div>
                         )
                         if (isDragTarget && dragOver.pos === 'after') els.push(<div key={`la-${item.id}`} style={lineStyle} />)
@@ -472,6 +500,52 @@ export default function CalendarioSesiones({
           )}
         </div>
       )}
+
+      {fbTooltip && (() => {
+        const { sesion, fb } = fbTooltip
+        const d = fb.data || {}
+        const status = d.completion?.status
+        const rpe = d.rpe?.value
+        const comentario = d.comentario_libre || d.comentario || d.notas_cliente || ''
+        const statusLabel = { completed: '✅ Completada', partial: '⚠️ Parcial', missed: '❌ No realizada' }[status] || null
+        const statusBg = { completed: '#dcfce7', partial: '#fef9c3', missed: '#fee2e2' }[status] || 'var(--bg2)'
+        const statusFg = { completed: '#16a34a', partial: '#ca8a04', missed: '#dc2626' }[status] || 'var(--text2)'
+        return (
+          <div
+            onMouseEnter={() => clearTimeout(fbTooltipTimer.current)}
+            onMouseLeave={ocultarFbTooltip}
+            style={{ position: 'fixed', top: Math.min(fbTooltip.y, window.innerHeight - 220), left: Math.min(fbTooltip.x, window.innerWidth - 240), zIndex: 300, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.15)', minWidth: 200, maxWidth: 240, padding: '10px 12px', pointerEvents: 'none' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+              💬 Feedback del cliente
+            </div>
+            {statusLabel && (
+              <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: statusBg, color: statusFg, marginBottom: 6 }}>
+                {statusLabel}
+              </div>
+            )}
+            {rpe != null && (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 3 }}>Esfuerzo percibido (RPE)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+                    <div style={{ width: `${rpe * 10}%`, height: '100%', background: rpe >= 8 ? '#ef4444' : rpe >= 6 ? '#eab308' : '#22c55e', borderRadius: 3 }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 22, textAlign: 'right' }}>{rpe}/10</span>
+                </div>
+              </div>
+            )}
+            {comentario ? (
+              <div style={{ fontSize: 10.5, color: 'var(--text2)', lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4, fontStyle: 'italic' }}>
+                "{comentario.length > 80 ? comentario.slice(0, 80) + '…' : comentario}"
+              </div>
+            ) : null}
+            {!statusLabel && !rpe && !comentario && (
+              <div style={{ fontSize: 10, color: 'var(--text3)' }}>Sin detalles</div>
+            )}
+            <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 6 }}>Clic en la sesión para ver completo</div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
