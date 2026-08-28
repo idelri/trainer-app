@@ -30,7 +30,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [clienteData, setClienteData]   = useState({})   // { id: { sesiones, semanaRec } }
   const [loading, setLoading]           = useState(false)
   const [modalBloque, setModalBloque]   = useState(false)
-  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal' })
+  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '' })
   const [modoBloque, setModoBloque]     = useState('dia')   // 'dia' | 'rango'
   const [rangoFin, setRangoFin]         = useState('')
   const [diasRango, setDiasRango]       = useState([0,1,2,3]) // índices 0=lun…6=dom
@@ -40,7 +40,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [loadingPop, setLoadingPop] = useState(false)
   const [horaActual, setHoraActual] = useState(new Date())
   const [filtroGlobal, setFiltroGlobal] = useState({ cliente: null, estado: null })
-  const [dropdownOpen, setDropdownOpen] = useState(null) // 'clientes' | 'sesiones' | null
+  const [dropdownOpen, setDropdownOpen] = useState(null) // 'clientes' | 'sesiones' | 'añadir' | null
   const [buscarCliente, setBuscarCliente] = useState('')
 
   // ── TAREAS ───────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
       await supabase.from('agenda_bloques').insert(formBloque)
     }
     setSavingBloque(false); setModalBloque(false); setEditandoBloque(null)
-    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal' })
+    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '' })
     setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
     if (vista === 'mes') cargarMes(); else cargar()
   }
@@ -443,13 +443,13 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const height = tHeight(b.hora_inicio, b.hora_fin)
                     return (
                       <div key={b.id}
-                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo }); setModalBloque(true) }}
+                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
                         style={{ position: 'absolute', top, left: 2, right: 2, height, borderRadius: 6, padding: '3px 6px', fontSize: 10, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                           background: b.tipo === 'reunion' ? '#E8F3FA' : '#f0ede6',
                           borderLeft: `3px solid ${b.tipo === 'reunion' ? '#5A9ABF' : '#B89A6A'}`,
                           color: b.tipo === 'reunion' ? '#1A4A6A' : '#4a3a28' }}>
                         <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.titulo}</div>
-                        <div style={{ fontSize: 9, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}</div>
+                        <div style={{ fontSize: 9, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}{b.lugar ? ` · ${b.lugar}` : ''}</div>
                       </div>
                     )
                   })}
@@ -563,7 +563,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 const height = tHeight(b.hora_inicio, b.hora_fin)
                 return (
                   <div key={b.id}
-                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo }); setModalBloque(true) }}
+                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
                     style={{ position: 'absolute', top, left: 4, right: 4, height, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                       background: b.tipo === 'reunion' ? '#E8F3FA' : '#f0ede6',
                       borderLeft: `3px solid ${b.tipo === 'reunion' ? '#5A9ABF' : '#B89A6A'}`,
@@ -634,7 +634,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
               <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
                 {bloquesDia.map(b => (
-                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo }); setModalBloque(true) }}
+                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
                     style={{ fontSize: 9, background: '#e2e8f0', color: '#475569', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     🏢 {b.hora_inicio?.slice(0,5)} {b.titulo}
                   </div>
@@ -760,10 +760,31 @@ export default function Agenda({ setPage, setSesionesContext }) {
             ))}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={navHoy}>Hoy</button>
-          <button className="btn btn-primary btn-sm"
-            onClick={() => { setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'personal' }); setModalBloque(true) }}>
-            + Franja
-          </button>
+          <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <button className="btn btn-primary btn-sm" onClick={() => setDropdownOpen(d => d === 'añadir' ? null : 'añadir')}>
+              + Añadir ▾
+            </button>
+            {dropdownOpen === 'añadir' && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.13)', width: 200, zIndex: 300, overflow: 'hidden' }}>
+                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'personal', lugar: '' }); setModalBloque(true) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 16 }}>🗓</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Franja ocupada</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Reunión, viaje, bloqueo...</div>
+                  </div>
+                </button>
+                <button onClick={() => { setDropdownOpen(null); abrirNuevaTarea() }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ fontSize: 16 }}>✅</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Tarea sin hora</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Pendiente, recordatorio...</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1290,8 +1311,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
             </div>
             <div className="form-group">
               <label className="form-label">Tipo</label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[{ val: 'trabajo', label: '🏢 Trabajo' }, { val: 'personal', label: '👤 Personal' }].map(({ val, label }) => (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[{ val: 'trabajo', label: '🏢 Trabajo' }, { val: 'personal', label: '👤 Personal' }, { val: 'presencial', label: '🏋️ Presencial' }, { val: 'reunion', label: '🤝 Reunión' }].map(({ val, label }) => (
                   <button key={val} type="button" onClick={() => setFormBloque(f => ({ ...f, tipo: val }))}
                     style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, border: '1px solid', cursor: 'pointer',
                       background: formBloque.tipo === val ? 'var(--accent)' : 'transparent',
@@ -1302,6 +1323,15 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 ))}
               </div>
             </div>
+
+            {/* Lugar (visible cuando tipo presencial o reunión) */}
+            {(formBloque.tipo === 'presencial' || formBloque.tipo === 'reunion') && (
+              <div className="form-group">
+                <label className="form-label">Lugar</label>
+                <input className="form-input" value={formBloque.lugar || ''} onChange={e => setFormBloque(f => ({ ...f, lugar: e.target.value }))}
+                  placeholder={formBloque.tipo === 'presencial' ? 'Ej: Instalaciones FC Barcelona...' : 'Ej: Sala de reuniones, Zoom...'} />
+              </div>
+            )}
 
             {/* Modo: un día / rango (solo al crear) */}
             {!editandoBloque && (
