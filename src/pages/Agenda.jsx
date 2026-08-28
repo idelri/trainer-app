@@ -148,23 +148,29 @@ export default function Agenda({ setPage, setSesionesContext }) {
   async function guardarBloque() {
     if (!formBloque.titulo || !formBloque.fecha || !formBloque.hora_inicio || !formBloque.hora_fin) return
     setSavingBloque(true)
+    const payload = {
+      titulo:      formBloque.titulo,
+      fecha:       formBloque.fecha,
+      hora_inicio: formBloque.hora_inicio,
+      hora_fin:    formBloque.hora_fin,
+      tipo:        formBloque.tipo,
+      lugar:       formBloque.lugar || null,
+      cliente_id:  formBloque.cliente_id || null,
+    }
     if (editandoBloque) {
-      await supabase.from('agenda_bloques').update(formBloque).eq('id', editandoBloque)
+      await supabase.from('agenda_bloques').update(payload).eq('id', editandoBloque)
     } else if (modoBloque === 'rango' && rangoFin && rangoFin >= formBloque.fecha) {
-      // Insertar una franja por cada día del rango que esté en los días seleccionados
       const registros = []
       const cur = new Date(formBloque.fecha + 'T12:00:00')
       const fin = new Date(rangoFin + 'T12:00:00')
       while (cur <= fin) {
-        const dow = cur.getDay() === 0 ? 6 : cur.getDay() - 1 // 0=lun...6=dom
-        if (diasRango.includes(dow)) {
-          registros.push({ ...formBloque, fecha: fKey(cur) })
-        }
+        const dow = cur.getDay() === 0 ? 6 : cur.getDay() - 1
+        if (diasRango.includes(dow)) registros.push({ ...payload, fecha: fKey(cur) })
         cur.setDate(cur.getDate() + 1)
       }
       if (registros.length > 0) await supabase.from('agenda_bloques').insert(registros)
     } else {
-      await supabase.from('agenda_bloques').insert(formBloque)
+      await supabase.from('agenda_bloques').insert(payload)
     }
     setSavingBloque(false); setModalBloque(false); setEditandoBloque(null)
     setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_id: '' })
