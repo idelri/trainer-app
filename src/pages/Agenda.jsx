@@ -46,6 +46,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [savingBloque, setSavingBloque] = useState(false)
   const [errorBloque, setErrorBloque] = useState(null)
   const [editandoBloque, setEditandoBloque] = useState(null)
+  const [editandoBloqueData, setEditandoBloqueData] = useState(null) // datos completos del bloque en edición
+  const [scopeBloque, setScopeBloque] = useState(null) // null | 'solo' | 'todos'
   const [popover, setPopover] = useState(null) // { x, y, clienteNombre, dia, diaStr, ses, cd, clienteId, detalle }
   const [loadingPop, setLoadingPop] = useState(false)
   const [horaActual, setHoraActual] = useState(new Date())
@@ -146,9 +148,21 @@ export default function Agenda({ setPage, setSesionesContext }) {
     setLoading(false)
   }
 
+  function cerrarModalBloque() {
+    setModalBloque(false); setEditandoBloque(null); setEditandoBloqueData(null)
+    setScopeBloque(null); setErrorBloque(null)
+    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
+    setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
+  }
+
   async function guardarBloque() {
     if (!formBloque.titulo?.trim() || !formBloque.fecha || !formBloque.hora_inicio || !formBloque.hora_fin) {
       setErrorBloque('Rellena título, fecha y horario.')
+      return
+    }
+    // Si tiene grupo y no eligió scope, exigir elección
+    if (editandoBloque && editandoBloqueData?.grupo_id && !scopeBloque) {
+      setErrorBloque('Elige si cambias solo este día o todos los días del grupo.')
       return
     }
     setSavingBloque(true)
@@ -156,29 +170,36 @@ export default function Agenda({ setPage, setSesionesContext }) {
     const ids = formBloque.cliente_ids || []
     const payload = {
       titulo:      formBloque.titulo.trim(),
-      fecha:       formBloque.fecha,
-      hora_inicio: formBloque.hora_inicio.slice(0, 5),  // normaliza HH:mm
+      hora_inicio: formBloque.hora_inicio.slice(0, 5),
       hora_fin:    formBloque.hora_fin.slice(0, 5),
       tipo:        formBloque.tipo,
       lugar:       formBloque.lugar?.trim() || null,
       cliente_ids: ids,
-      cliente_id:  ids[0] || null,   // compat legacy
+      cliente_id:  ids[0] || null,
     }
+
     if (editandoBloque) {
-      const { error } = await supabase.from('agenda_bloques').update(payload).eq('id', editandoBloque)
-      if (error) {
-        console.error('Error update bloque:', error)
-        setErrorBloque(`Error al guardar: ${error.message}`)
-        setSavingBloque(false)
-        return
+      const grupoId = editandoBloqueData?.grupo_id
+      let error
+      if (grupoId && scopeBloque === 'todos') {
+        // Actualizar todos del grupo (sin cambiar fecha individual de cada uno)
+        const r = await supabase.from('agenda_bloques').update(payload).eq('grupo_id', grupoId)
+        error = r.error
+      } else {
+        // Solo este día
+        const r = await supabase.from('agenda_bloques').update({ ...payload, fecha: formBloque.fecha, grupo_id: null }).eq('id', editandoBloque)
+        error = r.error
       }
+      if (error) { setErrorBloque(`Error al guardar: ${error.message}`); setSavingBloque(false); return }
+
     } else if (modoBloque === 'rango' && rangoFin && rangoFin >= formBloque.fecha) {
+      const grupoId = crypto.randomUUID()
       const registros = []
       const cur = new Date(formBloque.fecha + 'T12:00:00')
       const fin = new Date(rangoFin + 'T12:00:00')
       while (cur <= fin) {
         const dow = cur.getDay() === 0 ? 6 : cur.getDay() - 1
-        if (diasRango.includes(dow)) registros.push({ ...payload, fecha: fKey(cur) })
+        if (diasRango.includes(dow)) registros.push({ ...payload, fecha: fKey(cur), grupo_id: grupoId })
         cur.setDate(cur.getDate() + 1)
       }
       if (registros.length > 0) {
@@ -186,18 +207,24 @@ export default function Agenda({ setPage, setSesionesContext }) {
         if (error) { setErrorBloque(`Error: ${error.message}`); setSavingBloque(false); return }
       }
     } else {
-      const { error } = await supabase.from('agenda_bloques').insert(payload)
+      const { error } = await supabase.from('agenda_bloques').insert({ ...payload, fecha: formBloque.fecha })
       if (error) { setErrorBloque(`Error: ${error.message}`); setSavingBloque(false); return }
     }
-    setSavingBloque(false); setModalBloque(false); setEditandoBloque(null); setErrorBloque(null)
-    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
-    setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
+
+    setSavingBloque(false)
+    cerrarModalBloque()
     if (vista === 'mes') cargarMes(); else if (vista === 'dia') cargarDia(); else cargar()
   }
 
-  async function eliminarBloque(id) {
-    await supabase.from('agenda_bloques').delete().eq('id', id)
-    if (vista === 'mes') cargarMes(); else cargar()
+  async function eliminarBloque(id, scope) {
+    const grupoId = editandoBloqueData?.grupo_id
+    if (grupoId && scope === 'todos') {
+      await supabase.from('agenda_bloques').delete().eq('grupo_id', grupoId)
+    } else {
+      await supabase.from('agenda_bloques').delete().eq('id', id)
+    }
+    cerrarModalBloque()
+    if (vista === 'mes') cargarMes(); else if (vista === 'dia') cargarDia(); else cargar()
   }
 
   async function upsertClienteSemana(clienteId, patch) {
@@ -481,7 +508,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const height = tHeight(b.hora_inicio, b.hora_fin)
                     return (
                       <div key={b.id}
-                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
+                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                         style={{ position: 'absolute', top, left: 2, right: 2, height, borderRadius: 6, padding: '3px 6px', fontSize: 10, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                           background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
                           borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
@@ -601,7 +628,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 const height = tHeight(b.hora_inicio, b.hora_fin)
                 return (
                   <div key={b.id}
-                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
+                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                     style={{ position: 'absolute', top, left: 4, right: 4, height, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                       background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
                       borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
@@ -672,7 +699,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
               <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
                 {bloquesDia.map(b => (
-                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
+                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                     style={{ fontSize: 9, background: '#e2e8f0', color: '#475569', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     🏢 {b.hora_inicio?.slice(0,5)} {b.titulo}
                   </div>
@@ -1359,8 +1386,37 @@ export default function Agenda({ setPage, setSesionesContext }) {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', margin: '0 16px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>{editandoBloque ? 'Editar franja' : 'Nueva franja ocupada'}</h3>
+            style={{ background: 'var(--bg)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', margin: '0 16px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 600 }}>{editandoBloque ? 'Editar franja' : 'Nueva franja ocupada'}</h3>
+
+            {/* Selector de scope cuando el bloque pertenece a un grupo */}
+            {editandoBloque && editandoBloqueData?.grupo_id && (
+              <div style={{ marginBottom: 16, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 8 }}>¿Qué quieres modificar?</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => setScopeBloque('solo')}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid', cursor: 'pointer', fontSize: 12, fontWeight: scopeBloque === 'solo' ? 700 : 400,
+                      background: scopeBloque === 'solo' ? 'var(--accent)' : 'transparent',
+                      color: scopeBloque === 'solo' ? '#fff' : 'var(--text2)',
+                      borderColor: scopeBloque === 'solo' ? 'var(--accent)' : 'var(--border)' }}>
+                    📅 Solo este día
+                  </button>
+                  <button type="button" onClick={() => setScopeBloque('todos')}
+                    style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid', cursor: 'pointer', fontSize: 12, fontWeight: scopeBloque === 'todos' ? 700 : 400,
+                      background: scopeBloque === 'todos' ? 'var(--accent)' : 'transparent',
+                      color: scopeBloque === 'todos' ? '#fff' : 'var(--text2)',
+                      borderColor: scopeBloque === 'todos' ? 'var(--accent)' : 'var(--border)' }}>
+                    🔁 Todos los días del grupo
+                  </button>
+                </div>
+                {scopeBloque === 'solo' && (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Este día se desvinculará del grupo y tendrá sus propios datos.</div>
+                )}
+                {scopeBloque === 'todos' && (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Se actualizarán tipo, título, horario, lugar y clientes en todos los días del grupo. La fecha de cada día no cambia.</div>
+                )}
+              </div>
+            )}
 
             {/* Título + Tipo */}
             <div className="form-group">
@@ -1509,12 +1565,25 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 ⚠️ {errorBloque}
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
               {editandoBloque && (
-                <button className="btn btn-ghost" style={{ color: 'var(--danger)', marginRight: 'auto' }}
-                  onClick={() => { eliminarBloque(editandoBloque); setModalBloque(false); setEditandoBloque(null) }}>
-                  Eliminar
-                </button>
+                editandoBloqueData?.grupo_id ? (
+                  <div style={{ marginRight: 'auto', display: 'flex', gap: 6 }}>
+                    <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }}
+                      onClick={() => eliminarBloque(editandoBloque, 'solo')}>
+                      🗑 Este día
+                    </button>
+                    <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }}
+                      onClick={() => eliminarBloque(editandoBloque, 'todos')}>
+                      🗑 Todos los días
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn btn-ghost" style={{ color: 'var(--danger)', marginRight: 'auto' }}
+                    onClick={() => eliminarBloque(editandoBloque, 'solo')}>
+                    Eliminar
+                  </button>
+                )
               )}
               <button className="btn btn-ghost" onClick={() => { setModalBloque(false); setEditandoBloque(null); setErrorBloque(null) }}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarBloque} disabled={savingBloque}>{savingBloque ? 'Guardando...' : 'Guardar'}</button>
