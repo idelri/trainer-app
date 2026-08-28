@@ -39,11 +39,12 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [clienteData, setClienteData]   = useState({})   // { id: { sesiones, semanaRec } }
   const [loading, setLoading]           = useState(false)
   const [modalBloque, setModalBloque]   = useState(false)
-  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_id: '' })
+  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
   const [modoBloque, setModoBloque]     = useState('dia')   // 'dia' | 'rango'
   const [rangoFin, setRangoFin]         = useState('')
   const [diasRango, setDiasRango]       = useState([0,1,2,3]) // índices 0=lun…6=dom
   const [savingBloque, setSavingBloque] = useState(false)
+  const [errorBloque, setErrorBloque] = useState(null)
   const [editandoBloque, setEditandoBloque] = useState(null)
   const [popover, setPopover] = useState(null) // { x, y, clienteNombre, dia, diaStr, ses, cd, clienteId, detalle }
   const [loadingPop, setLoadingPop] = useState(false)
@@ -146,19 +147,31 @@ export default function Agenda({ setPage, setSesionesContext }) {
   }
 
   async function guardarBloque() {
-    if (!formBloque.titulo || !formBloque.fecha || !formBloque.hora_inicio || !formBloque.hora_fin) return
+    if (!formBloque.titulo?.trim() || !formBloque.fecha || !formBloque.hora_inicio || !formBloque.hora_fin) {
+      setErrorBloque('Rellena título, fecha y horario.')
+      return
+    }
     setSavingBloque(true)
+    setErrorBloque(null)
+    const ids = formBloque.cliente_ids || []
     const payload = {
-      titulo:      formBloque.titulo,
+      titulo:      formBloque.titulo.trim(),
       fecha:       formBloque.fecha,
-      hora_inicio: formBloque.hora_inicio,
-      hora_fin:    formBloque.hora_fin,
+      hora_inicio: formBloque.hora_inicio.slice(0, 5),  // normaliza HH:mm
+      hora_fin:    formBloque.hora_fin.slice(0, 5),
       tipo:        formBloque.tipo,
-      lugar:       formBloque.lugar || null,
-      cliente_id:  formBloque.cliente_id || null,
+      lugar:       formBloque.lugar?.trim() || null,
+      cliente_ids: ids,
+      cliente_id:  ids[0] || null,   // compat legacy
     }
     if (editandoBloque) {
-      await supabase.from('agenda_bloques').update(payload).eq('id', editandoBloque)
+      const { error } = await supabase.from('agenda_bloques').update(payload).eq('id', editandoBloque)
+      if (error) {
+        console.error('Error update bloque:', error)
+        setErrorBloque(`Error al guardar: ${error.message}`)
+        setSavingBloque(false)
+        return
+      }
     } else if (modoBloque === 'rango' && rangoFin && rangoFin >= formBloque.fecha) {
       const registros = []
       const cur = new Date(formBloque.fecha + 'T12:00:00')
@@ -168,14 +181,18 @@ export default function Agenda({ setPage, setSesionesContext }) {
         if (diasRango.includes(dow)) registros.push({ ...payload, fecha: fKey(cur) })
         cur.setDate(cur.getDate() + 1)
       }
-      if (registros.length > 0) await supabase.from('agenda_bloques').insert(registros)
+      if (registros.length > 0) {
+        const { error } = await supabase.from('agenda_bloques').insert(registros)
+        if (error) { setErrorBloque(`Error: ${error.message}`); setSavingBloque(false); return }
+      }
     } else {
-      await supabase.from('agenda_bloques').insert(payload)
+      const { error } = await supabase.from('agenda_bloques').insert(payload)
+      if (error) { setErrorBloque(`Error: ${error.message}`); setSavingBloque(false); return }
     }
-    setSavingBloque(false); setModalBloque(false); setEditandoBloque(null)
-    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_id: '' })
+    setSavingBloque(false); setModalBloque(false); setEditandoBloque(null); setErrorBloque(null)
+    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
     setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
-    if (vista === 'mes') cargarMes(); else cargar()
+    if (vista === 'mes') cargarMes(); else if (vista === 'dia') cargarDia(); else cargar()
   }
 
   async function eliminarBloque(id) {
@@ -464,7 +481,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const height = tHeight(b.hora_inicio, b.hora_fin)
                     return (
                       <div key={b.id}
-                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
+                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
                         style={{ position: 'absolute', top, left: 2, right: 2, height, borderRadius: 6, padding: '3px 6px', fontSize: 10, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                           background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
                           borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
@@ -584,7 +601,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 const height = tHeight(b.hora_inicio, b.hora_fin)
                 return (
                   <div key={b.id}
-                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
+                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
                     style={{ position: 'absolute', top, left: 4, right: 4, height, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                       background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
                       borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
@@ -655,7 +672,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
               <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
                 {bloquesDia.map(b => (
-                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
+                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setModalBloque(true) }}
                     style={{ fontSize: 9, background: '#e2e8f0', color: '#475569', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     🏢 {b.hora_inicio?.slice(0,5)} {b.titulo}
                   </div>
@@ -787,7 +804,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
             </button>
             {dropdownOpen === 'añadir' && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.13)', width: 200, zIndex: 300, overflow: 'hidden' }}>
-                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'presencial', lugar: '', cliente_id: '' }); setModalBloque(true) }}
+                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'presencial', lugar: '', cliente_ids: [] }); setModalBloque(true) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 16 }}>🗓</span>
                   <div>
@@ -1368,14 +1385,30 @@ export default function Agenda({ setPage, setSesionesContext }) {
               </div>
             </div>
 
-            {/* Cliente (presencial, fcb, online) */}
+            {/* Clientes (presencial, fcb, online) */}
             {['presencial', 'fcb', 'online'].includes(formBloque.tipo) && (
               <div className="form-group">
-                <label className="form-label">Cliente (opcional)</label>
-                <select className="form-input" value={formBloque.cliente_id || ''} onChange={e => setFormBloque(f => ({ ...f, cliente_id: e.target.value }))}>
-                  <option value="">Sin cliente específico</option>
-                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+                <label className="form-label">Clientes (opcional)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg2)', maxHeight: 110, overflowY: 'auto' }}>
+                  {clientes.map(c => {
+                    const sel = (formBloque.cliente_ids || []).includes(c.id)
+                    return (
+                      <button key={c.id} type="button"
+                        onClick={() => setFormBloque(f => ({
+                          ...f,
+                          cliente_ids: sel
+                            ? (f.cliente_ids || []).filter(id => id !== c.id)
+                            : [...(f.cliente_ids || []), c.id]
+                        }))}
+                        style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: sel ? 600 : 400, border: '1px solid', cursor: 'pointer',
+                          background: sel ? 'var(--accent)' : 'transparent',
+                          color: sel ? '#fff' : 'var(--text2)',
+                          borderColor: sel ? 'var(--accent)' : 'var(--border)' }}>
+                        {c.nombre.split(' ')[0]}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -1471,6 +1504,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 <input className="form-input" type="time" value={formBloque.hora_fin} onChange={e => setFormBloque(f => ({ ...f, hora_fin: e.target.value }))} />
               </div>
             </div>
+            {errorBloque && (
+              <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
+                ⚠️ {errorBloque}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
               {editandoBloque && (
                 <button className="btn btn-ghost" style={{ color: 'var(--danger)', marginRight: 'auto' }}
@@ -1478,7 +1516,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                   Eliminar
                 </button>
               )}
-              <button className="btn btn-ghost" onClick={() => { setModalBloque(false); setEditandoBloque(null) }}>Cancelar</button>
+              <button className="btn btn-ghost" onClick={() => { setModalBloque(false); setEditandoBloque(null); setErrorBloque(null) }}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarBloque} disabled={savingBloque}>{savingBloque ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
