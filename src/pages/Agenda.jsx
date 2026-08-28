@@ -15,6 +15,15 @@ const ESTADO_STYLE = {
 }
 const fKey = d => format(d, 'yyyy-MM-dd')
 
+const TIPO_CONFIG = {
+  presencial: { color: '#dc2626', bg: '#fef2f2', border: '#dc2626', emoji: '🏋️', label: 'Presencial' },
+  fcb:        { color: '#64748b', bg: '#f1f5f9', border: '#94a3b8', emoji: '🏟', label: 'FCB' },
+  online:     { color: '#2563eb', bg: '#eff6ff', border: '#3b82f6', emoji: '💻', label: 'Online' },
+  gestion:    { color: '#5a7a6e', bg: '#f0f4f2', border: '#789B8A', emoji: '🗂', label: 'Gestión' },
+  viaje:      { color: '#d97706', bg: '#fffbeb', border: '#f59e0b', emoji: '✈️', label: 'Viaje' },
+  personal:   { color: '#7c3aed', bg: '#f5f3ff', border: '#8b5cf6', emoji: '🩺', label: 'Personal' },
+}
+
 export default function Agenda({ setPage, setSesionesContext }) {
   const [vista, setVista]               = useState('semana')
   const [semana, setSemana]             = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -30,7 +39,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [clienteData, setClienteData]   = useState({})   // { id: { sesiones, semanaRec } }
   const [loading, setLoading]           = useState(false)
   const [modalBloque, setModalBloque]   = useState(false)
-  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '' })
+  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_id: '' })
   const [modoBloque, setModoBloque]     = useState('dia')   // 'dia' | 'rango'
   const [rangoFin, setRangoFin]         = useState('')
   const [diasRango, setDiasRango]       = useState([0,1,2,3]) // índices 0=lun…6=dom
@@ -49,7 +58,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [editandoTarea, setEditandoTarea] = useState(null)
   const [savingTarea, setSavingTarea]   = useState(false)
   const [filtroTarea, setFiltroTarea]   = useState({ cliente: '', categoria: '' })
-  const EMPTY_TAREA = { titulo: '', cliente_id: '', categoria: 'planificacion', fecha_limite: '', prioridad: 'normal', completada: false }
+  const EMPTY_TAREA = { titulo: '', cliente_ids: [], categoria: 'planificacion', fecha_limite: '', prioridad: 'normal', completada: false }
   const [formTarea, setFormTarea]       = useState(EMPTY_TAREA)
   const CATS = [
     { value: 'planificacion', label: 'Planificación' },
@@ -158,7 +167,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
       await supabase.from('agenda_bloques').insert(formBloque)
     }
     setSavingBloque(false); setModalBloque(false); setEditandoBloque(null)
-    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '' })
+    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_id: '' })
     setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
     if (vista === 'mes') cargarMes(); else cargar()
   }
@@ -285,9 +294,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
   async function guardarTarea() {
     if (!formTarea.titulo.trim()) return
     setSavingTarea(true)
+    const ids = formTarea.cliente_ids || []
     const payload = {
       titulo: formTarea.titulo.trim(),
-      cliente_id: formTarea.cliente_id || null,
+      cliente_id: ids[0] || null,           // compat legacy
+      cliente_ids: ids,
       categoria: formTarea.categoria,
       fecha_limite: formTarea.fecha_limite || null,
       prioridad: formTarea.prioridad,
@@ -316,14 +327,18 @@ export default function Agenda({ setPage, setSesionesContext }) {
   }
 
   function abrirNuevaTarea(clienteId = '') {
-    setFormTarea({ ...EMPTY_TAREA, cliente_id: clienteId })
+    setFormTarea({ ...EMPTY_TAREA, cliente_ids: clienteId ? [clienteId] : [] })
     setEditandoTarea(null)
     setModalTarea(true)
   }
 
   function abrirEditarTarea(t) {
+    // compatibilidad: si hay cliente_ids usar ese, si no migrar de cliente_id
+    const ids = (t.cliente_ids && t.cliente_ids.length > 0)
+      ? t.cliente_ids
+      : (t.cliente_id ? [t.cliente_id] : [])
     setFormTarea({
-      titulo: t.titulo, cliente_id: t.cliente_id || '',
+      titulo: t.titulo, cliente_ids: ids,
       categoria: t.categoria, fecha_limite: t.fecha_limite || '',
       prioridad: t.prioridad, completada: t.completada,
     })
@@ -443,11 +458,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const height = tHeight(b.hora_inicio, b.hora_fin)
                     return (
                       <div key={b.id}
-                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
+                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
                         style={{ position: 'absolute', top, left: 2, right: 2, height, borderRadius: 6, padding: '3px 6px', fontSize: 10, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
-                          background: b.tipo === 'reunion' ? '#E8F3FA' : '#f0ede6',
-                          borderLeft: `3px solid ${b.tipo === 'reunion' ? '#5A9ABF' : '#B89A6A'}`,
-                          color: b.tipo === 'reunion' ? '#1A4A6A' : '#4a3a28' }}>
+                          background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
+                          borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
+                          color: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).color }}>
                         <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.titulo}</div>
                         <div style={{ fontSize: 9, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}{b.lugar ? ` · ${b.lugar}` : ''}</div>
                       </div>
@@ -563,11 +578,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 const height = tHeight(b.hora_inicio, b.hora_fin)
                 return (
                   <div key={b.id}
-                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
+                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
                     style={{ position: 'absolute', top, left: 4, right: 4, height, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
-                      background: b.tipo === 'reunion' ? '#E8F3FA' : '#f0ede6',
-                      borderLeft: `3px solid ${b.tipo === 'reunion' ? '#5A9ABF' : '#B89A6A'}`,
-                      color: b.tipo === 'reunion' ? '#1A4A6A' : '#4a3a28' }}>
+                      background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
+                      borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
+                      color: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).color }}>
                     <div style={{ fontWeight: 600 }}>{b.titulo}</div>
                     <div style={{ fontSize: 10, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}</div>
                   </div>
@@ -634,7 +649,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
               <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
                 {bloquesDia.map(b => (
-                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '' }); setModalBloque(true) }}
+                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_id: b.cliente_id || '' }); setModalBloque(true) }}
                     style={{ fontSize: 9, background: '#e2e8f0', color: '#475569', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     🏢 {b.hora_inicio?.slice(0,5)} {b.titulo}
                   </div>
@@ -651,7 +666,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
           })}
         </div>
         <div style={{ display: 'flex', gap: 16, padding: '8px 12px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
-          {[['#16a34a','🏋️ Presencial'], ['#3b82f6','💻 Online'], ['#94a3b8','🏢 No disponible']].map(([c, l]) => (
+          {Object.entries(TIPO_CONFIG).map(([, cfg]) => [cfg.border, `${cfg.emoji} ${cfg.label}`]).map(([c, l]) => (
             <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text3)' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />{l}
             </div>
@@ -766,7 +781,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
             </button>
             {dropdownOpen === 'añadir' && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.13)', width: 200, zIndex: 300, overflow: 'hidden' }}>
-                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'personal', lugar: '' }); setModalBloque(true) }}
+                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'presencial', lugar: '', cliente_id: '' }); setModalBloque(true) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 16 }}>🗓</span>
                   <div>
@@ -887,7 +902,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
           {/* ── PANEL TAREAS ── */}
           {(() => {
             const tareasFiltradas = tareas.filter(t => {
-              if (filtroTarea.cliente && t.cliente_id !== filtroTarea.cliente) return false
+              if (filtroTarea.cliente) {
+                const ids = t.cliente_ids?.length ? t.cliente_ids : (t.cliente_id ? [t.cliente_id] : [])
+                if (!ids.includes(filtroTarea.cliente)) return false
+              }
               if (filtroTarea.categoria && t.categoria !== filtroTarea.categoria) return false
               return true
             })
@@ -909,7 +927,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
             }
 
             function TareaRow({ t }) {
-              const clienteNombre = t.cliente_id ? (clienteMap[t.cliente_id] || '').split(' ')[0] : null
+              const ids = t.cliente_ids?.length ? t.cliente_ids : (t.cliente_id ? [t.cliente_id] : [])
+              const nombres = ids.map(id => (clienteMap[id] || '').split(' ')[0]).filter(Boolean)
               const cat = CATS.find(c => c.value === t.categoria)?.label || t.categoria
               const prio = t.prioridad === 'alta' ? '🔴' : t.prioridad === 'baja' ? '⚪' : null
               return (
@@ -923,9 +942,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
                       {prio && <span style={{ fontSize: 10 }}>{prio}</span>}
                       {t.titulo}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {clienteNombre && <span style={{ fontWeight: 500, color: 'var(--text2)' }}>{clienteNombre}</span>}
-                      {clienteNombre && <span>·</span>}
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {nombres.length > 0 && nombres.map(n => (
+                        <span key={n} style={{ fontWeight: 600, color: 'var(--accent)', background: 'rgba(120,155,138,0.12)', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>{n}</span>
+                      ))}
+                      {nombres.length > 0 && <span>·</span>}
                       <span>{cat}</span>
                       {t.fecha_limite && <span>·</span>}
                       <FechaBadge fecha={t.fecha_limite} />
@@ -1248,20 +1269,34 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 onChange={e => setFormTarea(f => ({ ...f, titulo: e.target.value }))} autoFocus />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="form-group">
-                <label className="form-label">Cliente (opcional)</label>
-                <select className="form-input" value={formTarea.cliente_id} onChange={e => setFormTarea(f => ({ ...f, cliente_id: e.target.value }))}>
-                  <option value="">Sin cliente</option>
-                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre.split(' ')[0]}</option>)}
-                </select>
+            <div className="form-group">
+              <label className="form-label">Clientes (opcional, selecciona uno o varios)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg2)', maxHeight: 120, overflowY: 'auto' }}>
+                {clientes.map(c => {
+                  const sel = (formTarea.cliente_ids || []).includes(c.id)
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setFormTarea(f => ({
+                        ...f,
+                        cliente_ids: sel
+                          ? (f.cliente_ids || []).filter(id => id !== c.id)
+                          : [...(f.cliente_ids || []), c.id]
+                      }))}
+                      style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: sel ? 600 : 400, border: '1px solid', cursor: 'pointer',
+                        background: sel ? 'var(--accent)' : 'transparent',
+                        color: sel ? '#fff' : 'var(--text2)',
+                        borderColor: sel ? 'var(--accent)' : 'var(--border)' }}>
+                      {c.nombre.split(' ')[0]}
+                    </button>
+                  )
+                })}
               </div>
-              <div className="form-group">
-                <label className="form-label">Categoría</label>
-                <select className="form-input" value={formTarea.categoria} onChange={e => setFormTarea(f => ({ ...f, categoria: e.target.value }))}>
-                  {CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Categoría</label>
+              <select className="form-input" value={formTarea.categoria} onChange={e => setFormTarea(f => ({ ...f, categoria: e.target.value }))}>
+                {CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1312,24 +1347,38 @@ export default function Agenda({ setPage, setSesionesContext }) {
             <div className="form-group">
               <label className="form-label">Tipo</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {[{ val: 'trabajo', label: '🏢 Trabajo' }, { val: 'personal', label: '👤 Personal' }, { val: 'presencial', label: '🏋️ Presencial' }, { val: 'reunion', label: '🤝 Reunión' }].map(({ val, label }) => (
-                  <button key={val} type="button" onClick={() => setFormBloque(f => ({ ...f, tipo: val }))}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, border: '1px solid', cursor: 'pointer',
-                      background: formBloque.tipo === val ? 'var(--accent)' : 'transparent',
-                      color: formBloque.tipo === val ? '#fff' : 'var(--text2)',
-                      borderColor: formBloque.tipo === val ? 'var(--accent)' : 'var(--border)' }}>
-                    {label}
-                  </button>
-                ))}
+                {Object.entries(TIPO_CONFIG).map(([val, cfg]) => {
+                  const sel = formBloque.tipo === val
+                  return (
+                    <button key={val} type="button" onClick={() => setFormBloque(f => ({ ...f, tipo: val }))}
+                      style={{ padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: sel ? 700 : 500, border: `1.5px solid`, cursor: 'pointer',
+                        background: sel ? cfg.color : 'transparent',
+                        color: sel ? '#fff' : cfg.color,
+                        borderColor: sel ? cfg.color : cfg.border }}>
+                      {cfg.emoji} {cfg.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Lugar (visible cuando tipo presencial o reunión) */}
-            {(formBloque.tipo === 'presencial' || formBloque.tipo === 'reunion') && (
+            {/* Cliente (presencial, fcb, online) */}
+            {['presencial', 'fcb', 'online'].includes(formBloque.tipo) && (
+              <div className="form-group">
+                <label className="form-label">Cliente (opcional)</label>
+                <select className="form-input" value={formBloque.cliente_id || ''} onChange={e => setFormBloque(f => ({ ...f, cliente_id: e.target.value }))}>
+                  <option value="">Sin cliente específico</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Lugar */}
+            {['presencial', 'fcb', 'gestion'].includes(formBloque.tipo) && (
               <div className="form-group">
                 <label className="form-label">Lugar</label>
                 <input className="form-input" value={formBloque.lugar || ''} onChange={e => setFormBloque(f => ({ ...f, lugar: e.target.value }))}
-                  placeholder={formBloque.tipo === 'presencial' ? 'Ej: Instalaciones FC Barcelona...' : 'Ej: Sala de reuniones, Zoom...'} />
+                  placeholder={formBloque.tipo === 'fcb' ? 'Ej: Ciudad Deportiva, Camp Nou...' : formBloque.tipo === 'presencial' ? 'Ej: Instalaciones, gimnasio...' : 'Ej: Despacho asesor, videollamada...'} />
               </div>
             )}
 
