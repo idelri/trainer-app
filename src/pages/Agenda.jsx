@@ -51,6 +51,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [popover, setPopover] = useState(null) // { x, y, clienteNombre, dia, diaStr, ses, cd, clienteId, detalle }
   const [loadingPop, setLoadingPop] = useState(false)
   const [horaActual, setHoraActual] = useState(new Date())
+  const [tooltipBloque, setTooltipBloque] = useState(null) // { b, x, y }
   const [filtroGlobal, setFiltroGlobal] = useState({ cliente: null, estado: null })
   const [dropdownOpen, setDropdownOpen] = useState(null) // 'clientes' | 'sesiones' | 'añadir' | null
   const [buscarCliente, setBuscarCliente] = useState('')
@@ -415,7 +416,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const hoy = fKey(new Date())
 
   function renderCalendarioSemana() {
-    const PX_H = 52
+    const PX_H = 38
     const H_INI = 7
     const H_FIN = 21
     const HORAS = Array.from({ length: H_FIN - H_INI }, (_, i) => H_INI + i)
@@ -440,10 +441,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
     return (
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         {/* Grid horario scrollable — cabecera sticky dentro para alinear columnas */}
-        <div style={{ overflowY: 'auto', maxHeight: 500 }}>
+        <div style={{ overflowY: 'visible' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)', position: 'relative' }}>
-            {/* Cabecera días sticky */}
-            <div style={{ position: 'sticky', top: 0, zIndex: 20, gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+            {/* Cabecera días */}
+            <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
               <div style={{ background: 'var(--bg)' }} />
               {dias.map((d, i) => {
                 const esHoy = fKey(d) === hoy
@@ -506,15 +507,18 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const top = tTop(b.hora_inicio)
                     if (top === null) return null
                     const height = tHeight(b.hora_inicio, b.hora_fin)
+                    const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+                    const cortito = height < 32
                     return (
                       <div key={b.id}
                         onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                        onMouseEnter={e => { if (cortito || b.lugar || (b.cliente_ids?.length > 0)) setTooltipBloque({ b, x: e.clientX, y: e.clientY }) }}
+                        onMouseMove={e => { if (tooltipBloque?.b?.id === b.id) setTooltipBloque(t => ({ ...t, x: e.clientX, y: e.clientY })) }}
+                        onMouseLeave={() => setTooltipBloque(null)}
                         style={{ position: 'absolute', top, left: 2, right: 2, height, borderRadius: 6, padding: '3px 6px', fontSize: 10, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
-                          background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
-                          borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
-                          color: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).color }}>
-                        <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.titulo}</div>
-                        <div style={{ fontSize: 9, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}{b.lugar ? ` · ${b.lugar}` : ''}</div>
+                          background: cfg.bg, borderLeft: `3px solid ${cfg.border}`, color: cfg.color }}>
+                        <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cfg.emoji} {b.titulo}</div>
+                        {!cortito && <div style={{ fontSize: 9, opacity: 0.7 }}>{b.hora_inicio?.slice(0,5)}–{b.hora_fin?.slice(0,5)}{b.lugar ? ` · ${b.lugar}` : ''}</div>}
                       </div>
                     )
                   })}
@@ -698,12 +702,15 @@ export default function Agenda({ setPage, setSesionesContext }) {
             return (
               <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
-                {bloquesDia.map(b => (
-                  <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
-                    style={{ fontSize: 9, background: '#e2e8f0', color: '#475569', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    🏢 {b.hora_inicio?.slice(0,5)} {b.titulo}
-                  </div>
-                ))}
+                {bloquesDia.map(b => {
+                  const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+                  return (
+                    <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                      style={{ fontSize: 9, background: cfg.bg, color: cfg.color, borderLeft: `2px solid ${cfg.border}`, borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cfg.emoji} {b.hora_inicio?.slice(0,5)} {b.titulo}
+                    </div>
+                  )
+                })}
                 {sesDia.map(s => (
                   <div key={s.id} style={{ fontSize: 9, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     ...(s.modalidad === 'presencial' ? { background: '#dcfce7', color: '#166534' } : { background: '#dbeafe', color: '#1e40af' }) }}>
@@ -1591,6 +1598,27 @@ export default function Agenda({ setPage, setSesionesContext }) {
           </div>
         </div>
       )}
+
+      {/* Tooltip flotante para franjas */}
+      {tooltipBloque && (() => {
+        const { b, x, y } = tooltipBloque
+        const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+        const clientesNombres = (b.cliente_ids || []).map(id => clientes.find(c => c.id === id)?.nombre?.split(' ')[0]).filter(Boolean)
+        return (
+          <div style={{ position: 'fixed', left: x + 12, top: y - 10, zIndex: 9999, background: 'var(--bg)', border: `2px solid ${cfg.border}`, borderRadius: 10, padding: '10px 14px', boxShadow: '0 6px 24px rgba(0,0,0,0.18)', minWidth: 160, maxWidth: 240, pointerEvents: 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 14 }}>{cfg.emoji}</span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: cfg.color }}>{b.titulo}</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.6 }}>
+              <div>🕐 {b.hora_inicio?.slice(0,5)} – {b.hora_fin?.slice(0,5)}</div>
+              {b.lugar && <div>📍 {b.lugar}</div>}
+              {clientesNombres.length > 0 && <div>👤 {clientesNombres.join(', ')}</div>}
+              <div style={{ marginTop: 4, fontStyle: 'italic', color: cfg.color, opacity: 0.8 }}>{cfg.label}</div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
