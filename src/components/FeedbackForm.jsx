@@ -8,8 +8,11 @@ const T = {
 
 const RPE_LABELS = ['Nada de esfuerzo', 'Muy, muy suave', 'Muy suave', 'Suave', 'Moderada', 'Algo exigente', 'Exigente', 'Muy exigente', 'Muy dura', 'Extremadamente dura', 'Máximo esfuerzo']
 
+const TQR_ANCHORS = { 0: 'Nada recuperado/a', 3: 'Poco recuperado/a', 5: 'Moderadamente recuperado/a', 7: 'Bastante recuperado/a', 10: 'Totalmente recuperado/a' }
+
 const emptyFeedback = () => ({
   completion: { status: null, reasons: [], partialDetails: '' },
+  tqr: { value: null },
   rpe: { value: null },
   duration: { minutes: null },
   pain: { hasPain: false, mainPainDetails: '', mainPainRelatedToIncompleteSession: false, additionalPain: false, additionalPainLevel: null, additionalPainDetails: '' },
@@ -152,6 +155,22 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
           <Q>¿Qué parte de la sesión no realizaste?</Q>
           <TextArea value={fb.completion.partialDetails} onChange={v => set('completion.partialDetails', v)}
             placeholder="Ej: no hice el último bloque, quité una serie de cada ejercicio, no hice el ejercicio 4..." />
+        </Section>
+      )}
+
+      {/* TQR — aparece para todos los estados cuando hay status */}
+      {status && (
+        <Section>
+          <Q>Antes de empezar la sesión, ¿cómo llegabas de recuperado/a?</Q>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {Array.from({ length: 11 }, (_, n) => (
+              <button key={n} type="button" onClick={() => set('tqr.value', n)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${fb.tqr.value === n ? '#0d9488' : T.line}`, background: fb.tqr.value === n ? '#0d948814' : T.card, cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: fb.tqr.value === n ? '#0d9488' : T.paper, color: fb.tqr.value === n ? '#fff' : T.ink, fontWeight: 700, fontSize: 13 }}>{n}</span>
+                <span style={{ fontSize: 13, color: fb.tqr.value === n ? '#0d9488' : T.ink2, fontWeight: fb.tqr.value === n ? 600 : 400 }}>{TQR_ANCHORS[n] || ''}</span>
+              </button>
+            ))}
+          </div>
         </Section>
       )}
 
