@@ -496,6 +496,7 @@ export default function ClientePortal({ token }) {
       const checkinMostrar = esPasada ? checkinNav : checkinActual
 
       function FeedbackCard({ checkin, weekStart }) {
+        if (!checkin) return null
         return (
           <div style={card}>
             <div style={{ padding: '12px 14px' }}>
