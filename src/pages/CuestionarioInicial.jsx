@@ -1201,10 +1201,11 @@ export default function CuestionarioInicial({ token }) {
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ background: T.card, borderRadius: 16, padding: 40, maxWidth: 480, textAlign: 'center', border: `1px solid ${T.border}` }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>✅</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>¡Cuestionario enviado!</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6 }}>
-          Gracias por rellenar el cuestionario. Tu entrenadora revisará tus respuestas para preparar un plan de entrenamiento personalizado para ti.
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 12 }}>¡Cuestionario enviado!</h2>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.7 }}>
+          Gracias por tomarte tu tiempo para completar el cuestionario. Aunque estaremos en contacto continuo, esta información me ayuda a conocerte mejor y a tener un buen punto de partida para adaptar el entrenamiento a ti, a tus objetivos y a tus necesidades.
         </p>
+        <p style={{ fontSize: 16, fontWeight: 600, color: T.green, marginTop: 16 }}>¡Empezamos! 💪</p>
       </div>
     </div>
   )
