@@ -873,7 +873,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   }
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: 1500 }} onClick={() => setDropdownOpen(null)}>
+    <div style={{ padding: '24px 20px', maxWidth: '100%' }} onClick={() => setDropdownOpen(null)}>
       {/* Cabecera */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
         <div>
@@ -1017,7 +1017,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
         </div>
 
       {/* ── TRES COLUMNAS PRINCIPALES ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px 300px', gap: 0, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, alignItems: 'start', minWidth: 0 }}>
 
         {/* ── IZQUIERDA: CALENDARIO + TAREAS ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1209,9 +1209,18 @@ export default function Agenda({ setPage, setSesionesContext }) {
                   const pct = totalEsperados > 0 ? Math.round((listaCount / totalEsperados) * 100) : 0
                   const barColor = pct === 100 ? '#639922' : pct >= 50 ? '#ef9f27' : '#ef4444'
 
+                  const avatarColores = ['#2d6a4f','#dc2626','#7c3aed','#d97706','#2563eb','#059669','#0891b2','#6366f1','#db2777','#65a30d','#b45309','#0f766e']
+                  const avatarColor = avatarColores[c.nombre.charCodeAt(0) % avatarColores.length]
+                  const iniciales = c.nombre.split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase()
+
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '8px 12px', fontSize: 12, fontWeight: 500 }}>{c.nombre.split(' ')[0]}</td>
+                      <td style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{iniciales}</div>
+                          {c.nombre.split(' ')[0]}
+                        </div>
+                      </td>
                       <td style={{ padding: '6px 4px' }}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
                           {dias.map((d, i) => {
@@ -1242,7 +1251,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                                     <div key={si}
                                       title={dot.title}
                                       onClick={e => abrirPopover(e, c.nombre, c.id, d, diaStr, ses, cd)}
-                                      style={{ width: 16, height: 16, borderRadius: '50%', cursor: 'pointer', flexShrink: 0,
+                                      style={{ width: 16, height: 16, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
                                         background: dot.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                       {ICONS[dot.icon]}
                                     </div>
@@ -1251,7 +1260,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                                   <div
                                     title={tieneDisp ? 'Día disponible sin sesión' : 'Clic para marcar disponible'}
                                     onClick={e => tieneDisp ? abrirPopover(e, c.nombre, c.id, d, diaStr, null, cd) : toggleDia(cd, c.id, diaStr)}
-                                    style={{ width: 16, height: 16, borderRadius: '50%', cursor: 'pointer', flexShrink: 0,
+                                    style={{ width: 16, height: 16, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
                                       background: tieneDisp ? '#ef4444' : 'transparent',
                                       border: tieneDisp ? 'none' : '1.5px dashed #cbd5e1',
                                       display: 'flex', alignItems: 'center', justifyContent: 'center',

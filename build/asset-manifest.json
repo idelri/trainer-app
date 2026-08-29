@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/static/css/main.091ecd1c.css",
-    "main.js": "/static/js/main.b9e8d173.js",
+    "main.js": "/static/js/main.3cae1ea6.js",
     "static/media/logo-idr.png": "/static/media/logo-idr.f3dd8f136d5769b0c77b.png",
     "index.html": "/index.html",
     "main.091ecd1c.css.map": "/static/css/main.091ecd1c.css.map",
-    "main.b9e8d173.js.map": "/static/js/main.b9e8d173.js.map"
+    "main.3cae1ea6.js.map": "/static/js/main.3cae1ea6.js.map"
   },
   "entrypoints": [
     "static/css/main.091ecd1c.css",
-    "static/js/main.b9e8d173.js"
+    "static/js/main.3cae1ea6.js"
   ]
 }
