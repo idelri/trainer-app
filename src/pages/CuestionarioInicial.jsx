@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const T = {
@@ -17,85 +17,105 @@ const STEPS = [
   'Datos personales',
   'Objetivos',
   'Actividad y experiencia',
-  'Disponibilidad y material',
+  'Disponibilidad y recursos',
   'Salud y lesiones',
   'Estilo de vida',
-  'Cierre',
+  'Para conocerte mejor',
 ]
 
 const OTRO = 'Otro (especificar)'
 
-const EMPTY_COMPETICION = { nombre: '', fecha: '', modalidad: '', objetivo_rendimiento: '' }
+const EMPTY_COMPETICION = { nombre: '', fecha: '', objetivo_rendimiento: '' }
 const EMPTY_LESION = {
-  zona: '', zona_otro: '', tipo: '', tipo_otro: '', antiguedad: '', intensidad: null,
+  zona: '', zona_otro: '', antiguedad: '', intensidad: null,
   movimientos: '', diagnostico: '', limitaciones: '',
 }
 
 const EMPTY = {
-  nombre: '', email: '', telefono: '', fecha_nacimiento: '', profesion: '', ciudad: '',
-  objetivo_principal: '',
-  objetivo_principal_otro: '',
+  // paso 1
+  nombre: '', nombre_preferido: '', email: '', telefono: '',
+  fecha_nacimiento: '', profesion: '', ciudad: '',
+  foto_url: '',
+  _foto_file: null, _foto_preview: '',          // local-only, no se guardan en BD
+
+  // paso 2
+  objetivo_principal: '', objetivo_principal_otro: '',
   competiciones: [],
-  objetivos_secundarios: [],
-  objetivos_secundarios_otro: '',
+  objetivos_secundarios: [], objetivos_secundarios_otro: '',
   objetivo_3_6_meses: '',
-  deportes_actuales: [],
-  deportes_actuales_otro: '',
-  actividades_gustan: [],
-  actividades_gustan_otro: '',
-  actividades_evitar: [],
-  actividades_evitar_otro: '',
+
+  // paso 3
+  deportes_actuales: [], deportes_actuales_otro: '',
+  frecuencia_por_actividad: [],                  // [{actividad, frecuencia}]
   frecuencia_actual: '',
   duracion_habitual: '',
-  experiencia_fuerza: '',
-  experiencia_fuerza_obs: '',
-  experiencia_resistencia: '',
-  experiencia_resistencia_obs: '',
-  experiencia_funcional: '',
-  experiencia_funcional_obs: '',
+  experiencia_fuerza: '', experiencia_fuerza_obs: '',
+  experiencia_resistencia: '', experiencia_resistencia_obs: '',
+  experiencia_funcional: '', experiencia_funcional_obs: '',
+  preferencia_entreno: [],
+  tipos_entreno_disfruta: [], tipos_entreno_disfruta_otro: '',
+  evitar_ejercicios_yn: null,
+  evitar_ejercicios_detalle: '',
+  // campos legacy conservados en BD
+  actividades_gustan: [], actividades_gustan_otro: '',
+  actividades_evitar: [], actividades_evitar_otro: '',
+
+  // paso 4
   dias_semana: '',
   dias_preferentes: [],
-  tiempo_sesion: '',
-  tiempo_sesion_obs: '',
+  tiempo_sesion: '', tiempo_sesion_obs: '',
   horarios_preferentes: [],
   lugares_entrenamiento: [],
   tiene_gimnasio: null,
   gimnasio_nombre: '',
-  material_gimnasio: [],
-  material_gimnasio_otro: '',
-  material_casa: [],
-  material_casa_otro: '',
+  material_gimnasio: [], material_gimnasio_otro: '',
+  material_casa: [], material_casa_otro: '',
   tiene_wearable: null,
+  wearable_marca: '', wearable_marca_otro: '',
   wearable_modelo: '',
+
+  // paso 5
   lesiones_actuales_yn: null,
   lesiones_actuales: [],
-  lesiones_anteriores_yn: null,
-  lesiones_anteriores: '',
-  operaciones_yn: null,
-  operaciones: '',
-  enfermedades_yn: null,
-  enfermedades: '',
-  medicacion_yn: null,
-  medicacion: '',
-  restricciones_medicas_yn: null,
-  restricciones_medicas: '',
+  tratamiento_actual: '',
+  tratamiento_actual_detalle: '',
+  antecedentes_categorias: [],
+  antecedentes_detalle: {},
+  // legacy
+  lesiones_anteriores_yn: null, lesiones_anteriores: '',
+  operaciones_yn: null, operaciones: '',
+  enfermedades_yn: null, enfermedades: '',
+  medicacion_yn: null, medicacion: '',
+  restricciones_medicas_yn: null, restricciones_medicas: '',
   seguimiento_fisio: '',
-  horas_sueno: '',
-  calidad_sueno: null,
-  nivel_estres: null,
-  nivel_energia: null,
-  tipo_trabajo: '',
-  pasos_diarios: '',
-  consumo_tabaco: '',
-  consumo_alcohol: '',
+
+  // paso 6
+  horas_sueno: '', calidad_sueno: null, nivel_estres: null,
+  tipo_trabajo: '', pasos_diarios: '', consumo_tabaco: '',
+  // legacy conservados en BD
+  nivel_energia: null, consumo_alcohol: '',
+
+  // paso 7
   confianza_rutina: null,
+  barreras_adherencia: [], barreras_adherencia_otro: '',
+  expectativas_entrenador: [], expectativas_entrenador_otro: '',
   info_adicional: '',
 }
 
-function Multi({ options, selected, onChange }) {
+// ─── Componentes base ─────────────────────────────────────────────────────────
+
+function Multi({ options, selected, onChange, exclusive = [] }) {
   const toggle = (opt) => {
-    if (selected.includes(opt)) onChange(selected.filter(o => o !== opt))
-    else onChange([...selected, opt])
+    if (exclusive.includes(opt)) {
+      // Si es exclusivo, deselecciona todos los demás
+      if (selected.includes(opt)) onChange([])
+      else onChange([opt])
+      return
+    }
+    // Si hay exclusivos seleccionados, los quita
+    const sinExclusivos = selected.filter(o => !exclusive.includes(o))
+    if (sinExclusivos.includes(opt)) onChange(sinExclusivos.filter(o => o !== opt))
+    else onChange([...sinExclusivos, opt])
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -146,12 +166,13 @@ function Scale({ labels, selected, onChange }) {
   )
 }
 
-function Q({ label, required, children }) {
+function Q({ label, required, hint, children }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, marginBottom: 10, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, marginBottom: hint ? 4 : 10, lineHeight: 1.4 }}>
         {label}{required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
       </div>
+      {hint && <div style={{ fontSize: 12, color: T.text3, marginBottom: 8, lineHeight: 1.4 }}>{hint}</div>}
       {children}
     </div>
   )
@@ -160,7 +181,7 @@ function Q({ label, required, children }) {
 function Input({ value, onChange, placeholder, type = 'text' }) {
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${T.border}`, background: T.card, fontSize: 13, color: T.text, outline: 'none', boxSizing: 'border-box' }} />
+      style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${T.border}`, background: T.card, fontSize: 13, color: T.text, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
   )
 }
 
@@ -187,15 +208,57 @@ function YesNo({ selected, onChange }) {
   )
 }
 
-// ─── Steps ───────────────────────────────────────────────────────────────────
+function Reveal({ show, children }) {
+  if (!show) return null
+  return <div style={{ marginTop: 12 }}>{children}</div>
+}
+
+// ─── Step 1 — Datos personales ────────────────────────────────────────────────
 
 function Step1({ f, set }) {
   const s = (k) => (v) => set(k, v)
+  const fileRef = useRef(null)
+
+  function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    set('_foto_file', file)
+    set('_foto_preview', URL.createObjectURL(file))
+  }
+
+  function quitarFoto() {
+    set('_foto_file', null)
+    set('_foto_preview', '')
+    set('foto_url', '')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const previewSrc = f._foto_preview || f.foto_url
   return (
     <>
       <Q label="Nombre completo" required>
-        <Input value={f.nombre} onChange={s('nombre')} placeholder="Tu nombre y apellidos" />
+        <Input value={f.nombre} onChange={s('nombre')} placeholder="Nombre y apellidos" />
       </Q>
+
+      <Q label="¿Cómo prefieres que te llamemos?" hint="Por ejemplo: nombre completo «Alejandro García» → nombre preferido «Álex»">
+        <Input value={f.nombre_preferido} onChange={s('nombre_preferido')} placeholder="Opcional" />
+      </Q>
+
+      <Q label="Foto de perfil">
+        {previewSrc && (
+          <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src={previewSrc} alt="Vista previa" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${T.border}` }} />
+            <button type="button" onClick={quitarFoto}
+              style={{ fontSize: 12, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: '1px solid #fca5a5' }}>
+              Eliminar foto
+            </button>
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile}
+          style={{ fontSize: 13, color: T.text2 }} />
+        <div style={{ fontSize: 11.5, color: T.text3, marginTop: 4 }}>Máx. 5 MB · JPG, PNG o WebP</div>
+      </Q>
+
       <Q label="Email" required>
         <Input value={f.email} onChange={s('email')} type="email" placeholder="tu@email.com" />
       </Q>
@@ -208,15 +271,35 @@ function Step1({ f, set }) {
       <Q label="Profesión">
         <Input value={f.profesion} onChange={s('profesion')} placeholder="¿A qué te dedicas?" />
       </Q>
-      <Q label="Ciudad">
-        <Input value={f.ciudad} onChange={s('ciudad')} placeholder="Ciudad donde vives" />
+      <Q label="Ciudad / zona donde vives">
+        <Input value={f.ciudad} onChange={s('ciudad')} placeholder="Ciudad o zona" />
       </Q>
     </>
   )
 }
 
+// ─── Step 2 — Objetivos ───────────────────────────────────────────────────────
+
+const OBJETIVOS = [
+  'Mejorar mi salud y condición física general',
+  'Ganar fuerza',
+  'Ganar masa muscular',
+  'Perder grasa',
+  'Mejorar mi resistencia',
+  'Preparar una competición o reto deportivo',
+  'Mejorar el rendimiento en mi deporte',
+  'Reducir molestias o prevenir lesiones',
+  'Recuperar la confianza después de una lesión',
+  'Crear una rutina de entrenamiento',
+]
+
+const COMP_TRIGGER = 'Preparar una competición o reto deportivo'
+
 function Step2({ f, set }) {
   const s = (k) => (v) => set(k, v)
+
+  const mostrarCompeticion = f.objetivo_principal === COMP_TRIGGER ||
+    f.objetivos_secundarios.includes(COMP_TRIGGER)
 
   function addComp() {
     set('competiciones', [...f.competiciones, { ...EMPTY_COMPETICION }])
@@ -225,68 +308,71 @@ function Step2({ f, set }) {
     set('competiciones', f.competiciones.filter((_, idx) => idx !== i))
   }
   function setComp(i, k, v) {
-    const c = f.competiciones.map((c, idx) => idx === i ? { ...c, [k]: v } : c)
-    set('competiciones', c)
+    set('competiciones', f.competiciones.map((c, idx) => idx === i ? { ...c, [k]: v } : c))
   }
 
-  const OBJETIVOS = [
-    'Mejorar mi salud y condición física general',
-    'Ganar fuerza',
-    'Ganar masa muscular',
-    'Perder grasa',
-    'Mejorar mi resistencia',
-    'Preparar una competición o reto deportivo',
-    'Mejorar el rendimiento en mi deporte',
-    'Reducir molestias o prevenir lesiones',
-    'Recuperar la confianza después de una lesión',
-    'Crear una rutina de entrenamiento',
-  ]
+  // Al montar, si se activa mostrarCompeticion y competiciones está vacío, añadimos una
+  useEffect(() => {
+    if (mostrarCompeticion && f.competiciones.length === 0) addComp()
+  }, [mostrarCompeticion]) // eslint-disable-line
 
   return (
     <>
       <Q label="Objetivo principal" required>
-        <Single options={[...OBJETIVOS, OTRO]} selected={f.objetivo_principal} onChange={v => { s('objetivo_principal')(v); if (v !== OTRO) s('objetivo_principal_otro')('') }} />
-        {f.objetivo_principal === OTRO && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.objetivo_principal_otro} onChange={s('objetivo_principal_otro')} placeholder="Especifica tu objetivo..." />
-          </div>
-        )}
+        <Single
+          options={[...OBJETIVOS, OTRO]}
+          selected={f.objetivo_principal}
+          onChange={v => { s('objetivo_principal')(v); if (v !== OTRO) s('objetivo_principal_otro')('') }}
+        />
+        <Reveal show={f.objetivo_principal === OTRO}>
+          <Input value={f.objetivo_principal_otro} onChange={s('objetivo_principal_otro')} placeholder="Especifica tu objetivo..." />
+        </Reveal>
       </Q>
 
-      {f.objetivo_principal === 'Preparar una competición o reto deportivo' && (
+      <Q label="Objetivos secundarios">
+        <Multi
+          options={[...OBJETIVOS.filter(o => o !== f.objetivo_principal), OTRO]}
+          selected={f.objetivos_secundarios}
+          onChange={v => { s('objetivos_secundarios')(v); if (!v.includes(OTRO)) s('objetivos_secundarios_otro')('') }}
+        />
+        <Reveal show={f.objetivos_secundarios.includes(OTRO)}>
+          <Input value={f.objetivos_secundarios_otro} onChange={s('objetivos_secundarios_otro')} placeholder="Especifica..." />
+        </Reveal>
+      </Q>
+
+      {mostrarCompeticion && (
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 10 }}>Competiciones</div>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, marginBottom: 10 }}>
+            Competición o reto
+          </div>
           {f.competiciones.map((c, i) => (
             <div key={i} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 14, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>Competición {i + 1}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
+                  {f.competiciones.length > 1 ? `Competición ${i + 1}` : 'Competición / reto'}
+                </span>
                 {f.competiciones.length > 1 && (
-                  <button onClick={() => removeComp(i)} style={{ background: 'none', border: 'none', color: T.text3, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+                  <button type="button" onClick={() => removeComp(i)}
+                    style={{ background: 'none', border: 'none', color: T.text3, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Input value={c.nombre} onChange={v => setComp(i, 'nombre', v)} placeholder="Nombre del evento" />
-                <Input value={c.fecha} onChange={v => setComp(i, 'fecha', v)} type="date" />
-                <Input value={c.modalidad} onChange={v => setComp(i, 'modalidad', v)} placeholder="Distancia / modalidad (ej: 42km, sprint, XCO...)" />
-                <Input value={c.objetivo_rendimiento} onChange={v => setComp(i, 'objetivo_rendimiento', v)} placeholder="Objetivo de rendimiento" />
+                <Input value={c.nombre} onChange={v => setComp(i, 'nombre', v)} placeholder="Nombre del evento o reto" />
+                <div>
+                  <div style={{ fontSize: 11.5, color: T.text3, marginBottom: 4 }}>Fecha (si se conoce)</div>
+                  <Input value={c.fecha} onChange={v => setComp(i, 'fecha', v)} type="date" />
+                </div>
+                <Input value={c.objetivo_rendimiento} onChange={v => setComp(i, 'objetivo_rendimiento', v)}
+                  placeholder="Objetivo para la prueba (opcional) — ej: terminarla, bajar de 1h35..." />
               </div>
             </div>
           ))}
-          <button onClick={addComp}
+          <button type="button" onClick={addComp}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #bbf7d0', background: '#dcfce7', color: '#166534', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
             + Añadir otra competición
           </button>
         </div>
       )}
-
-      <Q label="Objetivos secundarios">
-        <Multi options={[...OBJETIVOS.filter(o => o !== f.objetivo_principal), OTRO]} selected={f.objetivos_secundarios} onChange={v => { s('objetivos_secundarios')(v); if (!v.includes(OTRO)) s('objetivos_secundarios_otro')('') }} />
-        {f.objetivos_secundarios.includes(OTRO) && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.objetivos_secundarios_otro} onChange={s('objetivos_secundarios_otro')} placeholder="Especifica..." />
-          </div>
-        )}
-      </Q>
 
       <Q label="¿Qué te gustaría haber conseguido en 3–6 meses?">
         <Textarea value={f.objetivo_3_6_meses} onChange={s('objetivo_3_6_meses')} placeholder="Cuéntame con tus palabras..." rows={2} />
@@ -295,87 +381,157 @@ function Step2({ f, set }) {
   )
 }
 
+// ─── Step 3 — Actividad y experiencia ────────────────────────────────────────
+
+const DEPORTES = [
+  'Running / atletismo','Ciclismo','Natación','Triatlón','Fútbol','Fútbol sala',
+  'Baloncesto','Tenis','Pádel','Balonmano','Voleibol','Rugby',
+  'Artes marciales / boxeo','Crossfit','Gimnasia / acrobacia','Escalada',
+  'Esquí / snowboard','Golf','Yoga','Pilates','Baile / danza','Senderismo',
+  'Entrenamiento en sala (gym)','Ninguno actualmente',
+]
+const DEPORTES_SIN_FREQ = ['Ninguno actualmente']
+
+const FREC_ACT_OPTS = ['1 día/sem','2 días/sem','3 días/sem','4 días/sem','5+ días/sem']
+const EXP = ['Sin experiencia','Principiante (menos de 1 año)','Intermedio (1–3 años)','Avanzado (más de 3 años)']
+const FRECUENCIA = ['No entreno actualmente','1–2 días/semana','3–4 días/semana','5–6 días/semana','Todos los días','Irregular, sin rutina fija']
+const DURACION = ['Menos de 30 min','30–45 min','45–60 min','60–90 min','Más de 90 min','Variable']
+
 function Step3({ f, set }) {
   const s = (k) => (v) => set(k, v)
 
-  const DEPORTES = ['Running / atletismo','Ciclismo','Natación','Triatlón','Fútbol','Fútbol sala','Baloncesto','Tenis','Pádel','Balonmano','Voleibol','Rugby','Artes marciales / boxeo','Crossfit','Gimnasia / acrobacia','Escalada','Esquí / snowboard','Golf','Yoga','Pilates','Baile / danza','Senderismo','Entrenamiento en sala (gym)','Ninguno actualmente']
-  const GUSTAN = ['Entrenar en exterior','Entrenar solo/a','Entrenar en grupo','Entrenamiento de fuerza','Cardio / resistencia','HIIT / circuitos','Movilidad / estiramientos','Trabajo funcional','Actividades de equipo','Competición']
-  const EVITAR = ['Carrera continua larga','Saltos e impactos','Sentadillas profundas','Trabajo de suelo (abdominales...)','Ejercicios con barra en rack','Máquinas guiadas','Ejercicios muy técnicos','Entrenamientos muy largos','Entrenamientos muy intensos','Trabajo de movilidad / estiramientos','Ninguno en particular']
-  const FRECUENCIA = ['No entreno actualmente','1–2 días/semana','3–4 días/semana','5–6 días/semana','Todos los días','Irregular, sin rutina fija']
-  const DURACION = ['Menos de 30 min','30–45 min','45–60 min','60–90 min','Más de 90 min','Variable']
-  const EXP = ['Sin experiencia','Principiante (menos de 1 año)','Intermedio (1–3 años)','Avanzado (más de 3 años)']
+  // Sincronizar frecuencia_por_actividad cuando cambian los deportes
+  function handleDeportes(nuevos) {
+    s('deportes_actuales')(nuevos)
+    if (!nuevos.includes(OTRO)) s('deportes_actuales_otro')('')
+    // Recomponer frecuencia_por_actividad: conservar frecuencias existentes, quitar actividades eliminadas
+    const activas = nuevos.filter(d => !DEPORTES_SIN_FREQ.includes(d) && d !== OTRO)
+    const actual = f.frecuencia_por_actividad || []
+    const nuevaFreq = activas.map(a => {
+      const existing = actual.find(x => x.actividad === a)
+      return existing || { actividad: a, frecuencia: '' }
+    })
+    set('frecuencia_por_actividad', nuevaFreq)
+  }
+
+  function setFreqAct(actividad, frecuencia) {
+    set('frecuencia_por_actividad', (f.frecuencia_por_actividad || []).map(x =>
+      x.actividad === actividad ? { ...x, frecuencia } : x
+    ))
+  }
+
+  const deportesConFreq = (f.deportes_actuales || []).filter(d => !DEPORTES_SIN_FREQ.includes(d) && d !== OTRO)
 
   return (
     <>
       <Q label="Deportes o actividades que practicas actualmente">
-        <Multi options={[...DEPORTES, OTRO]} selected={f.deportes_actuales} onChange={v => { s('deportes_actuales')(v); if (!v.includes(OTRO)) s('deportes_actuales_otro')('') }} />
-        {f.deportes_actuales.includes(OTRO) && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.deportes_actuales_otro} onChange={s('deportes_actuales_otro')} placeholder="¿Cuáles?" />
-          </div>
-        )}
+        <Multi
+          options={[...DEPORTES, OTRO]}
+          selected={f.deportes_actuales}
+          onChange={handleDeportes}
+          exclusive={['Ninguno actualmente']}
+        />
+        <Reveal show={f.deportes_actuales.includes(OTRO)}>
+          <Input value={f.deportes_actuales_otro} onChange={s('deportes_actuales_otro')} placeholder="¿Cuáles?" />
+        </Reveal>
       </Q>
-      <Q label="Actividades o ejercicios que te gustan">
-        <Multi options={[...GUSTAN, OTRO]} selected={f.actividades_gustan} onChange={v => { s('actividades_gustan')(v); if (!v.includes(OTRO)) s('actividades_gustan_otro')('') }} />
-        {f.actividades_gustan.includes(OTRO) && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.actividades_gustan_otro} onChange={s('actividades_gustan_otro')} placeholder="¿Cuáles?" />
-          </div>
-        )}
-      </Q>
-      <Q label="Ejercicios o actividades que prefieres evitar">
-        <Multi options={[...EVITAR, OTRO]} selected={f.actividades_evitar} onChange={v => { s('actividades_evitar')(v); if (!v.includes(OTRO)) s('actividades_evitar_otro')('') }} />
-        {f.actividades_evitar.includes(OTRO) && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.actividades_evitar_otro} onChange={s('actividades_evitar_otro')} placeholder="¿Cuáles?" />
-          </div>
-        )}
-      </Q>
-      <Q label="Frecuencia actual de entrenamiento">
+
+      {deportesConFreq.length > 0 && (
+        <Q label="¿Cuántos días por semana practicas estas actividades?">
+          {deportesConFreq.length === 1 ? (
+            <Single
+              options={FREC_ACT_OPTS}
+              selected={(f.frecuencia_por_actividad || []).find(x => x.actividad === deportesConFreq[0])?.frecuencia || ''}
+              onChange={v => setFreqAct(deportesConFreq[0], v)}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {deportesConFreq.map(act => {
+                const freq = (f.frecuencia_por_actividad || []).find(x => x.actividad === act)?.frecuencia || ''
+                return (
+                  <div key={act}>
+                    <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 6, fontWeight: 500 }}>{act}</div>
+                    <Single options={FREC_ACT_OPTS} selected={freq} onChange={v => setFreqAct(act, v)} />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Q>
+      )}
+
+      <Q label="Frecuencia actual de entrenamiento (total)">
         <Single options={FRECUENCIA} selected={f.frecuencia_actual} onChange={s('frecuencia_actual')} />
       </Q>
+
       <Q label="Duración habitual de las sesiones">
         <Single options={DURACION} selected={f.duracion_habitual} onChange={s('duracion_habitual')} />
       </Q>
+
       <Q label="Experiencia en entrenamiento de fuerza">
         <Single options={EXP} selected={f.experiencia_fuerza} onChange={s('experiencia_fuerza')} />
-        {f.experiencia_fuerza && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.experiencia_fuerza_obs} onChange={s('experiencia_fuerza_obs')} placeholder="Observaciones (opcional)" rows={2} />
-          </div>
-        )}
+        <Reveal show={!!f.experiencia_fuerza}>
+          <Textarea value={f.experiencia_fuerza_obs} onChange={s('experiencia_fuerza_obs')} placeholder="Observaciones (opcional)" rows={2} />
+        </Reveal>
       </Q>
+
       <Q label="Experiencia en resistencia (carrera, bici, natación...)">
         <Single options={EXP} selected={f.experiencia_resistencia} onChange={s('experiencia_resistencia')} />
-        {f.experiencia_resistencia && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.experiencia_resistencia_obs} onChange={s('experiencia_resistencia_obs')} placeholder="Observaciones (opcional)" rows={2} />
-          </div>
-        )}
+        <Reveal show={!!f.experiencia_resistencia}>
+          <Textarea value={f.experiencia_resistencia_obs} onChange={s('experiencia_resistencia_obs')} placeholder="Observaciones (opcional)" rows={2} />
+        </Reveal>
       </Q>
+
       <Q label="Experiencia en movilidad, funcional u otras actividades dirigidas">
         <Single options={['Sin experiencia','Principiante','Intermedio','Avanzado']} selected={f.experiencia_funcional} onChange={s('experiencia_funcional')} />
-        {f.experiencia_funcional && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.experiencia_funcional_obs} onChange={s('experiencia_funcional_obs')} placeholder="Observaciones (opcional)" rows={2} />
-          </div>
-        )}
+        <Reveal show={!!f.experiencia_funcional}>
+          <Textarea value={f.experiencia_funcional_obs} onChange={s('experiencia_funcional_obs')} placeholder="Observaciones (opcional)" rows={2} />
+        </Reveal>
+      </Q>
+
+      <Q label="¿Cómo prefieres entrenar?">
+        <Multi
+          options={['Solo/a','Acompañado/a','En grupo','En interior','Al aire libre','Sin preferencia']}
+          selected={f.preferencia_entreno}
+          onChange={s('preferencia_entreno')}
+          exclusive={['Sin preferencia']}
+        />
+      </Q>
+
+      <Q label="¿Qué tipos de entrenamiento disfrutas especialmente?">
+        <Multi
+          options={['Entrenamiento de fuerza','Cardio / resistencia','HIIT / circuitos','Movilidad / flexibilidad','Actividades deportivas','Competición','Ninguno en particular', OTRO]}
+          selected={f.tipos_entreno_disfruta}
+          onChange={v => { s('tipos_entreno_disfruta')(v); if (!v.includes(OTRO)) s('tipos_entreno_disfruta_otro')('') }}
+          exclusive={['Ninguno en particular']}
+        />
+        <Reveal show={f.tipos_entreno_disfruta.includes(OTRO)}>
+          <Input value={f.tipos_entreno_disfruta_otro} onChange={s('tipos_entreno_disfruta_otro')} placeholder="¿Cuáles?" />
+        </Reveal>
+      </Q>
+
+      <Q label="¿Hay algún ejercicio, actividad o tipo de entrenamiento que no te guste o prefieras evitar?">
+        <YesNo selected={f.evitar_ejercicios_yn} onChange={s('evitar_ejercicios_yn')} />
+        <Reveal show={f.evitar_ejercicios_yn === 'Sí'}>
+          <Textarea value={f.evitar_ejercicios_detalle} onChange={s('evitar_ejercicios_detalle')} placeholder="¿Cuál y por qué?" rows={2} />
+        </Reveal>
       </Q>
     </>
   )
 }
 
+// ─── Step 4 — Disponibilidad y recursos ───────────────────────────────────────
+
+const DIAS_SEM = ['L','M','X','J','V','S','D']
+const DIAS_SEM_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+const TIEMPO = ['Menos de 30 min','30–45 min','45–60 min','60–90 min','Más de 90 min','Variable']
+const HORARIOS = ['Primera hora de la mañana (antes de 8h)','Mañana (8h–12h)','Mediodía (12h–15h)','Tarde (15h–19h)','Noche (19h–22h)','Sin preferencia']
+const LUGARES = ['En casa','Gimnasio','Aire libre (parque, calle, monte...)','Piscina','Pista deportiva / campo','Trabajo / empresa','Varios lugares']
+const MAT_CASA = ['Sin material','Esterilla','Mancuernas','Kettlebells','Barra y discos','Bandas elásticas','TRX / entrenamiento en suspensión','Barra de dominadas (puerta)','Banco','Cajón / step','Foam roller','Bicicleta estática','Cinta de correr','Remoergómetro','Balón medicinal']
+const WEARABLE_MARCAS = ['Garmin','Apple Watch','Polar','COROS','Suunto','Huawei','Whoop', OTRO]
+
 function Step4({ f, set }) {
   const s = (k) => (v) => set(k, v)
-
-  const DIAS_NUM = ['1 día','2 días','3 días','4 días','5 días','6 días','7 días','Variable según semana']
-  const DIAS_SEM = ['L','M','X','J','V','S','D']
-  const DIAS_SEM_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
-  const TIEMPO = ['Menos de 30 min','30–45 min','45–60 min','60–90 min','Más de 90 min','Variable']
-  const HORARIOS = ['Primera hora de la mañana (antes de 8h)','Mañana (8h–12h)','Mediodía (12h–15h)','Tarde (15h–19h)','Noche (19h–22h)','Sin preferencia']
-  const LUGARES = ['En casa','Gimnasio','Aire libre (parque, calle, monte...)','Piscina','Pista deportiva / campo','Trabajo / empresa','Varios lugares']
-  const MAT_GYM = ['Mancuernas','Kettlebells','Barra y discos','Barras de dominadas y paralelas','Banco plano e inclinado','Rack / jaula de sentadillas','Máquinas guiadas','Poleas altas y bajas','TRX / entrenamiento en suspensión','Cinta de correr','Bicicleta estática o de spinning','Elíptica','Remoergómetro','Esterillas y zona de suelo','Cajón / step','Balón medicinal','Bandas elásticas']
-  const MAT_CASA = ['Sin material','Esterilla','Mancuernas','Kettlebells','Barra y discos','Bandas elásticas','TRX / entrenamiento en suspensión','Barra de dominadas (puerta)','Banco','Cajón / step','Foam roller','Bicicleta estática','Cinta de correr','Remoergómetro','Balón medicinal']
 
   function toggleDia(dia) {
     const curr = f.dias_preferentes
@@ -383,13 +539,20 @@ function Step4({ f, set }) {
     else set('dias_preferentes', [...curr, dia])
   }
 
+  const tieneGimnasio = f.lugares_entrenamiento.includes('Gimnasio')
+  const tieneEnCasa = f.lugares_entrenamiento.includes('En casa')
+
   return (
     <>
-      <Q label="Días disponibles para entrenar por semana">
-        <Single options={DIAS_NUM} selected={f.dias_semana} onChange={s('dias_semana')} />
+      <Q label="¿Cuántos días por semana puedes comprometerte de forma realista a entrenar?">
+        <Single
+          options={['1 día','2 días','3 días','4 días','5 días','6 días','7 días','Variable según la semana']}
+          selected={f.dias_semana}
+          onChange={s('dias_semana')}
+        />
       </Q>
 
-      <Q label="Días preferentes">
+      <Q label="¿Qué días suelen ser los más viables para ti?">
         <div style={{ display: 'flex', gap: 8 }}>
           {DIAS_SEM.map((d, i) => {
             const on = f.dias_preferentes.includes(DIAS_SEM_FULL[i])
@@ -406,48 +569,60 @@ function Step4({ f, set }) {
       <Q label="Tiempo disponible por sesión">
         <Single options={TIEMPO} selected={f.tiempo_sesion} onChange={s('tiempo_sesion')} />
         <div style={{ marginTop: 8 }}>
-          <Textarea value={f.tiempo_sesion_obs} onChange={s('tiempo_sesion_obs')} placeholder="¿Quieres añadir algo más? Por ejemplo: los sábados tengo más tiempo, entre semana solo puedo al mediodía..." rows={2} />
+          <Textarea value={f.tiempo_sesion_obs} onChange={s('tiempo_sesion_obs')} placeholder="¿Quieres añadir algo? Ej: los sábados tengo más tiempo, entre semana solo puedo al mediodía..." rows={2} />
         </div>
       </Q>
 
       <Q label="Horarios preferentes">
-        <Multi options={HORARIOS} selected={f.horarios_preferentes} onChange={s('horarios_preferentes')} />
+        <Multi options={HORARIOS} selected={f.horarios_preferentes} onChange={s('horarios_preferentes')} exclusive={['Sin preferencia']} />
       </Q>
 
       <Q label="Lugar habitual de entrenamiento">
         <Multi options={LUGARES} selected={f.lugares_entrenamiento} onChange={s('lugares_entrenamiento')} />
       </Q>
 
-      <Q label="¿Vas a algún gimnasio?">
-        <YesNo selected={f.tiene_gimnasio} onChange={s('tiene_gimnasio')} />
-        {f.tiene_gimnasio === 'Sí' && (
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Input value={f.gimnasio_nombre} onChange={s('gimnasio_nombre')} placeholder="¿A cuál?" />
-            <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 4 }}>Material disponible en el gimnasio:</div>
-            <Multi options={[...MAT_GYM, OTRO]} selected={f.material_gimnasio} onChange={v => { s('material_gimnasio')(v); if (!v.includes(OTRO)) s('material_gimnasio_otro')('') }} />
-            {f.material_gimnasio.includes(OTRO) && (
-              <div style={{ marginTop: 8 }}>
-                <Input value={f.material_gimnasio_otro} onChange={s('material_gimnasio_otro')} placeholder="¿Qué otro material?" />
-              </div>
-            )}
-          </div>
-        )}
-      </Q>
+      {tieneGimnasio && (
+        <div style={{ background: '#f8f7f4', border: `1px solid ${T.border}`, borderRadius: 10, padding: 14, marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text2, marginBottom: 8 }}>Gimnasio</div>
+          <Input value={f.gimnasio_nombre} onChange={s('gimnasio_nombre')} placeholder="¿A qué gimnasio vas? (opcional)" />
+        </div>
+      )}
 
-      <Q label="Material disponible en casa">
-        <Multi options={[...MAT_CASA, OTRO]} selected={f.material_casa} onChange={v => { s('material_casa')(v); if (!v.includes(OTRO)) s('material_casa_otro')('') }} />
-        {f.material_casa.includes(OTRO) && (
-          <div style={{ marginTop: 8 }}>
+      {tieneEnCasa && (
+        <Q label="Material disponible en casa">
+          <Multi
+            options={[...MAT_CASA, OTRO]}
+            selected={f.material_casa}
+            onChange={v => { s('material_casa')(v); if (!v.includes(OTRO)) s('material_casa_otro')('') }}
+            exclusive={['Sin material']}
+          />
+          <Reveal show={f.material_casa.includes(OTRO)}>
             <Input value={f.material_casa_otro} onChange={s('material_casa_otro')} placeholder="¿Qué otro material?" />
-          </div>
-        )}
-      </Q>
+          </Reveal>
+        </Q>
+      )}
 
-      <Q label="¿Dispones de algún reloj deportivo o dispositivo wearable para registrar tus entrenamientos, actividad diaria, sueño u otras variables?">
+      <Q label="¿Dispones de algún reloj deportivo o wearable para registrar tus entrenamientos?">
         <YesNo selected={f.tiene_wearable} onChange={s('tiene_wearable')} />
         {f.tiene_wearable === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.wearable_modelo} onChange={s('wearable_modelo')} placeholder="Marca y modelo (ej: Garmin Forerunner 255, Polar Ignite 3...)" />
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Marca</div>
+              <Single
+                options={WEARABLE_MARCAS}
+                selected={f.wearable_marca}
+                onChange={v => { s('wearable_marca')(v); if (v !== OTRO) s('wearable_marca_otro')('') }}
+              />
+              <Reveal show={f.wearable_marca === OTRO}>
+                <div style={{ marginTop: 8 }}>
+                  <Input value={f.wearable_marca_otro} onChange={s('wearable_marca_otro')} placeholder="¿Qué marca?" />
+                </div>
+              </Reveal>
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Modelo (opcional)</div>
+              <Input value={f.wearable_modelo} onChange={s('wearable_modelo')} placeholder="Ej: Forerunner 255, Apple Watch Series 9..." />
+            </div>
           </div>
         )}
       </Q>
@@ -455,13 +630,44 @@ function Step4({ f, set }) {
   )
 }
 
+// ─── Step 5 — Salud y lesiones ────────────────────────────────────────────────
+
+const ZONAS = [
+  'Cabeza / cuello','Hombro derecho','Hombro izquierdo','Codo / antebrazo derecho',
+  'Codo / antebrazo izquierdo','Muñeca / mano derecha','Muñeca / mano izquierda',
+  'Zona dorsal','Zona lumbar','Zona abdominal / core','Cadera / glúteo derecho',
+  'Cadera / glúteo izquierdo','Muslo / cuádriceps derecho','Muslo / cuádriceps izquierdo',
+  'Isquiotibiales derecho','Isquiotibiales izquierdo','Rodilla derecha','Rodilla izquierda',
+  'Pierna / gemelo derecho','Pierna / gemelo izquierdo','Tobillo / pie derecho','Tobillo / pie izquierdo', OTRO,
+]
+const ANTIGUEDAD = ['Hace menos de 1 semana','1–4 semanas','1–3 meses','3–6 meses','Más de 6 meses','Más de 1 año','Crónica (varios años)']
+
+const ANTECEDENTES_OPTS = [
+  'Lesiones anteriores relevantes',
+  'Operaciones o intervenciones previas',
+  'Enfermedad o diagnóstico médico relevante',
+  'Medicación que pueda afectar al entrenamiento',
+  'Restricciones o indicaciones médicas',
+  'Ninguno',
+]
+const ANTECEDENTES_PLACEHOLDER = {
+  'Lesiones anteriores relevantes': '¿Qué lesión/es y cuándo ocurrieron?',
+  'Operaciones o intervenciones previas': '¿Cuáles y cuándo?',
+  'Enfermedad o diagnóstico médico relevante': '¿Cuál?',
+  'Medicación que pueda afectar al entrenamiento': '¿Cuál?',
+  'Restricciones o indicaciones médicas': '¿Cuáles?',
+}
+const ANTECEDENTES_KEY = {
+  'Lesiones anteriores relevantes': 'lesiones_anteriores',
+  'Operaciones o intervenciones previas': 'operaciones',
+  'Enfermedad o diagnóstico médico relevante': 'enfermedades',
+  'Medicación que pueda afectar al entrenamiento': 'medicacion',
+  'Restricciones o indicaciones médicas': 'restricciones_medicas',
+}
+const TRATAMIENTO_OPTS = ['No','Fisioterapia','Rehabilitación','Seguimiento médico','Varios']
+
 function Step5({ f, set }) {
   const s = (k) => (v) => set(k, v)
-
-  const ZONAS = ['Cabeza / cuello','Hombro derecho','Hombro izquierdo','Codo / antebrazo derecho','Codo / antebrazo izquierdo','Muñeca / mano derecha','Muñeca / mano izquierda','Zona dorsal','Zona lumbar','Zona abdominal / core','Cadera / glúteo derecho','Cadera / glúteo izquierdo','Muslo / cuádriceps derecho','Muslo / cuádriceps izquierdo','Isquiotibiales derecho','Isquiotibiales izquierdo','Rodilla derecha','Rodilla izquierda','Pierna / gemelo derecho','Pierna / gemelo izquierdo','Tobillo / pie derecho','Tobillo / pie izquierdo', OTRO]
-  const TIPOS = ['Dolor agudo o punzante','Dolor sordo o continuo','Rigidez o tensión muscular','Inflamación o hinchazón','Inestabilidad o sensación de fallo','Hormigueo o entumecimiento','Crepitación o ruido articular','Limitación de movilidad', OTRO]
-  const ANTIGUEDAD = ['Hace menos de 1 semana','1–4 semanas','1–3 meses','3–6 meses','Más de 6 meses','Más de 1 año','Crónica (varios años)']
-  const SEGUIMIENTO_OPTS = ['No','Sí, fisioterapia','Sí, rehabilitación','Sí, seguimiento médico','Sí, varios']
 
   function addLesion() { set('lesiones_actuales', [...f.lesiones_actuales, { ...EMPTY_LESION }]) }
   function removeLesion(i) { set('lesiones_actuales', f.lesiones_actuales.filter((_, idx) => idx !== i)) }
@@ -469,10 +675,27 @@ function Step5({ f, set }) {
     set('lesiones_actuales', f.lesiones_actuales.map((l, idx) => idx === i ? { ...l, [k]: v } : l))
   }
 
+  function handleAntecedentes(nuevos) {
+    s('antecedentes_categorias')(nuevos)
+    // Limpiar detalle de categorías eliminadas
+    const nuevoDetalle = { ...f.antecedentes_detalle }
+    Object.keys(nuevoDetalle).forEach(k => {
+      const cat = Object.entries(ANTECEDENTES_KEY).find(([, v]) => v === k)?.[0]
+      if (cat && !nuevos.includes(cat)) delete nuevoDetalle[k]
+    })
+    set('antecedentes_detalle', nuevoDetalle)
+  }
+
+  function setDetalle(categoria, valor) {
+    const key = ANTECEDENTES_KEY[categoria]
+    if (!key) return
+    set('antecedentes_detalle', { ...f.antecedentes_detalle, [key]: valor })
+  }
+
   return (
     <>
       <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px', marginBottom: 24, fontSize: 12.5, color: '#1d4ed8', lineHeight: 1.5 }}>
-        ⚕️ La información de este apartado se utilizará únicamente para adaptar el entrenamiento y no sustituye una valoración o diagnóstico médico.
+        ⚕️ La información de este apartado se utiliza únicamente para adaptar el entrenamiento y no sustituye una valoración o diagnóstico médico.
       </div>
 
       <Q label="¿Tienes actualmente alguna lesión, dolor o molestia?" required>
@@ -480,7 +703,8 @@ function Step5({ f, set }) {
         {f.lesiones_actuales_yn === 'Sí' && (
           <div style={{ marginTop: 12 }}>
             {f.lesiones_actuales.length === 0 && (
-              <button onClick={addLesion} style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #bbf7d0', background: '#dcfce7', color: '#166534', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
+              <button type="button" onClick={addLesion}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #bbf7d0', background: '#dcfce7', color: '#166534', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', marginBottom: 8 }}>
                 + Añadir lesión o molestia
               </button>
             )}
@@ -488,33 +712,24 @@ function Step5({ f, set }) {
               <div key={i} style={{ background: '#f8f7f4', border: `1px solid ${T.border}`, borderRadius: 10, padding: 14, marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>Lesión / molestia {i + 1}</span>
-                  <button onClick={() => removeLesion(i)} style={{ background: 'none', border: 'none', color: T.text3, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                  <button type="button" onClick={() => removeLesion(i)}
+                    style={{ background: 'none', border: 'none', color: T.text3, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Zona corporal</div>
-                    <Single options={ZONAS} selected={l.zona} onChange={v => { setLesion(i, 'zona', v); if (v !== OTRO) setLesion(i, 'zona_otro', '') }} />
-                    {l.zona === OTRO && (
-                      <div style={{ marginTop: 8 }}>
-                        <Input value={l.zona_otro} onChange={v => setLesion(i, 'zona_otro', v)} placeholder="¿Qué zona?" />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Tipo de molestia</div>
-                    <Single options={TIPOS} selected={l.tipo} onChange={v => { setLesion(i, 'tipo', v); if (v !== OTRO) setLesion(i, 'tipo_otro', '') }} />
-                    {l.tipo === OTRO && (
-                      <div style={{ marginTop: 8 }}>
-                        <Input value={l.tipo_otro} onChange={v => setLesion(i, 'tipo_otro', v)} placeholder="¿Qué tipo de molestia?" />
-                      </div>
-                    )}
+                    <Single options={ZONAS} selected={l.zona}
+                      onChange={v => { setLesion(i, 'zona', v); if (v !== OTRO) setLesion(i, 'zona_otro', '') }} />
+                    <Reveal show={l.zona === OTRO}>
+                      <Input value={l.zona_otro} onChange={v => setLesion(i, 'zona_otro', v)} placeholder="¿Qué zona?" />
+                    </Reveal>
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>¿Desde cuándo?</div>
                     <Single options={ANTIGUEDAD} selected={l.antiguedad} onChange={v => setLesion(i, 'antiguedad', v)} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Intensidad del dolor (0 = sin dolor · 10 = máximo)</div>
+                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Intensidad habitual (0 = sin dolor · 10 = máximo)</div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
                         const on = l.intensidad === n
@@ -528,22 +743,23 @@ function Step5({ f, set }) {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Movimientos que la empeoran o mejoran</div>
-                    <Textarea value={l.movimientos} onChange={v => setLesion(i, 'movimientos', v)} placeholder="Describe qué empeora la molestia y qué la mejora o alivia..." rows={2} />
+                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>¿Qué movimientos o actividades la provocan o empeoran?</div>
+                    <Textarea value={l.movimientos} onChange={v => setLesion(i, 'movimientos', v)} placeholder="Describe qué la empeora o alivia..." rows={2} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Diagnóstico (si tienes)</div>
-                    <Input value={l.diagnostico} onChange={v => setLesion(i, 'diagnostico', v)} placeholder="Ej: tendinitis rotuliana, hernia discal L4-L5... (opcional)" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Limitaciones actuales</div>
+                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>¿Te impide o limita alguna actividad?</div>
                     <Textarea value={l.limitaciones} onChange={v => setLesion(i, 'limitaciones', v)} placeholder="¿Qué no puedes hacer o tienes que evitar? (opcional)" rows={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>¿Tienes algún diagnóstico relacionado?</div>
+                    <Input value={l.diagnostico} onChange={v => setLesion(i, 'diagnostico', v)} placeholder="Ej: tendinitis rotuliana, hernia discal L4-L5... (opcional)" />
                   </div>
                 </div>
               </div>
             ))}
             {f.lesiones_actuales.length > 0 && (
-              <button onClick={addLesion} style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid #bbf7d0', background: '#dcfce7', color: '#166534', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+              <button type="button" onClick={addLesion}
+                style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid #bbf7d0', background: '#dcfce7', color: '#166534', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
                 + Añadir otra lesión o molestia
               </button>
             )}
@@ -551,67 +767,51 @@ function Step5({ f, set }) {
         )}
       </Q>
 
-      <Q label="¿Tienes lesiones anteriores relevantes?">
-        <YesNo selected={f.lesiones_anteriores_yn} onChange={s('lesiones_anteriores_yn')} />
-        {f.lesiones_anteriores_yn === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.lesiones_anteriores} onChange={s('lesiones_anteriores')} placeholder="Cuéntame cuáles..." rows={2} />
-          </div>
-        )}
+      <Q label="¿Estás actualmente en tratamiento o seguimiento por alguna lesión o problema de salud?">
+        <Single options={TRATAMIENTO_OPTS} selected={f.tratamiento_actual} onChange={s('tratamiento_actual')} />
+        <Reveal show={!!f.tratamiento_actual && f.tratamiento_actual !== 'No'}>
+          <Textarea value={f.tratamiento_actual_detalle} onChange={s('tratamiento_actual_detalle')} placeholder="Cuéntanos brevemente (opcional)" rows={2} />
+        </Reveal>
       </Q>
 
-      <Q label="¿Has tenido operaciones o intervenciones previas?">
-        <YesNo selected={f.operaciones_yn} onChange={s('operaciones_yn')} />
-        {f.operaciones_yn === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.operaciones} onChange={s('operaciones')} placeholder="¿Cuáles y cuándo?" rows={2} />
+      <Q label="¿Hay algún antecedente de salud que debamos conocer para adaptar tu entrenamiento?"
+        hint="Selecciona todo lo que aplique. Si no hay ninguno, selecciona «Ninguno».">
+        <Multi
+          options={ANTECEDENTES_OPTS}
+          selected={f.antecedentes_categorias}
+          onChange={handleAntecedentes}
+          exclusive={['Ninguno']}
+        />
+        {f.antecedentes_categorias.filter(c => c !== 'Ninguno').map(cat => (
+          <div key={cat} style={{ marginTop: 12, padding: '10px 14px', background: '#f8f7f4', borderRadius: 8, border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>{cat}</div>
+            <Textarea
+              value={(f.antecedentes_detalle || {})[ANTECEDENTES_KEY[cat]] || ''}
+              onChange={v => setDetalle(cat, v)}
+              placeholder={ANTECEDENTES_PLACEHOLDER[cat] || ''}
+              rows={2}
+            />
           </div>
-        )}
-      </Q>
-
-      <Q label="¿Tienes enfermedades o diagnósticos médicos relevantes para el ejercicio?">
-        <YesNo selected={f.enfermedades_yn} onChange={s('enfermedades_yn')} />
-        {f.enfermedades_yn === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.enfermedades} onChange={s('enfermedades')} placeholder="¿Cuáles?" rows={2} />
-          </div>
-        )}
-      </Q>
-
-      <Q label="¿Tomas medicación que pueda afectar al entrenamiento?">
-        <YesNo selected={f.medicacion_yn} onChange={s('medicacion_yn')} />
-        {f.medicacion_yn === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Input value={f.medicacion} onChange={s('medicacion')} placeholder="¿Cuál?" />
-          </div>
-        )}
-      </Q>
-
-      <Q label="¿Tienes restricciones o indicaciones médicas respecto al ejercicio?">
-        <YesNo selected={f.restricciones_medicas_yn} onChange={s('restricciones_medicas_yn')} />
-        {f.restricciones_medicas_yn === 'Sí' && (
-          <div style={{ marginTop: 8 }}>
-            <Textarea value={f.restricciones_medicas} onChange={s('restricciones_medicas')} placeholder="¿Cuáles?" rows={2} />
-          </div>
-        )}
-      </Q>
-
-      <Q label="¿Sigues actualmente algún tratamiento de fisioterapia, rehabilitación o seguimiento médico?">
-        <Single options={SEGUIMIENTO_OPTS} selected={f.seguimiento_fisio} onChange={s('seguimiento_fisio')} />
+        ))}
       </Q>
     </>
   )
 }
 
+// ─── Step 6 — Estilo de vida ──────────────────────────────────────────────────
+
+const SUENO = ['Menos de 5 h','5–6 h','6–7 h','7–8 h','Más de 8 h']
+const TRABAJO = [
+  'Principalmente sedentario (oficina, ordenador)',
+  'Mixto (alterno estar de pie y sentado)',
+  'Activo (de pie o caminando la mayor parte)',
+  'Físicamente exigente (trabajo manual, cargas...)',
+]
+const PASOS = ['Menos de 3.000 pasos','3.000–6.000 pasos','6.000–10.000 pasos','Más de 10.000 pasos','No lo controlo']
+const TABACO = ['No fumo','Exfumador/a','Fumador/a ocasional','Fumador/a habitual']
+
 function Step6({ f, set }) {
   const s = (k) => (v) => set(k, v)
-
-  const SUENO = ['Menos de 5 h','5–6 h','6–7 h','7–8 h','Más de 8 h']
-  const TRABAJO = ['Principalmente sedentario (oficina, ordenador)','Mixto (alterno estar de pie y sentado)','Activo (de pie o caminando la mayor parte)','Físicamente exigente (trabajo manual, cargas...)']
-  const PASOS = ['Menos de 3.000 pasos','3.000–6.000 pasos','6.000–10.000 pasos','Más de 10.000 pasos','No lo controlo']
-  const TABACO = ['No fumo','Exfumador/a','Fumador/a ocasional','Fumador/a habitual']
-  const ALCOHOL = ['No consumo','Ocasional (fines de semana o eventos)','Moderado (varios días a la semana)','Habitual (casi a diario)']
-
   return (
     <>
       <Q label="Horas de sueño habituales por noche">
@@ -623,9 +823,6 @@ function Step6({ f, set }) {
       <Q label="Nivel de estrés habitual">
         <Scale labels={['Muy bajo','Bajo','Moderado','Alto','Muy alto']} selected={f.nivel_estres} onChange={s('nivel_estres')} />
       </Q>
-      <Q label="Nivel de energía habitual">
-        <Scale labels={['Muy bajo','Bajo','Moderado','Alto','Muy alto']} selected={f.nivel_energia} onChange={s('nivel_energia')} />
-      </Q>
       <Q label="Tipo de trabajo o actividad principal durante el día">
         <Single options={TRABAJO} selected={f.tipo_trabajo} onChange={s('tipo_trabajo')} />
       </Q>
@@ -635,9 +832,28 @@ function Step6({ f, set }) {
       <Q label="Consumo de tabaco">
         <Single options={TABACO} selected={f.consumo_tabaco} onChange={s('consumo_tabaco')} />
       </Q>
-      <Q label="Consumo habitual de alcohol">
-        <Single options={ALCOHOL} selected={f.consumo_alcohol} onChange={s('consumo_alcohol')} />
-      </Q>
+    </>
+  )
+}
+
+// ─── Step 7 — Para conocerte mejor ───────────────────────────────────────────
+
+const BARRERAS_OPTS = [
+  'Falta de tiempo','Horarios cambiantes','Trabajo','Responsabilidades familiares',
+  'Cansancio','Molestias o dolor','Viajes','Motivación / constancia', OTRO,
+  'No creo que tenga grandes dificultades',
+]
+const EXPECTATIVAS_OPTS = [
+  'Planificar mi entrenamiento','Mantener constancia y seguimiento',
+  'Mejorar mi rendimiento','Aprender a entrenar mejor',
+  'Adaptar el entrenamiento a molestias o limitaciones',
+  'Preparar una competición o reto','Motivación / acompañamiento', OTRO,
+]
+
+function Step7({ f, set }) {
+  const s = (k) => (v) => set(k, v)
+  return (
+    <>
       <Q label="¿Hasta qué punto confías en que podrás mantener una rutina de entrenamiento de forma regular?">
         <Scale
           labels={[
@@ -651,21 +867,39 @@ function Step6({ f, set }) {
           onChange={s('confianza_rutina')}
         />
       </Q>
-    </>
-  )
-}
 
-function Step7({ f, set }) {
-  const s = (k) => (v) => set(k, v)
-  return (
-    <Q label="¿Hay algo importante que debería saber antes de empezar a trabajar contigo?">
-      <Textarea
-        value={f.info_adicional}
-        onChange={s('info_adicional')}
-        placeholder="Por ejemplo: situación personal o familiar relevante, miedo a ciertos movimientos, experiencias previas con entrenadores, motivaciones o bloqueos que quieras compartir..."
-        rows={5}
-      />
-    </Q>
+      <Q label="¿Qué crees que podría dificultarte mantener el entrenamiento de forma regular?">
+        <Multi
+          options={BARRERAS_OPTS}
+          selected={f.barreras_adherencia}
+          onChange={v => { s('barreras_adherencia')(v); if (!v.includes(OTRO)) s('barreras_adherencia_otro')('') }}
+          exclusive={['No creo que tenga grandes dificultades']}
+        />
+        <Reveal show={f.barreras_adherencia.includes(OTRO)}>
+          <Input value={f.barreras_adherencia_otro} onChange={s('barreras_adherencia_otro')} placeholder="Especifica..." />
+        </Reveal>
+      </Q>
+
+      <Q label="¿En qué aspectos esperas que te ayude especialmente?">
+        <Multi
+          options={EXPECTATIVAS_OPTS}
+          selected={f.expectativas_entrenador}
+          onChange={v => { s('expectativas_entrenador')(v); if (!v.includes(OTRO)) s('expectativas_entrenador_otro')('') }}
+        />
+        <Reveal show={f.expectativas_entrenador.includes(OTRO)}>
+          <Input value={f.expectativas_entrenador_otro} onChange={s('expectativas_entrenador_otro')} placeholder="Especifica..." />
+        </Reveal>
+      </Q>
+
+      <Q label="¿Hay algo más que consideres importante que sepa antes de empezar a trabajar contigo?">
+        <Textarea
+          value={f.info_adicional}
+          onChange={s('info_adicional')}
+          placeholder="Por ejemplo: situación personal o familiar relevante, miedo a ciertos movimientos, experiencias previas con entrenadores, motivaciones o bloqueos que quieras compartir..."
+          rows={4}
+        />
+      </Q>
+    </>
   )
 }
 
@@ -689,74 +923,103 @@ export default function CuestionarioInicial({ token }) {
         .single()
       if (error || !data) { setError('Enlace no válido o caducado.'); setLoading(false); return }
       setCuestionario(data)
-      if (data.submitted_at) setDone(true)
-      else if (data.nombre) {
-        // Pre-fill if partially saved
-        setForm(f => ({ ...f, ...extractFormFromData(data) }))
-      }
+      if (data.submitted_at) { setDone(true); setLoading(false); return }
+      if (data.nombre) setForm(f => ({ ...f, ...extractFormFromData(data) }))
       setLoading(false)
     }
     load()
   }, [token])
 
-  function extractFormFromData(data) {
+  function extractFormFromData(d) {
     return {
-      nombre: data.nombre || '',
-      email: data.email || '',
-      telefono: data.telefono || '',
-      fecha_nacimiento: data.fecha_nacimiento || '',
-      profesion: data.profesion || '',
-      ciudad: data.ciudad || '',
-      objetivo_principal: data.objetivo_principal || '',
-      competiciones: data.competiciones || [],
-      objetivos_secundarios: data.objetivos_secundarios || [],
-      objetivo_3_6_meses: data.objetivo_3_6_meses || '',
-      deportes_actuales: data.deportes_actuales || [],
-      actividades_gustan: data.actividades_gustan || [],
-      actividades_evitar: data.actividades_evitar || [],
-      frecuencia_actual: data.frecuencia_actual || '',
-      duracion_habitual: data.duracion_habitual || '',
-      experiencia_fuerza: data.experiencia_fuerza || '',
-      experiencia_fuerza_obs: data.experiencia_fuerza_obs || '',
-      experiencia_resistencia: data.experiencia_resistencia || '',
-      experiencia_resistencia_obs: data.experiencia_resistencia_obs || '',
-      experiencia_funcional: data.experiencia_funcional || '',
-      experiencia_funcional_obs: data.experiencia_funcional_obs || '',
-      dias_semana: data.dias_semana || '',
-      dias_preferentes: data.dias_preferentes || [],
-      tiempo_sesion: data.tiempo_sesion || '',
-      tiempo_sesion_obs: data.tiempo_sesion_obs || '',
-      horarios_preferentes: data.horarios_preferentes || [],
-      lugares_entrenamiento: data.lugares_entrenamiento || [],
-      tiene_gimnasio: data.tiene_gimnasio === true ? 'Sí' : data.tiene_gimnasio === false ? 'No' : null,
-      gimnasio_nombre: data.gimnasio_nombre || '',
-      material_gimnasio: data.material_gimnasio || [],
-      material_casa: data.material_casa || [],
-      tiene_wearable: data.tiene_wearable === true ? 'Sí' : data.tiene_wearable === false ? 'No' : null,
-      wearable_modelo: data.wearable_modelo || '',
-      lesiones_actuales_yn: (data.lesiones_actuales && data.lesiones_actuales.length > 0) ? 'Sí' : null,
-      lesiones_actuales: data.lesiones_actuales || [],
-      lesiones_anteriores_yn: data.lesiones_anteriores ? 'Sí' : null,
-      lesiones_anteriores: data.lesiones_anteriores || '',
-      operaciones_yn: data.operaciones ? 'Sí' : null,
-      operaciones: data.operaciones || '',
-      enfermedades_yn: data.enfermedades ? 'Sí' : null,
-      enfermedades: data.enfermedades || '',
-      medicacion_yn: data.medicacion ? 'Sí' : null,
-      medicacion: data.medicacion || '',
-      restricciones_medicas_yn: data.restricciones_medicas ? 'Sí' : null,
-      restricciones_medicas: data.restricciones_medicas || '',
-      seguimiento_fisio: data.seguimiento_fisio || '',
-      horas_sueno: data.horas_sueno || '',
-      calidad_sueno: data.calidad_sueno || null,
-      nivel_estres: data.nivel_estres || null,
-      nivel_energia: data.nivel_energia || null,
-      tipo_trabajo: data.tipo_trabajo || '',
-      pasos_diarios: data.pasos_diarios || '',
-      consumo_tabaco: data.consumo_tabaco || '',
-      consumo_alcohol: data.consumo_alcohol || '',
-      confianza_rutina: data.confianza_rutina || null,
-      info_adicional: data.info_adicional || '',
+      nombre: d.nombre || '',
+      nombre_preferido: d.nombre_preferido || '',
+      email: d.email || '',
+      telefono: d.telefono || '',
+      fecha_nacimiento: d.fecha_nacimiento || '',
+      profesion: d.profesion || '',
+      ciudad: d.ciudad || '',
+      foto_url: d.foto_url || '',
+      _foto_file: null, _foto_preview: '',
+
+      objetivo_principal: d.objetivo_principal || '',
+      objetivo_principal_otro: '',
+      competiciones: d.competiciones || [],
+      objetivos_secundarios: d.objetivos_secundarios || [],
+      objetivos_secundarios_otro: '',
+      objetivo_3_6_meses: d.objetivo_3_6_meses || '',
+
+      deportes_actuales: d.deportes_actuales || [],
+      deportes_actuales_otro: '',
+      frecuencia_por_actividad: d.frecuencia_por_actividad || [],
+      frecuencia_actual: d.frecuencia_actual || '',
+      duracion_habitual: d.duracion_habitual || '',
+      experiencia_fuerza: d.experiencia_fuerza || '',
+      experiencia_fuerza_obs: d.experiencia_fuerza_obs || '',
+      experiencia_resistencia: d.experiencia_resistencia || '',
+      experiencia_resistencia_obs: d.experiencia_resistencia_obs || '',
+      experiencia_funcional: d.experiencia_funcional || '',
+      experiencia_funcional_obs: d.experiencia_funcional_obs || '',
+      preferencia_entreno: d.preferencia_entreno || [],
+      tipos_entreno_disfruta: d.tipos_entreno_disfruta || [],
+      tipos_entreno_disfruta_otro: '',
+      evitar_ejercicios_yn: d.evitar_ejercicios_yn || null,
+      evitar_ejercicios_detalle: d.evitar_ejercicios_detalle || '',
+      actividades_gustan: d.actividades_gustan || [],
+      actividades_gustan_otro: '',
+      actividades_evitar: d.actividades_evitar || [],
+      actividades_evitar_otro: '',
+
+      dias_semana: d.dias_semana || '',
+      dias_preferentes: d.dias_preferentes || [],
+      tiempo_sesion: d.tiempo_sesion || '',
+      tiempo_sesion_obs: d.tiempo_sesion_obs || '',
+      horarios_preferentes: d.horarios_preferentes || [],
+      lugares_entrenamiento: d.lugares_entrenamiento || [],
+      tiene_gimnasio: d.tiene_gimnasio === true ? 'Sí' : d.tiene_gimnasio === false ? 'No' : null,
+      gimnasio_nombre: d.gimnasio_nombre || '',
+      material_gimnasio: d.material_gimnasio || [],
+      material_gimnasio_otro: '',
+      material_casa: d.material_casa || [],
+      material_casa_otro: '',
+      tiene_wearable: d.tiene_wearable === true ? 'Sí' : d.tiene_wearable === false ? 'No' : null,
+      wearable_marca: d.wearable_marca || '',
+      wearable_marca_otro: '',
+      wearable_modelo: d.wearable_modelo || '',
+
+      lesiones_actuales_yn: (d.lesiones_actuales && d.lesiones_actuales.length > 0) ? 'Sí' : null,
+      lesiones_actuales: d.lesiones_actuales || [],
+      tratamiento_actual: d.tratamiento_actual || '',
+      tratamiento_actual_detalle: d.tratamiento_actual_detalle || '',
+      antecedentes_categorias: d.antecedentes_categorias || [],
+      antecedentes_detalle: d.antecedentes_detalle || {},
+      lesiones_anteriores_yn: d.lesiones_anteriores ? 'Sí' : null,
+      lesiones_anteriores: d.lesiones_anteriores || '',
+      operaciones_yn: d.operaciones ? 'Sí' : null,
+      operaciones: d.operaciones || '',
+      enfermedades_yn: d.enfermedades ? 'Sí' : null,
+      enfermedades: d.enfermedades || '',
+      medicacion_yn: d.medicacion ? 'Sí' : null,
+      medicacion: d.medicacion || '',
+      restricciones_medicas_yn: d.restricciones_medicas ? 'Sí' : null,
+      restricciones_medicas: d.restricciones_medicas || '',
+      seguimiento_fisio: d.seguimiento_fisio || '',
+
+      horas_sueno: d.horas_sueno || '',
+      calidad_sueno: d.calidad_sueno || null,
+      nivel_estres: d.nivel_estres || null,
+      nivel_energia: d.nivel_energia || null,
+      tipo_trabajo: d.tipo_trabajo || '',
+      pasos_diarios: d.pasos_diarios || '',
+      consumo_tabaco: d.consumo_tabaco || '',
+      consumo_alcohol: d.consumo_alcohol || '',
+
+      confianza_rutina: d.confianza_rutina || null,
+      barreras_adherencia: d.barreras_adherencia || [],
+      barreras_adherencia_otro: '',
+      expectativas_entrenador: d.expectativas_entrenador || [],
+      expectativas_entrenador_otro: '',
+      info_adicional: d.info_adicional || '',
     }
   }
 
@@ -765,12 +1028,25 @@ export default function CuestionarioInicial({ token }) {
   async function submit() {
     setSaving(true)
 
-    // Resolver "Otro (especificar)" → texto libre antes de guardar
+    // ── Subir foto si hay archivo nuevo ──────────────────────────────────────
+    let foto_url = form.foto_url
+    if (form._foto_file) {
+      const ext = form._foto_file.name.split('.').pop().toLowerCase()
+      const path = `cuestionario/${token}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('avatares-clientes')
+        .upload(path, form._foto_file, { upsert: true, contentType: form._foto_file.type })
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from('avatares-clientes').getPublicUrl(path)
+        foto_url = urlData.publicUrl
+      }
+    }
+
+    // ── Resolver "Otro (especificar)" ────────────────────────────────────────
     const resolveS = (val, otro) => val === OTRO ? (otro || OTRO) : (val || null)
     const resolveM = (arr, otro) => arr.map(v => v === OTRO ? (otro || OTRO) : v)
     const resolveLesiones = (lesiones) => lesiones.map(l => ({
       zona: l.zona === OTRO ? (l.zona_otro || OTRO) : l.zona,
-      tipo: l.tipo === OTRO ? (l.tipo_otro || OTRO) : l.tipo,
       antiguedad: l.antiguedad,
       intensidad: l.intensidad,
       movimientos: l.movimientos,
@@ -778,20 +1054,38 @@ export default function CuestionarioInicial({ token }) {
       limitaciones: l.limitaciones,
     }))
 
+    // ── Retrocompatibilidad antecedentes ─────────────────────────────────────
+    const det = form.antecedentes_detalle || {}
+    const tieneCat = (cat) => form.antecedentes_categorias.includes(cat)
+
+    // Mapeo tratamiento_actual → seguimiento_fisio (legacy)
+    const mapTratamiento = (t) => {
+      if (!t || t === 'No') return 'No'
+      const map = { 'Fisioterapia': 'Sí, fisioterapia', 'Rehabilitación': 'Sí, rehabilitación', 'Seguimiento médico': 'Sí, seguimiento médico', 'Varios': 'Sí, varios' }
+      return map[t] || t
+    }
+
+    const tieneGimnasio = form.lugares_entrenamiento.includes('Gimnasio')
+    const wearableMarca = form.wearable_marca === OTRO ? (form.wearable_marca_otro || OTRO) : form.wearable_marca
+
     const payload = {
       nombre: form.nombre || null,
+      nombre_preferido: form.nombre_preferido || null,
+      foto_url: foto_url || null,
       email: form.email || null,
       telefono: form.telefono || null,
       fecha_nacimiento: form.fecha_nacimiento || null,
       profesion: form.profesion || null,
       ciudad: form.ciudad || null,
+
       objetivo_principal: resolveS(form.objetivo_principal, form.objetivo_principal_otro),
-      competiciones: form.objetivo_principal === 'Preparar una competición o reto deportivo' ? form.competiciones : [],
+      competiciones: (form.objetivo_principal === COMP_TRIGGER || form.objetivos_secundarios.includes(COMP_TRIGGER))
+        ? form.competiciones : [],
       objetivos_secundarios: resolveM(form.objetivos_secundarios, form.objetivos_secundarios_otro),
       objetivo_3_6_meses: form.objetivo_3_6_meses || null,
+
       deportes_actuales: resolveM(form.deportes_actuales, form.deportes_actuales_otro),
-      actividades_gustan: resolveM(form.actividades_gustan, form.actividades_gustan_otro),
-      actividades_evitar: resolveM(form.actividades_evitar, form.actividades_evitar_otro),
+      frecuencia_por_actividad: form.frecuencia_por_actividad || [],
       frecuencia_actual: form.frecuencia_actual || null,
       duracion_habitual: form.duracion_habitual || null,
       experiencia_fuerza: form.experiencia_fuerza || null,
@@ -800,41 +1094,73 @@ export default function CuestionarioInicial({ token }) {
       experiencia_resistencia_obs: form.experiencia_resistencia_obs || null,
       experiencia_funcional: form.experiencia_funcional || null,
       experiencia_funcional_obs: form.experiencia_funcional_obs || null,
+      preferencia_entreno: form.preferencia_entreno,
+      tipos_entreno_disfruta: resolveM(form.tipos_entreno_disfruta, form.tipos_entreno_disfruta_otro),
+      evitar_ejercicios_yn: form.evitar_ejercicios_yn || null,
+      evitar_ejercicios_detalle: form.evitar_ejercicios_yn === 'Sí' ? (form.evitar_ejercicios_detalle || null) : null,
+      // legacy
+      actividades_gustan: form.actividades_gustan,
+      actividades_evitar: form.actividades_evitar,
+
       dias_semana: form.dias_semana || null,
       dias_preferentes: form.dias_preferentes,
       tiempo_sesion: form.tiempo_sesion || null,
       tiempo_sesion_obs: form.tiempo_sesion_obs || null,
       horarios_preferentes: form.horarios_preferentes,
       lugares_entrenamiento: form.lugares_entrenamiento,
-      tiene_gimnasio: form.tiene_gimnasio === 'Sí' ? true : form.tiene_gimnasio === 'No' ? false : null,
-      gimnasio_nombre: form.tiene_gimnasio === 'Sí' ? (form.gimnasio_nombre || null) : null,
-      material_gimnasio: form.tiene_gimnasio === 'Sí' ? resolveM(form.material_gimnasio, form.material_gimnasio_otro) : [],
-      material_casa: resolveM(form.material_casa, form.material_casa_otro),
+      tiene_gimnasio: tieneGimnasio ? true : (form.lugares_entrenamiento.length > 0 ? false : null),
+      gimnasio_nombre: tieneGimnasio ? (form.gimnasio_nombre || null) : null,
+      material_gimnasio: [],  // ya no se pregunta
+      material_casa: form.lugares_entrenamiento.includes('En casa')
+        ? resolveM(form.material_casa, form.material_casa_otro) : [],
       tiene_wearable: form.tiene_wearable === 'Sí' ? true : form.tiene_wearable === 'No' ? false : null,
+      wearable_marca: form.tiene_wearable === 'Sí' ? (wearableMarca || null) : null,
       wearable_modelo: form.tiene_wearable === 'Sí' ? (form.wearable_modelo || null) : null,
+
       lesiones_actuales: form.lesiones_actuales_yn === 'Sí' ? resolveLesiones(form.lesiones_actuales) : [],
-      lesiones_anteriores: form.lesiones_anteriores_yn === 'Sí' ? (form.lesiones_anteriores || null) : null,
-      operaciones: form.operaciones_yn === 'Sí' ? (form.operaciones || null) : null,
-      enfermedades: form.enfermedades_yn === 'Sí' ? (form.enfermedades || null) : null,
-      medicacion: form.medicacion_yn === 'Sí' ? (form.medicacion || null) : null,
-      restricciones_medicas: form.restricciones_medicas_yn === 'Sí' ? (form.restricciones_medicas || null) : null,
-      seguimiento_fisio: form.seguimiento_fisio || null,
+      tratamiento_actual: form.tratamiento_actual || null,
+      tratamiento_actual_detalle: (form.tratamiento_actual && form.tratamiento_actual !== 'No')
+        ? (form.tratamiento_actual_detalle || null) : null,
+      seguimiento_fisio: mapTratamiento(form.tratamiento_actual),
+
+      antecedentes_categorias: form.antecedentes_categorias,
+      antecedentes_detalle: det,
+      // legacy — retrocompatibilidad
+      lesiones_anteriores: tieneCat('Lesiones anteriores relevantes') ? (det.lesiones_anteriores || null) : null,
+      operaciones: tieneCat('Operaciones o intervenciones previas') ? (det.operaciones || null) : null,
+      enfermedades: tieneCat('Enfermedad o diagnóstico médico relevante') ? (det.enfermedades || null) : null,
+      medicacion: tieneCat('Medicación que pueda afectar al entrenamiento') ? (det.medicacion || null) : null,
+      restricciones_medicas: tieneCat('Restricciones o indicaciones médicas') ? (det.restricciones_medicas || null) : null,
+
       horas_sueno: form.horas_sueno || null,
       calidad_sueno: form.calidad_sueno || null,
       nivel_estres: form.nivel_estres || null,
-      nivel_energia: form.nivel_energia || null,
+      nivel_energia: form.nivel_energia || null,  // conservado pero no preguntado
       tipo_trabajo: form.tipo_trabajo || null,
       pasos_diarios: form.pasos_diarios || null,
       consumo_tabaco: form.consumo_tabaco || null,
-      consumo_alcohol: form.consumo_alcohol || null,
+      consumo_alcohol: form.consumo_alcohol || null,  // conservado pero no preguntado
+
       confianza_rutina: form.confianza_rutina || null,
+      barreras_adherencia: resolveM(form.barreras_adherencia, form.barreras_adherencia_otro),
+      expectativas_entrenador: resolveM(form.expectativas_entrenador, form.expectativas_entrenador_otro),
       info_adicional: form.info_adicional || null,
+
       submitted_at: new Date().toISOString(),
     }
+
     await supabase.from('cuestionario_inicial').update(payload).eq('token_publico', token)
+
+    // Actualizar foto_url en clientes si tenemos cliente_id y foto nueva
+    if (foto_url && cuestionario?.cliente_id) {
+      await supabase.from('clientes').update({ foto_url }).eq('id', cuestionario.cliente_id)
+    }
+
     setSaving(false)
     setDone(true)
   }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -856,7 +1182,9 @@ export default function CuestionarioInicial({ token }) {
       <div style={{ background: T.card, borderRadius: 16, padding: 40, maxWidth: 480, textAlign: 'center', border: `1px solid ${T.border}` }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>✅</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: T.text, marginBottom: 10 }}>¡Cuestionario enviado!</h2>
-        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6 }}>Gracias por rellenar el cuestionario. Tu entrenadora revisará tus respuestas para preparar un plan de entrenamiento personalizado para ti.</p>
+        <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.6 }}>
+          Gracias por rellenar el cuestionario. Tu entrenadora revisará tus respuestas para preparar un plan de entrenamiento personalizado para ti.
+        </p>
       </div>
     </div>
   )
@@ -885,7 +1213,6 @@ export default function CuestionarioInicial({ token }) {
             </div>
             <div style={{ fontSize: 12, color: T.text3 }}>{step + 1} / {STEPS.length}</div>
           </div>
-          {/* Progress bar */}
           <div style={{ height: 4, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${((step + 1) / STEPS.length) * 100}%`, background: T.green, borderRadius: 4, transition: 'width 0.3s' }} />
           </div>
@@ -900,17 +1227,17 @@ export default function CuestionarioInicial({ token }) {
       {/* Footer nav */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: T.card, borderTop: `1px solid ${T.border}`, padding: '14px 20px' }}>
         <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-          <button onClick={() => setStep(s => s - 1)} disabled={step === 0}
+          <button type="button" onClick={() => setStep(s => s - 1)} disabled={step === 0}
             style={{ padding: '11px 20px', borderRadius: 10, border: `1.5px solid ${T.border}`, background: T.card, color: step === 0 ? T.text3 : T.text, fontSize: 14, fontWeight: 500, cursor: step === 0 ? 'not-allowed' : 'pointer' }}>
             ← Anterior
           </button>
           {!isLast ? (
-            <button onClick={() => setStep(s => s + 1)}
+            <button type="button" onClick={() => setStep(s => s + 1)}
               style={{ flex: 1, padding: '11px 20px', borderRadius: 10, border: 'none', background: T.green, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
               Siguiente →
             </button>
           ) : (
-            <button onClick={submit} disabled={saving}
+            <button type="button" onClick={submit} disabled={saving}
               style={{ flex: 1, padding: '11px 20px', borderRadius: 10, border: 'none', background: T.green, color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Enviando...' : 'Enviar cuestionario ✓'}
             </button>
