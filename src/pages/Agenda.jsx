@@ -1017,17 +1017,28 @@ export default function Agenda({ setPage, setSesionesContext }) {
         </div>
 
       {/* ── TRES COLUMNAS PRINCIPALES ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, alignItems: 'start', minWidth: 0 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateRows: 'auto auto',
+        gridTemplateAreas: '"calendario planificacion seguimiento" "tareas tareas seguimiento"',
+        gap: 0,
+        alignItems: 'start',
+        minWidth: 0
+      }}>
 
-        {/* ── IZQUIERDA: CALENDARIO + TAREAS ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── CALENDARIO ── */}
+        <div style={{ gridArea: 'calendario', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {loading
             ? <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 40, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>Cargando...</div>
             : vista === 'mes' ? renderCalendarioMes()
             : vista === 'dia' ? renderCalendarioDia()
             : renderCalendarioSemana()
           }
-          {/* ── PANEL TAREAS ── */}
+        </div>
+
+        {/* ── PANEL TAREAS ── */}
+        <div style={{ gridArea: 'tareas' }}>
           {(() => {
             const tareasFiltradas = tareas.filter(t => {
               if (filtroTarea.cliente) {
@@ -1134,8 +1145,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
           })()}
         </div>
 
-        {/* ── DERECHA: PLANIFICACIÓN + ALERTAS ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* ── PLANIFICACIÓN SEMANAL ── */}
+        <div style={{ gridArea: 'planificacion', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Panel planificación semanal */}
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -1297,9 +1308,9 @@ export default function Agenda({ setPage, setSesionesContext }) {
           )}
         </div>
 
-        </div>{/* fin columna central */}
+        </div>{/* fin planificacion */}
 
-        {/* ── COLUMNA DERECHA: SEGUIMIENTO ── */}
+        {/* ── COLUMNA SEGUIMIENTO ── */}
         {(() => {
           const noLeidos = feedItems.filter(i => !feedLeidos.includes(i.id))
           const clienteMap = Object.fromEntries(clientes.map(c => [c.id, c]))
@@ -1373,7 +1384,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
           }
 
           return (
-            <div style={{ borderLeft:'1px solid var(--border)',background:'var(--card)',display:'flex',flexDirection:'column',minHeight:600,maxHeight:'calc(100vh - 120px)',position:'sticky',top:0 }}>
+            <div style={{ gridArea:'seguimiento',borderLeft:'1px solid var(--border)',background:'var(--card)',display:'flex',flexDirection:'column',maxHeight:'calc(100vh - 120px)',position:'sticky',top:0,overflowY:'auto' }}>
               {/* Header */}
               <div style={{ padding:'14px 12px 0',borderBottom:'1px solid var(--border)',paddingBottom:10 }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
