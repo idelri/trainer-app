@@ -542,36 +542,13 @@ export default function ClientePortal({ token }) {
                   )}
                   <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>✓ Enviado</div>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: 12.5, color: T.ink2 }}>
-                    {esPasada ? 'No completaste el feedback de esta semana.' : 'Aún no has completado el feedback de semana.'}
-                  </div>
-                  <button onClick={() => irACheckin(weekStart)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: colNav, color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    📋 {esPasada ? 'Rellenar feedback' : 'Enviar feedback de semana'}
-                  </button>
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         )
       }
 
-      return (
-        <>
-        {esActual && mostrarAvisoAnt && (
-          <div style={{ background: '#fffbe6', border: '1px solid #f0e5a0', borderRadius: 10, padding: '10px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ fontSize: 12, color: '#5a4e00' }}>¿Olvidaste el feedback de la semana pasada?</div>
-            <button onClick={() => irACheckin(previousWeekStart)}
-              style={{ flexShrink: 0, background: '#e6c200', color: '#3a3000', fontSize: 11, fontWeight: 600, padding: '6px 11px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-              Rellenarlo
-            </button>
-          </div>
-        )}
-        <FeedbackCard checkin={checkinMostrar} weekStart={esPasada ? weekStartNav : currentWeekStart} />
-        </>
-      )
+      return <FeedbackCard checkin={checkinMostrar} weekStart={esPasada ? weekStartNav : currentWeekStart} />
     }
 
     return (
