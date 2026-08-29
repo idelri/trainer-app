@@ -53,6 +53,13 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [horaActual, setHoraActual] = useState(new Date())
   const [tooltipBloque, setTooltipBloque] = useState(null) // { b, x, y }
   const [filtroGlobal, setFiltroGlobal] = useState({ cliente: null, estado: null })
+
+  // ── SEGUIMIENTO FEED ─────────────────────────────────────────────────────
+  const [feedItems, setFeedItems]         = useState([])
+  const [feedTab, setFeedTab]             = useState('todo') // 'todo' | 'alertas' | 'completadas'
+  const [feedCliente, setFeedCliente]     = useState(null)
+  const [feedSemanas, setFeedSemanas]     = useState(3)      // ventana de semanas cargadas
+  const [feedLeidos, setFeedLeidos]       = useState(() => { try { return JSON.parse(localStorage.getItem('feedLeidos') || '[]') } catch { return [] } })
   const [dropdownOpen, setDropdownOpen] = useState(null) // 'clientes' | 'sesiones' | 'añadir' | null
   const [buscarCliente, setBuscarCliente] = useState('')
 
@@ -85,6 +92,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   useEffect(() => { if (vista === 'mes') cargarMes() }, [mesNav, vista]) // eslint-disable-line
   useEffect(() => { if (vista === 'dia') cargarDia() }, [diaNav, vista]) // eslint-disable-line
   useEffect(() => { cargarTareas() }, []) // eslint-disable-line
+  useEffect(() => { cargarSeguimiento() }, [feedSemanas, clientes]) // eslint-disable-line
   useEffect(() => {
     const t = setInterval(() => setHoraActual(new Date()), 60000)
     return () => clearInterval(t)
@@ -340,6 +348,69 @@ export default function Agenda({ setPage, setSesionesContext }) {
   async function cargarTareas() {
     const { data } = await supabase.from('tareas').select('*').eq('completada', false).order('fecha_limite', { ascending: true, nullsFirst: false })
     setTareas(data || [])
+  }
+
+  async function cargarSeguimiento() {
+    if (!clientes.length) return
+    const desde = format(addDays(new Date(), -(feedSemanas * 7)), 'yyyy-MM-dd')
+    const { data: feedbacks } = await supabase
+      .from('sesion_feedback')
+      .select('id, sesion_id, data, submitted_at, editado')
+      .gte('submitted_at', desde)
+      .order('submitted_at', { ascending: false })
+    if (!feedbacks?.length) { setFeedItems([]); return }
+    const sesIds = feedbacks.map(f => f.sesion_id)
+    const { data: sesiones2 } = await supabase
+      .from('sesiones')
+      .select('id, titulo, fecha, cliente_id, duracion_min')
+      .in('id', sesIds)
+    const sesMap = Object.fromEntries((sesiones2 || []).map(s => [s.id, s]))
+    const clienteMap = Object.fromEntries(clientes.map(c => [c.id, c]))
+    const items = feedbacks.map(fb => {
+      const ses = sesMap[fb.sesion_id] || {}
+      const cliente = clienteMap[ses.cliente_id] || {}
+      const d = fb.data || {}
+      const alertas = []
+      const status = d.completion?.status
+      if (d.sueno?.value != null && d.sueno.value <= 2) alertas.push({ tipo: 'sueno', icon: '😴', texto: `Sueño ${d.sueno.value}/5`, sev: 2 })
+      if (d.tqr?.value != null && d.tqr.value <= 4) alertas.push({ tipo: 'tqr', icon: '⬇️', texto: `TQR ${d.tqr.value}/10`, sev: 2 })
+      if (status === 'missed') alertas.push({ tipo: 'missed', icon: '❌', texto: 'No realizada', sev: 3 })
+      else if (status === 'partial') alertas.push({ tipo: 'partial', icon: '⚠️', texto: 'Completada parcialmente', sev: 2 })
+      const motivosCriticos = ['Molestia o dolor', 'No tenía material disponible', 'Dificultad técnica con algún ejercicio', 'No entendí algún ejercicio']
+      const motivosCriticosReportados = (d.completion?.reasons || []).filter(r => motivosCriticos.includes(r))
+      if (motivosCriticosReportados.length) alertas.push({ tipo: 'motivo', icon: '🟠', texto: motivosCriticosReportados.join(', '), sev: 2 })
+      if (d.rpe?.value != null && d.rpe.value >= 7) alertas.push({ tipo: 'rpe', icon: '💪', texto: `RPE ${d.rpe.value}/10`, sev: 1 })
+      const durPrev = ses.duracion_min
+      const durReal = d.duration?.minutes
+      if (durPrev && durReal && durReal > durPrev + 15) alertas.push({ tipo: 'tiempo', icon: '⏱️', texto: `+${durReal - durPrev} min sobre lo previsto (${durReal} vs ${durPrev})`, sev: 1 })
+      const painLevel = d.pain?.additionalPainLevel
+      if (painLevel && painLevel !== 'No') alertas.push({ tipo: 'dolor', icon: '🔴', texto: `Molestia: ${painLevel}${d.pain?.additionalPainDetails ? ` — ${d.pain.additionalPainDetails}` : ''}`, sev: 3 })
+      if (d.pain?.mainPainDetails) alertas.push({ tipo: 'dolor_main', icon: '🔴', texto: d.pain.mainPainDetails, sev: 3 })
+      if (d.technical?.hasDifficulty) {
+        const det = d.technical?.additionalTechnicalDetails || d.technical?.mainTechnicalDetails
+        alertas.push({ tipo: 'tecnica', icon: '🔧', texto: `Dificultad técnica${det ? `: ${det}` : ''}`, sev: 1 })
+      }
+      if (d.generalComments?.trim()) alertas.push({ tipo: 'comentario', icon: '💬', texto: d.generalComments.trim(), sev: 0 })
+      return { id: fb.id, sesionId: fb.sesion_id, clienteId: ses.cliente_id, clienteNombre: cliente.nombre || '—', titulo: ses.titulo || '—', fecha: ses.fecha || fb.submitted_at?.slice(0,10), status, alertas, tqr: d.tqr?.value, sueno: d.sueno?.value, rpe: d.rpe?.value, submitted_at: fb.submitted_at }
+    })
+    setFeedItems(items)
+  }
+
+  function marcarLeido(id) {
+    setFeedLeidos(prev => {
+      const next = prev.includes(id) ? prev : [...prev, id]
+      try { localStorage.setItem('feedLeidos', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  function marcarTodoLeido() {
+    const ids = feedItems.map(i => i.id)
+    setFeedLeidos(prev => {
+      const next = [...new Set([...prev, ...ids])]
+      try { localStorage.setItem('feedLeidos', JSON.stringify(next)) } catch {}
+      return next
+    })
   }
 
   async function guardarTarea() {
@@ -945,8 +1016,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
           </div>
         </div>
 
-      {/* ── DOS COLUMNAS PRINCIPALES ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 16, alignItems: 'start' }}>
+      {/* ── TRES COLUMNAS PRINCIPALES ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px 300px', gap: 0, alignItems: 'start' }}>
 
         {/* ── IZQUIERDA: CALENDARIO + TAREAS ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1241,10 +1312,132 @@ export default function Agenda({ setPage, setSesionesContext }) {
           )
         })()}
 
-        </div>{/* fin columna derecha */}
+        </div>{/* fin columna central */}
 
-        {/* Tareas en columna izquierda — se añaden dentro del left col via portal trick */}
-      </div>{/* fin grid dos columnas */}
+        {/* ── COLUMNA DERECHA: SEGUIMIENTO ── */}
+        {(() => {
+          const noLeidos = feedItems.filter(i => !feedLeidos.includes(i.id))
+          const clienteMap = Object.fromEntries(clientes.map(c => [c.id, c]))
+
+          const itemsFiltrados = feedItems.filter(i => {
+            if (feedCliente && i.clienteId !== feedCliente) return false
+            if (feedTab === 'alertas') return i.alertas.some(a => a.sev >= 1)
+            if (feedTab === 'completadas') return i.status === 'completed'
+            return true
+          })
+
+          // Agrupar por fecha
+          const hoyStr = fKey(new Date())
+          const ayerStr = fKey(addDays(new Date(), -1))
+          const grupos = {}
+          itemsFiltrados.forEach(item => {
+            const f = item.fecha || ''
+            let label = f
+            if (f === hoyStr) label = 'Hoy'
+            else if (f === ayerStr) label = 'Ayer'
+            else if (f) label = format(new Date(f + 'T12:00:00'), "EEE d MMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())
+            if (!grupos[f]) grupos[f] = { label, items: [] }
+            grupos[f].items.push(item)
+          })
+
+          function FeedItem({ item }) {
+            const leido = feedLeidos.includes(item.id)
+            const nombreCorto = item.clienteNombre.split(' ')[0]
+            const iniciales = item.clienteNombre.split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase()
+            // color avatar basado en primera letra
+            const colores = ['#dc2626','#7c3aed','#059669','#d97706','#2563eb','#0891b2','#6366f1','#db2777','#65a30d']
+            const avatarColor = colores[item.clienteNombre.charCodeAt(0) % colores.length]
+            const statusEl = item.status === 'completed'
+              ? <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:8,background:'#dcfce7',color:'#166534',marginBottom:3 }}>✅ Completada</span>
+              : item.status === 'partial'
+              ? <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:8,background:'#fef9c3',color:'#713f12',marginBottom:3 }}>⚠️ Parcial</span>
+              : item.status === 'missed'
+              ? <span style={{ display:'inline-flex',alignItems:'center',gap:3,fontSize:9,fontWeight:700,padding:'2px 6px',borderRadius:8,background:'#fee2e2',color:'#991b1b',marginBottom:3 }}>❌ No realizada</span>
+              : null
+            // Filtrar alertas duplicadas (dolor puede aparecer como motivo y como additionalPain)
+            const alertasVis = item.alertas.filter((a, idx, arr) => arr.findIndex(b => b.tipo === a.tipo) === idx)
+            return (
+              <div onClick={() => marcarLeido(item.id)}
+                style={{ border: `1px solid ${leido ? 'var(--border)' : '#bfdbfe'}`, borderRadius: 9, background: leido ? 'var(--card)' : '#f0f7ff', marginBottom: 7, overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
+                {!leido && <div style={{ position:'absolute',top:8,right:8,width:6,height:6,borderRadius:'50%',background:'#3b82f6' }} />}
+                <div style={{ display:'flex',alignItems:'center',gap:7,padding:'8px 10px 4px' }}>
+                  <div style={{ width:22,height:22,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff',flexShrink:0,background:avatarColor }}>{iniciales}</div>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:11,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>{nombreCorto}</div>
+                    <div style={{ fontSize:9,color:'var(--text3)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>{item.titulo}</div>
+                  </div>
+                  <div style={{ fontSize:9,color:'var(--text3)',flexShrink:0 }}>
+                    {item.fecha === hoyStr ? 'Hoy' : item.fecha === ayerStr ? 'Ayer' : item.fecha ? format(new Date(item.fecha+'T12:00:00'),'d MMM',{locale:es}) : ''}
+                  </div>
+                </div>
+                <div style={{ padding:'0 10px 8px',display:'flex',flexDirection:'column',gap:3 }}>
+                  {statusEl}
+                  {alertasVis.map((a, i) => (
+                    <div key={i} style={{ display:'flex',alignItems:'flex-start',gap:4,fontSize:10 }}>
+                      <span style={{ flexShrink:0,fontSize:10,lineHeight:1.4 }}>{a.icon}</span>
+                      <span style={{ color:'var(--text2)',lineHeight:1.4,
+                        ...(a.tipo==='dolor'||a.tipo==='dolor_main' ? {color:'var(--text)'} : {}),
+                        ...(a.tipo==='comentario' ? {fontStyle:'italic',background:'var(--bg2)',borderRadius:5,padding:'3px 6px',fontSize:9} : {}) }}>
+                        {a.texto}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div style={{ borderLeft:'1px solid var(--border)',background:'var(--card)',display:'flex',flexDirection:'column',minHeight:600,maxHeight:'calc(100vh - 120px)',position:'sticky',top:0 }}>
+              {/* Header */}
+              <div style={{ padding:'14px 12px 0',borderBottom:'1px solid var(--border)',paddingBottom:10 }}>
+                <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+                  <span style={{ fontSize:13,fontWeight:700 }}>
+                    Seguimiento
+                    {noLeidos.length > 0 && <span style={{ marginLeft:5,background:'#ef4444',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px' }}>{noLeidos.length}</span>}
+                  </span>
+                  {noLeidos.length > 0 && (
+                    <button onClick={marcarTodoLeido} style={{ fontSize:10,color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight:500,fontFamily:'inherit' }}>Marcar leído</button>
+                  )}
+                </div>
+                {/* Tabs */}
+                <div style={{ display:'flex',border:'1px solid var(--border)',borderRadius:7,overflow:'hidden',marginBottom:9 }}>
+                  {[['todo','Todo'],['alertas','Alertas'],['completadas','Complet.']].map(([val,lbl]) => (
+                    <button key={val} onClick={() => setFeedTab(val)}
+                      style={{ flex:1,padding:'5px 3px',textAlign:'center',fontSize:10,fontWeight:feedTab===val?700:500,border:'none',background:feedTab===val?'var(--accent)':'var(--card)',color:feedTab===val?'#fff':'var(--text3)',cursor:'pointer',fontFamily:'inherit',borderRight:val!=='completadas'?'1px solid var(--border)':'none' }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {/* Filtro cliente */}
+                <select value={feedCliente || ''} onChange={e => setFeedCliente(e.target.value || null)}
+                  style={{ width:'100%',padding:'5px 8px',border:'1px solid var(--border)',borderRadius:7,fontSize:11,background:'var(--bg)',color:'var(--text)',fontFamily:'inherit',marginBottom:10,outline:'none' }}>
+                  <option value="">👤 Todos los clientes</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              {/* Feed */}
+              <div style={{ flex:1,overflowY:'auto',padding:'4px 10px 14px' }}>
+                {itemsFiltrados.length === 0 ? (
+                  <div style={{ padding:'24px 0',textAlign:'center',color:'var(--text3)',fontSize:12 }}>Sin feedback en este periodo</div>
+                ) : (
+                  Object.entries(grupos).sort(([a],[b]) => b.localeCompare(a)).map(([fecha, g]) => (
+                    <div key={fecha}>
+                      <div style={{ fontSize:9,fontWeight:700,color:'var(--text3)',letterSpacing:'.04em',textTransform:'uppercase',padding:'10px 2px 5px' }}>{g.label}</div>
+                      {g.items.map(item => <FeedItem key={item.id} item={item} />)}
+                    </div>
+                  ))
+                )}
+                <button onClick={() => setFeedSemanas(w => w + 3)}
+                  style={{ width:'100%',padding:'8px',border:'1px dashed var(--border)',borderRadius:7,background:'none',fontSize:10,color:'var(--text3)',cursor:'pointer',fontFamily:'inherit',marginTop:4 }}>
+                  ↓ Cargar semanas anteriores
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+
+      </div>{/* fin grid tres columnas */}
 
       {/* ── POPOVER DOT ── */}
       {popover && (
