@@ -16,12 +16,12 @@ const ESTADO_STYLE = {
 const fKey = d => format(d, 'yyyy-MM-dd')
 
 const TIPO_CONFIG = {
-  presencial: { color: '#dc2626', bg: '#fef2f2', border: '#dc2626', emoji: '🏋️', label: 'Presencial' },
-  fcb:        { color: '#64748b', bg: '#f1f5f9', border: '#94a3b8', emoji: '🏟', label: 'FCB' },
-  online:     { color: '#2563eb', bg: '#eff6ff', border: '#3b82f6', emoji: '💻', label: 'Online' },
-  gestion:    { color: '#5a7a6e', bg: '#f0f4f2', border: '#789B8A', emoji: '🗂', label: 'Gestión' },
-  viaje:      { color: '#d97706', bg: '#fffbeb', border: '#f59e0b', emoji: '✈️', label: 'Viaje' },
-  personal:   { color: '#7c3aed', bg: '#f5f3ff', border: '#8b5cf6', emoji: '🩺', label: 'Personal' },
+  presencial: { color: '#b91c1c', bg: 'rgba(220,38,38,0.08)', border: '#dc2626', emoji: '🏋️', label: 'Presencial' },
+  fcb:        { color: '#475569', bg: 'rgba(100,116,139,0.08)', border: '#94a3b8', emoji: '🏟', label: 'FCB' },
+  online:     { color: '#1d4ed8', bg: 'rgba(37,99,235,0.08)', border: '#3b82f6', emoji: '💻', label: 'Online' },
+  gestion:    { color: '#4a6a5e', bg: 'rgba(90,122,110,0.08)', border: '#789B8A', emoji: '🗂', label: 'Gestión' },
+  viaje:      { color: '#b45309', bg: 'rgba(217,119,6,0.08)', border: '#f59e0b', emoji: '✈️', label: 'Viaje' },
+  personal:   { color: '#6d28d9', bg: 'rgba(124,58,237,0.08)', border: '#8b5cf6', emoji: '🩺', label: 'Personal' },
 }
 
 export default function Agenda({ setPage, setSesionesContext }) {
@@ -511,22 +511,20 @@ export default function Agenda({ setPage, setSesionesContext }) {
 
     return (
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        {/* Grid horario scrollable — cabecera sticky dentro para alinear columnas */}
+        {/* Grid horario — cabecera y columnas en el mismo grid para alineado perfecto */}
         <div style={{ overflowY: 'visible' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)', position: 'relative' }}>
-            {/* Cabecera días */}
-            <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ background: 'var(--bg)' }} />
-              {dias.map((d, i) => {
-                const esHoy = fKey(d) === hoy
-                return (
-                  <div key={i} style={{ padding: '8px 4px', textAlign: 'center', borderLeft: '1px solid var(--border)', background: 'var(--bg)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: esHoy ? 'var(--accent)' : 'var(--text3)' }}>{DIAS_LABEL[i]}</div>
-                    <div style={{ fontSize: 14, fontWeight: esHoy ? 700 : 400, color: esHoy ? '#fff' : 'var(--text2)', background: esHoy ? 'var(--accent)' : 'transparent', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '3px auto 0' }}>{d.getDate()}</div>
-                  </div>
-                )
-              })}
-            </div>
+            {/* Cabecera: celda vacía de horas + 7 headers de día — hijos directos del grid */}
+            <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }} />
+            {dias.map((d, i) => {
+              const esHoy = fKey(d) === hoy
+              return (
+                <div key={`hdr-${i}`} style={{ padding: '8px 4px', textAlign: 'center', borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: esHoy ? 'var(--accent)' : 'var(--text3)' }}>{DIAS_LABEL[i]}</div>
+                  <div style={{ fontSize: 14, fontWeight: esHoy ? 700 : 400, color: esHoy ? '#fff' : 'var(--text2)', background: esHoy ? 'var(--accent)' : 'transparent', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '3px auto 0' }}>{d.getDate()}</div>
+                </div>
+              )
+            })}
             {/* Horas */}
             <div>
               {HORAS.map(h => (
@@ -555,8 +553,13 @@ export default function Agenda({ setPage, setSesionesContext }) {
                   {/* Línea hora actual — span completo */}
                   {horaEnGrid && (
                     <>
-                      {esHoyCol && <div style={{ position: 'absolute', top: topLinea - 4, left: -5, width: 10, height: 10, borderRadius: '50%', background: '#ef4444', zIndex: 10 }} />}
-                      <div style={{ position: 'absolute', top: topLinea, left: esHoyCol ? 0 : -1, right: 0, height: 2, background: '#ef4444', opacity: esHoyCol ? 1 : 0.35, zIndex: 10 }} />
+                      {esHoyCol && <div style={{ position: 'absolute', top: topLinea - 3, left: -5, width: 7, height: 7, borderRadius: '50%', background: '#ef4444', zIndex: 10 }} />}
+                      <div style={{ position: 'absolute', top: topLinea, left: esHoyCol ? 0 : -1, right: 0, height: 1.5, background: '#ef4444', opacity: esHoyCol ? 1 : 0.25, zIndex: 10 }} />
+                      {esHoyCol && (
+                        <div style={{ position: 'absolute', top: topLinea - 9, left: 4, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4, zIndex: 11, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                          {horaActual.getHours().toString().padStart(2,'0')}:{horaActual.getMinutes().toString().padStart(2,'0')}
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -1019,11 +1022,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
       {/* ── TRES COLUMNAS PRINCIPALES ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gridTemplateRows: 'auto auto',
+        gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1.1fr) minmax(0,1.1fr)',
+        gridTemplateRows: 'auto 1fr',
         gridTemplateAreas: '"calendario planificacion seguimiento" "tareas tareas seguimiento"',
         gap: 0,
-        alignItems: 'start',
         minWidth: 0
       }}>
 
@@ -1111,7 +1113,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
               <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text2)' }}>Tareas pendientes</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                      Tareas pendientes
+                    </span>
                     {tareasFiltradas.length > 0 && (
                       <span style={{ fontSize: 10, background: 'var(--bg)', color: 'var(--text3)', borderRadius: 20, padding: '2px 7px' }}>{tareasFiltradas.length}</span>
                     )}
@@ -1151,7 +1156,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
         {/* Panel planificación semanal */}
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text2)' }}>Planificación semanal de clientes</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Planificación semanal
+            </span>
           </div>
           {/* Leyenda */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
@@ -1384,16 +1392,17 @@ export default function Agenda({ setPage, setSesionesContext }) {
           }
 
           return (
-            <div style={{ gridArea:'seguimiento',borderLeft:'1px solid var(--border)',background:'var(--card)',display:'flex',flexDirection:'column',maxHeight:'calc(100vh - 120px)',position:'sticky',top:0,overflowY:'auto' }}>
+            <div style={{ gridArea:'seguimiento',borderLeft:'1px solid var(--border)',background:'var(--card)',display:'flex',flexDirection:'column',alignSelf:'stretch',position:'sticky',top:0,height:'100vh',overflowY:'auto' }}>
               {/* Header */}
-              <div style={{ padding:'14px 12px 0',borderBottom:'1px solid var(--border)',paddingBottom:10 }}>
+              <div style={{ padding:'14px 12px 0',borderBottom:'1px solid #bbf7d0',paddingBottom:10, background:'#f0fdf4' }}>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
-                  <span style={{ fontSize:13,fontWeight:700 }}>
+                  <span style={{ fontSize:13,fontWeight:700,color:'#15803d',display:'flex',alignItems:'center',gap:6 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     Seguimiento
-                    {noLeidos.length > 0 && <span style={{ marginLeft:5,background:'#ef4444',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px' }}>{noLeidos.length}</span>}
+                    {noLeidos.length > 0 && <span style={{ background:'#dc2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 6px' }}>{noLeidos.length}</span>}
                   </span>
                   {noLeidos.length > 0 && (
-                    <button onClick={marcarTodoLeido} style={{ fontSize:10,color:'var(--accent)',background:'none',border:'none',cursor:'pointer',fontWeight:500,fontFamily:'inherit' }}>Marcar leído</button>
+                    <button onClick={marcarTodoLeido} style={{ fontSize:10,color:'#16a34a',background:'none',border:'none',cursor:'pointer',fontWeight:500,fontFamily:'inherit' }}>Marcar leído</button>
                   )}
                 </div>
                 {/* Tabs */}

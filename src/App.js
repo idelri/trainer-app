@@ -101,10 +101,12 @@ export default function App() {
  return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-logo" style={{ padding: '16px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+        <div className="sidebar-logo" style={{ padding: '16px 18px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-            <img src={logoIDR} alt="IDR IdelRi" style={{ width: 90, display: 'block', objectFit: 'contain' }} />
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#789B8A', background: 'rgba(120,155,138,0.13)', padding: '2px 5px', borderRadius: 3, fontFamily: 'sans-serif', marginBottom: 4 }}>app</span>
+            <div style={{ background: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}>
+              <img src={logoIDR} alt="IDR IdelRi" style={{ width: 76, display: 'block', objectFit: 'contain' }} />
+            </div>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#7ecfb0', background: 'rgba(126,207,176,0.15)', padding: '2px 5px', borderRadius: 3, fontFamily: 'sans-serif', marginBottom: 4 }}>app</span>
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -116,10 +118,10 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <button className="btn btn-ghost btn-sm w-full" style={{ justifyContent: 'center', marginBottom: 8 }} onClick={exportarTodo}>
+          <button style={{ width: '100%', justifyContent: 'center', marginBottom: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }} onClick={exportarTodo}>
             ↓ Exportar CSV
           </button>
-          <button className="btn btn-ghost btn-sm w-full" style={{ justifyContent: 'center', color: 'var(--text3)', fontSize: 12 }}
+          <button style={{ width: '100%', justifyContent: 'center', background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={() => supabase.auth.signOut()}>
             Cerrar sesión
           </button>
