@@ -907,17 +907,6 @@ function Step7({ f, set }) {
         </Reveal>
       </Q>
 
-      <Q label="¿En qué aspectos esperas que te ayude especialmente?">
-        <Multi
-          options={EXPECTATIVAS_OPTS}
-          selected={f.expectativas_entrenador}
-          onChange={v => { s('expectativas_entrenador')(v); if (!v.includes(OTRO)) s('expectativas_entrenador_otro')('') }}
-        />
-        <Reveal show={f.expectativas_entrenador.includes(OTRO)}>
-          <Input value={f.expectativas_entrenador_otro} onChange={s('expectativas_entrenador_otro')} placeholder="Especifica..." />
-        </Reveal>
-      </Q>
-
       <Q label="¿Hay algo más que consideres importante que sepa antes de empezar a trabajar contigo?">
         <Textarea
           value={f.info_adicional}
