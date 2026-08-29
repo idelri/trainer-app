@@ -774,24 +774,37 @@ export default function Agenda({ setPage, setSesionesContext }) {
             const col = i % 7
             const esFinSemana = col >= 5
             return (
-              <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2 }}>{d.getDate()}</div>
+              <div key={i} style={{ borderLeft: col > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: '4px 6px', minHeight: 60, opacity: esFinSemana ? 0.6 : 1, background: esHoyDia ? 'var(--accent-light)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: esHoyDia ? 700 : 400, color: esHoyDia ? 'var(--accent)' : 'var(--text)', marginBottom: 2, flexShrink: 0 }}>{d.getDate()}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', minWidth: 0 }}>
                 {bloquesDia.map(b => {
                   const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+                  const tooltip = `${cfg.emoji} ${b.titulo}${b.hora_inicio ? ' · ' + b.hora_inicio.slice(0,5) : ''}${b.lugar ? ' · ' + b.lugar : ''}`
                   return (
-                    <div key={b.id} onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
-                      style={{ fontSize: 9, background: cfg.bg, color: cfg.color, borderLeft: `2px solid ${cfg.border}`, borderRadius: 3, padding: '1px 4px', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {cfg.emoji} {b.hora_inicio?.slice(0,5)} {b.titulo}
+                    <div key={b.id}
+                      title={tooltip}
+                      onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', borderLeft: `2px solid ${cfg.border}`, background: cfg.bg, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', minWidth: 0, flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, flexShrink: 0 }}>{cfg.emoji}</span>
+                      <span style={{ fontSize: 9, color: cfg.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{b.hora_inicio?.slice(0,5)} {b.titulo}</span>
                     </div>
                   )
                 })}
-                {sesDia.map(s => (
-                  <div key={s.id} style={{ fontSize: 9, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    ...(s.modalidad === 'presencial' ? { background: '#dcfce7', color: '#166534' } : { background: '#dbeafe', color: '#1e40af' }) }}>
-                    {s.hora_inicio ? <span style={{ opacity: 0.7 }}>{s.hora_inicio.slice(0,5)} </span> : null}
-                    {s.modalidad === 'presencial' ? '🏋️' : '💻'} {s.titulo}
-                  </div>
-                ))}
+                {sesDia.map(s => {
+                  const esPres = s.modalidad === 'presencial'
+                  const tooltip = `${esPres ? '🏋️' : '💻'} ${s.titulo}${s.hora_inicio ? ' · ' + s.hora_inicio.slice(0,5) : ''}`
+                  return (
+                    <div key={s.id} title={tooltip}
+                      style={{ display: 'flex', alignItems: 'center', gap: 3, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', minWidth: 0, flexShrink: 0,
+                        ...(esPres ? { background: '#dcfce7', borderLeft: '2px solid #16a34a' } : { background: '#dbeafe', borderLeft: '2px solid #2563eb' }) }}>
+                      <span style={{ fontSize: 9, flexShrink: 0 }}>{esPres ? '🏋️' : '💻'}</span>
+                      <span style={{ fontSize: 9, color: esPres ? '#166534' : '#1e40af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                        {s.hora_inicio ? s.hora_inicio.slice(0,5) + ' ' : ''}{s.titulo}
+                      </span>
+                    </div>
+                  )
+                })}
+                </div>
               </div>
             )
           })}
