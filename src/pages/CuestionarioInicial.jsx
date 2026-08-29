@@ -62,6 +62,8 @@ const EMPTY = {
 
   // paso 4
   dias_semana: '',
+  dias_variable_min: '0',
+  dias_variable_max: '4',
   dias_preferentes: [],
   tiempo_sesion: '', tiempo_sesion_obs: '',
   horarios_preferentes: [],
@@ -550,6 +552,31 @@ function Step4({ f, set }) {
           selected={f.dias_semana}
           onChange={s('dias_semana')}
         />
+        {f.dias_semana === 'Variable según la semana' && (
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, color: T.text2 }}>Entre</span>
+            {[0,1,2,3,4,5,6,7].map(n => {
+              const on = f.dias_variable_min === String(n)
+              return (
+                <div key={n} onClick={() => { set('dias_variable_min', String(n)); if (Number(f.dias_variable_max) < n) set('dias_variable_max', String(n)) }}
+                  style={{ width: 34, height: 34, borderRadius: 8, border: `1.5px solid ${on ? T.green : T.border}`, background: on ? T.greenL : T.card, color: on ? T.green : T.text2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.12s' }}>
+                  {n}
+                </div>
+              )
+            })}
+            <span style={{ fontSize: 13, color: T.text2 }}>y</span>
+            {[0,1,2,3,4,5,6,7].filter(n => n >= Number(f.dias_variable_min)).map(n => {
+              const on = f.dias_variable_max === String(n)
+              return (
+                <div key={n} onClick={() => set('dias_variable_max', String(n))}
+                  style={{ width: 34, height: 34, borderRadius: 8, border: `1.5px solid ${on ? T.green : T.border}`, background: on ? T.greenL : T.card, color: on ? T.green : T.text2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.12s' }}>
+                  {n}
+                </div>
+              )
+            })}
+            <span style={{ fontSize: 13, color: T.text2 }}>días</span>
+          </div>
+        )}
       </Q>
 
       <Q label="¿Qué días suelen ser los más viables para ti?">
@@ -971,6 +998,8 @@ export default function CuestionarioInicial({ token }) {
       actividades_evitar_otro: '',
 
       dias_semana: d.dias_semana || '',
+      dias_variable_min: '0',
+      dias_variable_max: '4',
       dias_preferentes: d.dias_preferentes || [],
       tiempo_sesion: d.tiempo_sesion || '',
       tiempo_sesion_obs: d.tiempo_sesion_obs || '',
@@ -1102,7 +1131,9 @@ export default function CuestionarioInicial({ token }) {
       actividades_gustan: form.actividades_gustan,
       actividades_evitar: form.actividades_evitar,
 
-      dias_semana: form.dias_semana || null,
+      dias_semana: form.dias_semana === 'Variable según la semana'
+        ? `Variable (${form.dias_variable_min}–${form.dias_variable_max} días)`
+        : (form.dias_semana || null),
       dias_preferentes: form.dias_preferentes,
       tiempo_sesion: form.tiempo_sesion || null,
       tiempo_sesion_obs: form.tiempo_sesion_obs || null,
