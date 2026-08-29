@@ -1230,6 +1230,11 @@ export default function CuestionarioInicial({ token }) {
     <Step7 f={form} set={set} />,
   ]
 
+  function goToStep(n) {
+    setStep(n)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
+
   const isLast = step === STEPS.length - 1
 
   return (
@@ -1258,12 +1263,12 @@ export default function CuestionarioInicial({ token }) {
       {/* Footer nav */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: T.card, borderTop: `1px solid ${T.border}`, padding: '14px 20px' }}>
         <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', gap: 10, justifyContent: 'space-between' }}>
-          <button type="button" onClick={() => setStep(s => s - 1)} disabled={step === 0}
+          <button type="button" onClick={() => goToStep(step - 1)} disabled={step === 0}
             style={{ padding: '11px 20px', borderRadius: 10, border: `1.5px solid ${T.border}`, background: T.card, color: step === 0 ? T.text3 : T.text, fontSize: 14, fontWeight: 500, cursor: step === 0 ? 'not-allowed' : 'pointer' }}>
             ← Anterior
           </button>
           {!isLast ? (
-            <button type="button" onClick={() => setStep(s => s + 1)}
+            <button type="button" onClick={() => goToStep(step + 1)}
               style={{ flex: 1, padding: '11px 20px', borderRadius: 10, border: 'none', background: T.green, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
               Siguiente →
             </button>
