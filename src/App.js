@@ -31,6 +31,7 @@ const NAV = [
 export default function App() {
   const [session, setSession] = useState(null)
   const [page, setPage] = useState('agenda')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [clientePlanificacion, setClientePlanificacion] = useState(null)
   const [sesionesContext, setSesionesContext] = useState({ clienteId: null, sesionId: null })
   const [recargarPlan, setRecargarPlan] = useState(0)
@@ -100,13 +101,26 @@ export default function App() {
 
  return (
     <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo" style={{ padding: '16px 18px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <button
+        onClick={() => setSidebarOpen(o => !o)}
+        title={sidebarOpen ? 'Ocultar menú' : 'Mostrar menú'}
+        style={{
+          position: 'fixed', top: 14, left: sidebarOpen ? 178 : 10,
+          zIndex: 200, width: 28, height: 28,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 6, cursor: 'pointer', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          transition: 'left 0.22s ease', color: 'var(--text2)', fontSize: 14
+        }}
+      >
+        {sidebarOpen ? '‹' : '›'}
+      </button>
+      <aside className="sidebar" style={{ transform: sidebarOpen ? 'translateX(0)' : 'translateX(-220px)', transition: 'transform 0.22s ease' }}>
+        <div className="sidebar-logo" style={{ padding: '16px 18px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-            <div style={{ background: 'rgba(255,255,255,0.92)', borderRadius: 8, padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}>
-              <img src={logoIDR} alt="IDR IdelRi" style={{ width: 76, display: 'block', objectFit: 'contain' }} />
-            </div>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#7ecfb0', background: 'rgba(126,207,176,0.15)', padding: '2px 5px', borderRadius: 3, fontFamily: 'sans-serif', marginBottom: 4 }}>app</span>
+            <img src={logoIDR} alt="IDR IdelRi" style={{ width: 90, display: 'block', objectFit: 'contain' }} />
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: '#789B8A', background: 'rgba(120,155,138,0.13)', padding: '2px 5px', borderRadius: 3, fontFamily: 'sans-serif', marginBottom: 4 }}>app</span>
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -118,16 +132,16 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <button style={{ width: '100%', justifyContent: 'center', marginBottom: 8, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }} onClick={exportarTodo}>
+          <button className="btn btn-ghost btn-sm w-full" style={{ justifyContent: 'center', marginBottom: 8 }} onClick={exportarTodo}>
             ↓ Exportar CSV
           </button>
-          <button style={{ width: '100%', justifyContent: 'center', background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+          <button className="btn btn-ghost btn-sm w-full" style={{ justifyContent: 'center', color: 'var(--text3)', fontSize: 12 }}
             onClick={() => supabase.auth.signOut()}>
             Cerrar sesión
           </button>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" style={{ marginLeft: sidebarOpen ? 220 : 0, transition: 'margin-left 0.22s ease' }}>
         {page === 'dashboard'      && <Dashboard setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'clientes'       && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'pagos'          && <Pagos setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
