@@ -1296,30 +1296,6 @@ export default function Agenda({ setPage, setSesionesContext }) {
             </table>
           )}
         </div>
-        {/* Alertas en columna derecha */}
-        {vista === 'semana' && (() => {
-          const alertas = calcularAlertas()
-          if (!alertas.length) return null
-          return (
-            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text2)' }}>Necesita atención</span>
-                <span style={{ fontSize: 10, background: '#fef2f2', color: '#ef4444', borderRadius: 20, padding: '2px 7px', fontWeight: 700 }}>{alertas.length}</span>
-              </div>
-              {alertas.map((a, i) => (
-                <div key={i} onClick={() => { if (a.sesionId) irASesion(a.clienteId, a.sesionId) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < alertas.length - 1 ? '1px solid var(--border)' : 'none', cursor: a.sesionId || a.clienteId ? 'pointer' : 'default' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {a.cliente && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)' }}>{a.cliente}</div>}
-                    <div style={{ fontSize: 12, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.texto}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: a.color, background: a.color + '18', padding: '2px 7px', borderRadius: 20, flexShrink: 0 }}>{a.etiqueta}</span>
-                </div>
-              ))}
-            </div>
-          )
-        })()}
 
         </div>{/* fin columna central */}
 
