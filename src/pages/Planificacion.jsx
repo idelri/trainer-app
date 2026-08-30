@@ -466,6 +466,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           const semanasCalculadas = Math.max(1, differenceInWeeks(parseISO(formData.fecha_fin), parseISO(formData.fecha_inicio)))
 
           // 5.6: Validar no-solapamiento con otros bloques de la misma planificación
+          let cascadeExtraSemanas = 0
           {
             const inicioNuevo = parseISO(formData.fecha_inicio)
             const finNuevo = addDays(inicioNuevo, semanasCalculadas * 7) // exclusivo
@@ -477,9 +478,19 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               return inicioNuevo < fin && ini < finNuevo
             })
             if (conflicto) {
-              const finConflicto = format(addDays(parseISO(conflicto.fecha_inicio), conflicto.semanas * 7 - 1), 'd MMM yyyy', { locale: es })
-              alert(`Este bloque se solapa con «${conflicto.nombre}» (${format(parseISO(conflicto.fecha_inicio), 'd MMM yyyy', { locale: es })} – ${finConflicto}).\n\nModifica la fecha de inicio o la duración.`)
-              break
+              // Si el bloque se extendió (más semanas que antes), ofrecer desplazar los siguientes
+              const extraSemanas = semanasCalculadas - (modalItem?.semanas || 0)
+              if (modalItem?.id && extraSemanas > 0) {
+                const ok = window.confirm(
+                  `Este bloque se solapa con «${conflicto.nombre}» porque lo has alargado ${extraSemanas} semana${extraSemanas === 1 ? '' : 's'}.\n\n¿Desplazar todos los bloques posteriores ${extraSemanas} semana${extraSemanas === 1 ? '' : 's'} hacia adelante?`
+                )
+                if (!ok) break
+                cascadeExtraSemanas = extraSemanas
+              } else {
+                const finConflicto = format(addDays(parseISO(conflicto.fecha_inicio), conflicto.semanas * 7 - 1), 'd MMM yyyy', { locale: es })
+                alert(`Este bloque se solapa con «${conflicto.nombre}» (${format(parseISO(conflicto.fecha_inicio), 'd MMM yyyy', { locale: es })} – ${finConflicto}).\n\nModifica la fecha de inicio o la duración.`)
+                break
+              }
             }
           }
           const esSaludGuardar = planificacion?.tipo === 'salud'
@@ -516,15 +527,26 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
           if (modalItem?.id) {
             await supabase.from('bloques').update(datos).eq('id', modalItem.id)
-            // 5.6D: reasignar semanas del bloque por rango de fechas
             await asignarSemanasABloque(modalItem.id, formData.fecha_inicio, semanasCalculadas)
           } else {
             const { data: nb } = await supabase.from('bloques').insert(datos).select().single()
             if (nb) {
-              // 5.6D: asignar semanas existentes del plan al nuevo bloque
               await asignarSemanasABloque(nb.id, formData.fecha_inicio, semanasCalculadas)
             }
           }
+
+          // Desplazar bloques posteriores si el usuario confirmó cascade
+          if (cascadeExtraSemanas > 0 && modalItem?.id) {
+            const bloquesADesplazar = bloques
+              .filter(b => b.id !== modalItem.id && parseISO(b.fecha_inicio) > parseISO(modalItem.fecha_inicio))
+              .sort((a, x) => parseISO(a.fecha_inicio) - parseISO(x.fecha_inicio))
+            for (const b of bloquesADesplazar) {
+              const nuevaFecha = format(addWeeks(parseISO(b.fecha_inicio), cascadeExtraSemanas), 'yyyy-MM-dd')
+              await supabase.from('bloques').update({ fecha_inicio: nuevaFecha }).eq('id', b.id)
+              await asignarSemanasABloque(b.id, nuevaFecha, b.semanas)
+            }
+          }
+
           closeModal(); cargarPlanificacion()
           break
         }
@@ -2386,8 +2408,8 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                     </span>
                   </div>
                   {b.objetivo && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.objetivo}</span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 3 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1 }}>{b.objetivo}</span>
                       <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_bloque', b) }} style={{ flexShrink: 0, fontSize: 10, padding: '1px 7px', color: 'var(--accent)', borderColor: 'var(--accent)' }}>Ver más</button>
                     </div>
                   )}
@@ -2421,7 +2443,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                   const allNums = Array.from({ length: b.semanas }, (_, i) => i + 1)
                   return (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '44px 96px 1fr 58px 36px', padding: '6px 16px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '36px 72px 1fr 50px 30px', padding: '6px 16px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 6 }}>
                         {['Sem', 'Semana', 'Objetivo', 'Carga', ''].map((h, i) => (
                           <span key={i} style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</span>
                         ))}
@@ -2444,7 +2466,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                         return (
                           <div key={semKey}>
                             <div onClick={() => toggleSemana(semKey)}
-                              style={{ display: 'grid', gridTemplateColumns: '44px 96px 1fr 58px 36px', padding: '8px 16px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                              style={{ display: 'grid', gridTemplateColumns: '36px 72px 1fr 50px 30px', padding: '8px 16px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 6, alignItems: 'start', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
                               onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
                               onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
                               <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--mono)', color: esActual ? 'var(--accent)' : 'var(--text2)' }}>S{numSem}</span>
@@ -2523,8 +2545,8 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                               )}
                             </div>
                             {sub.notas ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.notas}</span>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 3 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', flex: 1 }}>{sub.notas}</span>
                                 <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); openModal('ver_subbloque', { ...sub, bloque_id: b.id }) }} style={{ flexShrink: 0, fontSize: 10, padding: '1px 7px', color: 'var(--accent)', borderColor: 'var(--accent)' }}>Ver más</button>
                               </div>
                             ) : (
@@ -2552,7 +2574,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                         <div style={{ borderTop: '0.5px solid var(--border)' }}>
 
                           {/* Cabecera de tabla de semanas */}
-                          <div style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 160px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: esResistencia ? '36px 72px 1fr 48px 56px 100px 20px 28px' : '36px 72px 1fr 50px 28px', padding: '6px 16px 6px 44px', background: 'var(--bg)', borderBottom: '0.5px solid var(--border)', gap: 8 }}>
                             {(esResistencia
                               ? ['Sem', 'Semana', 'Objetivo', 'Carga', 'Km', 'Zonas (obj→real)', '', '']
                               : ['Sem', 'Semana', 'Objetivo', 'Carga', '']
@@ -2591,7 +2613,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                 {/* Fila de semana */}
                                 <div
                                   onClick={() => toggleSemana(semKey)}
-                                  style={{ display: 'grid', gridTemplateColumns: esResistencia ? '44px 96px 1fr 58px 68px 160px 28px 36px' : '52px 110px 1fr 76px 36px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
+                                  style={{ display: 'grid', gridTemplateColumns: esResistencia ? '36px 72px 1fr 48px 56px 100px 20px 28px' : '36px 72px 1fr 50px 28px', padding: '8px 16px 8px 44px', borderBottom: '0.5px solid var(--border)', cursor: 'pointer', gap: 8, alignItems: 'center', background: esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}
                                   onMouseOver={e => { if (!esActual) e.currentTarget.style.background = 'var(--bg2)' }}
                                   onMouseOut={e => { if (!esActual) e.currentTarget.style.background = esActual ? 'var(--accent-light)' : editMode ? 'var(--bg2)' : 'var(--bg)' }}>
 
@@ -2669,7 +2691,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                           const barCol = real == null ? '#d1d5db' : Math.abs(real - obj) <= 10 ? '#16a34a' : Math.abs(real - obj) <= 20 ? '#f59e0b' : '#ef4444'
                                           return (
                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                              <div style={{ width: 44, height: 5, background: '#f3f4f6', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
+                                              <div style={{ width: 36, height: 5, background: '#f3f4f6', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
                                                 <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${barW}%`, background: barCol, borderRadius: 3 }} />
                                                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${tickW}%`, width: 1.5, background: '#6b7280' }} />
                                               </div>
