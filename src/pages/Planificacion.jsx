@@ -62,7 +62,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [planificaciones,     setPlanificaciones]     = useState([])
   const [bloques,             setBloques]             = useState([])
   const [subbloques,          setSubbloques]          = useState({})
-  const [semanas,             setSemanas]             = useState({})
+  const [semanas,             setSemanas]             = useState({})  // legacy: map bloque_id → rows
+  const [semanasAll,          setSemanasAll]          = useState([])  // 5.6D: todas las semanas del plan
   const [sesiones,            setSesiones]            = useState([])
   const [competiciones,       setCompeticiones]       = useState([])
   const [controles,           setControles]           = useState([])
@@ -95,9 +96,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const notasTimer = useRef(null)
 
   // ── Modal unificado ──
-  const [modalTipo, setModalTipo] = useState(null)
-  const [modalItem, setModalItem] = useState(null)
-  const [formData,  setFormData]  = useState({})
+  const [modalTipo,      setModalTipo]      = useState(null)
+  const [modalItem,      setModalItem]      = useState(null)
+  const [formData,       setFormData]       = useState({})
+  const [formResultados, setFormResultados] = useState([])
 
   // ── Modal copiar (flujo especial) ──
   const [modalCopiar, setModalCopiar] = useState(false)
@@ -202,14 +204,53 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         const subsMap = {}
         ;(subs || []).forEach(s => { if (!subsMap[s.bloque_id]) subsMap[s.bloque_id] = []; subsMap[s.bloque_id].push(s) })
         setSubbloques(subsMap)
-
-        const { data: sems } = await supabase.from('semanas').select('*').in('bloque_id', ids).order('numero')
-        const semsMap = {}
-        ;(sems || []).forEach(s => { if (!semsMap[s.bloque_id]) semsMap[s.bloque_id] = []; semsMap[s.bloque_id].push(s) })
-        setSemanas(semsMap)
       } else {
-        setSubbloques({}); setSemanas({})
+        setSubbloques({})
       }
+
+      // 5.6D: cargar TODAS las semanas del plan por planificacion_id (incluye sin bloque)
+      const { data: semsAll } = await supabase
+        .from('semanas').select('*')
+        .eq('planificacion_id', plan.id)
+        .order('fecha_inicio_semana', { ascending: true })
+
+      const allSems = semsAll || []
+      setSemanasAll(allSems)
+
+      // Legacy map bloque_id → rows (para vistas de bloques/subbloques)
+      const semsMap = {}
+      allSems.filter(s => s.bloque_id).forEach(s => {
+        if (!semsMap[s.bloque_id]) semsMap[s.bloque_id] = []
+        semsMap[s.bloque_id].push(s)
+      })
+      setSemanas(semsMap)
+
+      // 5.6D: semanasMap por fecha_inicio_semana (para calendario y dots de comentario)
+      // (usado por CalendarioSesiones como semanasMap key)
+      // El mapa se construye en el render (ver abajo)
+
+      // 5.6D: asegurar horizonte (idempotente) — solo si hay plan
+      supabase.rpc('asegurar_horizonte_planificacion', { p_planificacion_id: plan.id })
+        .then(({ data, error }) => {
+          if (error) console.warn('asegurar_horizonte_planificacion:', error)
+          else if (data?.insertadas > 0) {
+            // Re-cargar semanas si se insertaron nuevas
+            supabase.from('semanas').select('*')
+              .eq('planificacion_id', plan.id)
+              .order('fecha_inicio_semana', { ascending: true })
+              .then(({ data: reloaded }) => {
+                if (reloaded) {
+                  setSemanasAll(reloaded)
+                  const rm = {}
+                  reloaded.filter(s => s.bloque_id).forEach(s => {
+                    if (!rm[s.bloque_id]) rm[s.bloque_id] = []
+                    rm[s.bloque_id].push(s)
+                  })
+                  setSemanas(rm)
+                }
+              })
+          }
+        })
 
       const { data: sess } = await supabase.from('sesiones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha', { ascending: true, nullsFirst: false }).order('orden', { ascending: true })
       const sesArr = sess || []
@@ -222,12 +263,12 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       setSesiones(sesArr)
       setFeedbacks(fbsArr)
     } else {
-      setPlanificacion(null); setBloques([]); setSemanas({}); setSubbloques({}); setSesiones([]); setFeedbacks([])
+      setPlanificacion(null); setBloques([]); setSemanas({}); setSubbloques({}); setSemanasAll([]); setSesiones([]); setFeedbacks([])
     }
 
     const { data: comps } = await supabase.from('competiciones').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
     setCompeticiones(comps || [])
-    const { data: ctrls } = await supabase.from('controles').select('*').eq('cliente_id', clienteSeleccionado).order('fecha')
+    const { data: ctrls } = await supabase.from('controles').select('*, controles_resultados(*)').eq('cliente_id', clienteSeleccionado).order('fecha')
     setControles(ctrls || [])
     const { data: nts } = await supabase.from('sesion_notas').select('*').eq('cliente_id', clienteSeleccionado).order('fecha').order('orden', { ascending: true })
     setNotas(nts || [])
@@ -318,6 +359,12 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
   function openModal(tipo, item = null) {
     if (tipo === 'pack') { setFormPack({ nombre: '', fecha_inicio: '', fecha_fin: '', descripcion: '' }); setModalPack('nuevo'); return }
+    if (tipo === 'control') {
+      const res = (item?.controles_resultados || [])
+        .slice().sort((a, b) => (a.orden || 0) - (b.orden || 0))
+        .map(r => ({ nombre: r.nombre, valor: r.valor, unidad: r.unidad || '' }))
+      setFormResultados(res.length > 0 ? res : [{ nombre: '', valor: '', unidad: '' }])
+    }
     setModalTipo(tipo)
     setModalItem(item)
     setFormData(getInitialForm(tipo, item))
@@ -327,6 +374,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
     setModalTipo(null)
     setModalItem(null)
     setFormData({})
+    setFormResultados([])
   }
 
   // Atajo para actualizar un campo de formData
@@ -416,6 +464,24 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         case 'bloque': {
           if (!formData.nombre || !formData.fecha_inicio || !formData.fecha_fin) break
           const semanasCalculadas = Math.max(1, differenceInWeeks(parseISO(formData.fecha_fin), parseISO(formData.fecha_inicio)))
+
+          // 5.6: Validar no-solapamiento con otros bloques de la misma planificación
+          {
+            const inicioNuevo = parseISO(formData.fecha_inicio)
+            const finNuevo = addDays(inicioNuevo, semanasCalculadas * 7) // exclusivo
+            const conflicto = bloques.find(b => {
+              if (!b.fecha_inicio || !b.semanas) return false
+              if (modalItem?.id && b.id === modalItem.id) return false // excluir propio bloque
+              const ini = parseISO(b.fecha_inicio)
+              const fin = addDays(ini, b.semanas * 7) // exclusivo
+              return inicioNuevo < fin && ini < finNuevo
+            })
+            if (conflicto) {
+              const finConflicto = format(addDays(parseISO(conflicto.fecha_inicio), conflicto.semanas * 7 - 1), 'd MMM yyyy', { locale: es })
+              alert(`Este bloque se solapa con «${conflicto.nombre}» (${format(parseISO(conflicto.fecha_inicio), 'd MMM yyyy', { locale: es })} – ${finConflicto}).\n\nModifica la fecha de inicio o la duración.`)
+              break
+            }
+          }
           const esSaludGuardar = planificacion?.tipo === 'salud'
           const datos = { planificacion_id: planificacion.id, nombre: formData.nombre, color: formData.color || '#2d6a4f', fecha_inicio: formData.fecha_inicio, semanas: semanasCalculadas, objetivo: formData.objetivo || null, orden: modalItem?.orden ?? bloques.length,
             ...(esSaludGuardar ? {
@@ -427,20 +493,36 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               enfoque:            formData.enfoque?.length    > 0 ? formData.enfoque : null,
             } : {}),
           }
+
+          // 5.6D: función para asignar semanas existentes a un bloque por rango de fechas
+          // (ya no crea semanas nuevas — solo asocia las existentes del plan)
+          async function asignarSemanasABloque(bloqueId, fechaInicio, numSemanas) {
+            // Semanas que caen en el rango del bloque
+            const lunes = Array.from({ length: numSemanas }, (_, i) => {
+              const d = addDays(parseISO(fechaInicio), i * 7)
+              return format(d, 'yyyy-MM-dd')
+            })
+            // Desasignar semanas que ya no pertenecen al bloque (SET NULL)
+            await supabase.from('semanas')
+              .update({ bloque_id: null })
+              .eq('bloque_id', bloqueId)
+              .not('fecha_inicio_semana', 'in', `(${lunes.map(d => `"${d}"`).join(',')})`)
+            // Asignar semanas del rango (solo las del mismo plan)
+            await supabase.from('semanas')
+              .update({ bloque_id: bloqueId })
+              .eq('planificacion_id', planificacion.id)
+              .in('fecha_inicio_semana', lunes)
+          }
+
           if (modalItem?.id) {
             await supabase.from('bloques').update(datos).eq('id', modalItem.id)
-            // Si cambia el nº de semanas, añadir las que falten
-            const numSem = datos.semanas || semanasCalculadas
-            const { data: semsExist } = await supabase.from('semanas').select('numero').eq('bloque_id', modalItem.id)
-            const existentes = new Set((semsExist || []).map(s => s.numero))
-            const nuevas = Array.from({ length: numSem }, (_, i) => i + 1).filter(n => !existentes.has(n))
-            if (nuevas.length > 0) await supabase.from('semanas').insert(nuevas.map(n => ({ bloque_id: modalItem.id, numero: n })))
+            // 5.6D: reasignar semanas del bloque por rango de fechas
+            await asignarSemanasABloque(modalItem.id, formData.fecha_inicio, semanasCalculadas)
           } else {
             const { data: nb } = await supabase.from('bloques').insert(datos).select().single()
-            // Auto-generar semanas al crear el bloque
             if (nb) {
-              const numSem = datos.semanas || 1
-              await supabase.from('semanas').insert(Array.from({ length: numSem }, (_, i) => ({ bloque_id: nb.id, numero: i + 1 })))
+              // 5.6D: asignar semanas existentes del plan al nuevo bloque
+              await asignarSemanasABloque(nb.id, formData.fecha_inicio, semanasCalculadas)
             }
           }
           closeModal(); cargarPlanificacion()
@@ -506,9 +588,22 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
 
         case 'control': {
           if (!formData.nombre || !formData.fecha) break
+          const resultadosValidos = formResultados
+            .filter(r => r.nombre.trim() && r.valor.trim())
+            .map((r, i) => ({ nombre: r.nombre.trim(), valor: r.valor.trim(), unidad: r.unidad.trim() || null, orden: i }))
           const datos = { nombre: formData.nombre, fecha: formData.fecha, tipo: formData.tipo || null, notas: formData.notas || null, visibilidad: formData.visibilidad || 'entrenadora' }
-          if (modalItem?.id) await supabase.from('controles').update(datos).eq('id', modalItem.id)
-          else await supabase.from('controles').insert({ cliente_id: clienteSeleccionado, ...datos })
+          let controlId
+          if (modalItem?.id) {
+            await supabase.from('controles').update(datos).eq('id', modalItem.id)
+            await supabase.from('controles_resultados').delete().eq('control_id', modalItem.id)
+            controlId = modalItem.id
+          } else {
+            const { data: nc } = await supabase.from('controles').insert({ cliente_id: clienteSeleccionado, ...datos }).select('id').single()
+            controlId = nc.id
+          }
+          if (resultadosValidos.length > 0) {
+            await supabase.from('controles_resultados').insert(resultadosValidos.map(r => ({ ...r, control_id: controlId })))
+          }
           closeModal(); cargarPlanificacion()
           break
         }
@@ -573,7 +668,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       })(),
       sesion:      esEditar ? 'Editar sesión'              : 'Nueva sesión',
       comp:        esEditar ? 'Editar competición'         : 'Nueva competición',
-      control:     esEditar ? 'Editar control / valoración' : 'Nuevo control / valoración',
+      control:     esEditar ? 'Editar evaluación' : 'Nueva evaluación',
       nota:        esEditar ? 'Editar nota'                : 'Nueva nota',
       ver_bloque:    'Detalle del bloque',
       ver_subbloque: 'Detalle del sub-bloque',
@@ -1049,35 +1144,62 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           </div>
         )
 
-      // ── CONTROL / VALORACIÓN ──────────────────────────────────────────────
+      // ── EVALUACIÓN ───────────────────────────────────────────────────────
       case 'control':
         return (
           <div style={{ padding: '0 20px 4px' }}>
             <div className="form-group">
-              <label className="form-label">Nombre *</label>
-              <input className="form-input" value={formData.nombre || ''} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: Test de fuerza..." autoFocus />
+              <label className="form-label">Nombre de la evaluación *</label>
+              <input className="form-input" value={formData.nombre || ''} onChange={e => fd('nombre', e.target.value)} placeholder="Ej: CMJ, Test 5 km..." autoFocus />
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Fecha *</label>
-                <input className="form-input" type="date" value={formData.fecha || ''} onChange={e => fd('fecha', e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tipo</label>
+                <label className="form-label">Tipo de evaluación</label>
                 <select className="form-select" value={formData.tipo || ''} onChange={e => fd('tipo', e.target.value)}>
                   <option value="">Sin categoría</option>
                   <option value="Fuerza">Fuerza</option>
                   <option value="Resistencia">Resistencia</option>
                   <option value="Movilidad">Movilidad</option>
                   <option value="Composición corporal">Composición corporal</option>
-                  <option value="HRV · Recuperación">HRV · Recuperación</option>
+                  <option value="Recuperación">Recuperación</option>
                   <option value="Otro">Otro</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label className="form-label">Fecha *</label>
+                <input className="form-input" type="date" value={formData.fecha || ''} onChange={e => fd('fecha', e.target.value)} />
+              </div>
             </div>
+
+            {/* Resultados */}
+            <div style={{ marginBottom: 6 }}>
+              <label className="form-label" style={{ marginBottom: 8 }}>Resultados</label>
+              {formResultados.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                  <input placeholder="Nombre del valor"
+                    value={r.nombre} onChange={e => setFormResultados(prev => prev.map((x, j) => j === i ? { ...x, nombre: e.target.value } : x))}
+                    className="form-input" style={{ flex: 2 }} />
+                  <input placeholder="Valor"
+                    value={r.valor} onChange={e => setFormResultados(prev => prev.map((x, j) => j === i ? { ...x, valor: e.target.value } : x))}
+                    className="form-input" style={{ flex: 1.2 }} />
+                  <input placeholder="Unidad"
+                    value={r.unidad} onChange={e => setFormResultados(prev => prev.map((x, j) => j === i ? { ...x, unidad: e.target.value } : x))}
+                    className="form-input" style={{ flex: 0.8 }} />
+                  {formResultados.length > 1 && (
+                    <button type="button" onClick={() => setFormResultados(prev => prev.filter((_, j) => j !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 16, padding: '0 2px', lineHeight: 1 }}>×</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={() => setFormResultados(prev => [...prev, { nombre: '', valor: '', unidad: '' }])}
+                style={{ fontSize: 12.5, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0' }}>
+                + Añadir otro resultado
+              </button>
+            </div>
+
             <div className="form-group">
-              <label className="form-label">Notas</label>
-              <textarea className="form-textarea" value={formData.notas || ''} onChange={e => fd('notas', e.target.value)} placeholder="Protocolo, resultados, observaciones..." />
+              <label className="form-label">Observaciones</label>
+              <textarea className="form-textarea" value={formData.notas || ''} onChange={e => fd('notas', e.target.value)} placeholder="Observaciones opcionales..." />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 4px' }}>
               <span style={{ fontSize: 12, color: 'var(--text2)' }}>Visible para:</span>
@@ -1090,7 +1212,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             </div>
             {modalItem?.id && (
               <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar control</button>
+                <button className="btn btn-ghost" style={{ color: 'var(--danger)', fontSize: 12 }} onClick={eliminarItem}>Eliminar evaluación</button>
               </div>
             )}
           </div>
@@ -1467,7 +1589,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                     ['sesion',   '+ Sesión'],
                     ['pack',     '📦 Pack flexible'],
                     ['comp',     '🏆 Competición'],
-                    ['control',  '🔬 Control / Valoración'],
+                    ['control',  '🔬 Evaluación'],
                     ['nota',     '📝 Nota'],
                   ].map(([tipo, label]) => (
                     <button key={tipo} className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', borderRadius: 0, padding: '10px 16px', fontSize: 13 }}
@@ -1609,6 +1731,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 </div>
               )}
               <CalendarioSesiones
+                semanasAll={semanasAll}
+                semanasMap={Object.fromEntries(semanasAll.map(s => [s.fecha_inicio_semana, s]))}
+                semanaSeleccionada={semanaSeleccionada}
+                onSemanaClick={info => setSemanaSeleccionada(info ? { semanaCliente: info.semanaCliente, bloqueId: info.bloque?.id, semanaNum: info.semanaNum } : null)}
                 sesiones={sesiones.map(s => ({ ...s, _estadoColor: colorEstado(s) }))}
                 feedbacksMap={Object.fromEntries(feedbacks.map(f => [f.sesion_id, f]))}
                 competiciones={competiciones}
@@ -1700,7 +1826,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             <div>
               {/* Pills de filtro */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Control']].map(([key, label]) => (
+                {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Evaluación']].map(([key, label]) => (
                   <button key={key} onClick={() => setFiltros(f => ({ ...f, [key]: !f[key] }))}
                     style={{ padding: '4px 13px', borderRadius: 20, border: `1.5px solid ${filtros[key] ? 'var(--accent)' : 'var(--border)'}`, background: filtros[key] ? 'var(--accent-light)' : 'var(--bg)', color: filtros[key] ? 'var(--accent)' : 'var(--text3)', fontSize: 12, fontWeight: filtros[key] ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
                     {label}

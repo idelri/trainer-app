@@ -58,10 +58,54 @@ function dotColor(e) {
 const TIPO_CONFIG = {
   nota:        { icono: '📝', label: 'Nota',        bg: '#F1EFE8', color: '#5F5E5A' },
   competicion: { icono: '🏆', label: 'Competición', bg: '#FAEEDA', color: '#633806' },
-  control:     { icono: '📊', label: 'Valoración',  bg: '#E6F1FB', color: '#0C447C' },
+  control:     { icono: '📊', label: 'Evaluación',  bg: '#E6F1FB', color: '#0C447C' },
 }
 function ItemExtra({ item }) {
   const cfg = TIPO_CONFIG[item._tipo] || TIPO_CONFIG.nota
+
+  // Evaluación — tarjeta rica con resultados estructurados
+  if (item._tipo === 'control') {
+    const resultados = Array.isArray(item.resultados) ? item.resultados : []
+    return (
+      <div style={{ borderRadius: 8, background: cfg.bg, border: `1px solid ${cfg.color}33`, overflow: 'hidden' }}>
+        {/* Cabecera */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>{cfg.icono}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: cfg.color, letterSpacing: '.5px', textTransform: 'uppercase', opacity: 0.7 }}>Evaluación</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: cfg.color }}>{item.nombre}</div>
+          </div>
+          {item.fecha && (
+            <span style={{ fontSize: 10, color: cfg.color, opacity: 0.6, flexShrink: 0 }}>
+              {format(parseISO(item.fecha), 'd MMM', { locale: es })}
+            </span>
+          )}
+        </div>
+        {/* Resultados */}
+        {resultados.length > 0 && (
+          <div style={{ borderTop: `1px solid ${cfg.color}22`, padding: '6px 10px 6px' }}>
+            {resultados.map((r, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '2px 0', fontSize: 11, color: cfg.color }}>
+                <span style={{ opacity: 0.8 }}>{r.nombre}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                  {r.valor}{r.unidad ? <span style={{ fontWeight: 400, marginLeft: 3, opacity: 0.65 }}>{r.unidad}</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Observaciones */}
+        {item.notas && (
+          <div style={{ borderTop: `1px solid ${cfg.color}22`, padding: '5px 10px 7px' }}>
+            <div style={{ fontSize: 9, color: cfg.color, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 2 }}>Observaciones</div>
+            <div style={{ fontSize: 11, color: cfg.color, opacity: 0.85, lineHeight: 1.4 }}>{item.notas}</div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Resto de extras (competiciones, notas)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: cfg.bg, border: `1px solid ${cfg.color}33` }}>
       <span style={{ fontSize: 15, flexShrink: 0 }}>{cfg.icono}</span>
@@ -260,12 +304,21 @@ export default function ClientePortal({ token }) {
   }
 
   function getSemanaNumGlobal() {
+    // 5.6E: usar numero_cliente de semanas (planificación base continua)
+    const hoy = new Date()
+    const dow = hoy.getDay()
+    const offset = dow === 0 ? -6 : 1 - dow
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() + offset)
+    const lunesKey = lunes.toISOString().slice(0, 10)
+    const semHoy = semanas.find(s => s.fecha_inicio_semana === lunesKey)
+    if (semHoy?.numero_cliente) return semHoy.numero_cliente
+    // Fallback legacy: acumulado por bloques
     let total = 0
     for (const b of bloques) {
       if (!b.fecha_inicio) continue
       const ini = parseISO(b.fecha_inicio + 'T12:00:00')
       const fin = addDays(ini, (b.semanas || 0) * 7)
-      const hoy = new Date()
       if (hoy >= ini && hoy < fin) return total + Math.floor((hoy - ini) / (7 * 86400000)) + 1
       total += b.semanas || 0
     }

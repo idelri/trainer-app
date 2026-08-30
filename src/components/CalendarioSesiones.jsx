@@ -50,7 +50,7 @@ function DiaMenu({ fecha, onNuevaSesion, onNuevaCompeticion, onNuevaValoracion, 
             style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
             onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-            🔬 Valoración / Control
+            🔬 Evaluación
           </button>
           <button onClick={() => { onNuevaNota(fecha); setOpen(false) }}
             style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)' }}
@@ -74,6 +74,8 @@ export default function CalendarioSesiones({
   arrastrando: arrastandoExterno, setArrastrando: setArrastrandoExterno,
   semanasMap = {}, semanaSeleccionada, onSemanaClick,
   feedbacksMap = {},
+  // 5.6D: array de semanas del plan (con fecha_inicio_semana, numero_cliente, bloque_id)
+  semanasAll = [],
 }) {
   const [vista, setVista] = useState('mes')
   const [cursor, setCursor] = useState(new Date())
@@ -167,6 +169,39 @@ export default function CalendarioSesiones({
   const hoy = new Date()
   const fKey = d => format(d, 'yyyy-MM-dd')
 
+  // 5.6D: resolución de info de semana desde semanasAll (fuente de verdad)
+  // Devuelve { semanaCliente, semanaData, bloque?, sub?, bloqueNum?, subNum?, semanaNum? }
+  function infoSemana(lunes) {
+    const lunKey = format(lunes, 'yyyy-MM-dd')
+    // Buscar en semanasAll por fecha_inicio_semana (preferir filas con bloque_id si hay solapados)
+    const candidates = semanasAll.filter(s => s.fecha_inicio_semana === lunKey)
+    if (candidates.length === 0) return null
+    // Preferir la que tiene bloque_id si existe (más información)
+    const sem = candidates.find(s => s.bloque_id) || candidates[0]
+
+    const result = { semanaCliente: sem.numero_cliente, semanaData: sem }
+
+    if (sem.bloque_id) {
+      const bloque = (bloquesPlan || []).find(b => b.id === sem.bloque_id)
+      if (bloque) {
+        const bloqueIdx = (bloquesPlan || []).findIndex(b => b.id === sem.bloque_id)
+        const subs = (subbloquesPlan || {})[sem.bloque_id] || []
+        const msInicio = new Date(bloque.fecha_inicio + 'T12:00:00').getTime()
+        const msLunes = new Date(lunKey + 'T12:00:00').getTime()
+        const semanaNumBloque = Math.floor((msLunes - msInicio) / (7 * 86400000)) + 1
+        const sub = subs.find(s => semanaNumBloque >= s.semana_inicio && semanaNumBloque <= s.semana_fin)
+        const subIdx = subs.findIndex(s => s.id === sub?.id)
+        result.bloque = bloque
+        result.bloqueNum = bloqueIdx + 1
+        result.semanaNum = semanaNumBloque // compatibilidad legacy
+        result.sub = sub
+        result.subNum = subIdx + 1
+      }
+    }
+    return result
+  }
+
+  // Fallback legacy: cuando no hay semanasAll, usar bloques directamente
   function bloqueDeFecha(fecha) {
     for (const b of (bloquesPlan || [])) {
       const inicio = new Date(b.fecha_inicio + 'T12:00:00')
@@ -184,9 +219,13 @@ export default function CalendarioSesiones({
     return null
   }
 
-  function infoSemana(lunes) {
+  // Si semanasAll está vacío, fallback a lógica legacy por bloques
+  function resolverInfoSemana(lunes) {
+    if (semanasAll.length > 0) return infoSemana(lunes)
     const jueves = new Date(lunes); jueves.setDate(jueves.getDate() + 3)
-    return bloqueDeFecha(jueves)
+    const legacy = bloqueDeFecha(jueves)
+    if (!legacy) return null
+    return { ...legacy, semanaCliente: null, semanaData: null }
   }
 
   const sesionPorDia = {}
@@ -259,24 +298,38 @@ export default function CalendarioSesiones({
         {Array.from({ length: Math.ceil(dias.length / 7) }, (_, semIdx) => {
           const diasSem = dias.slice(semIdx * 7, semIdx * 7 + 7)
           const lunes = diasSem[0]
-          const info = infoSemana(lunes)
+          const info = resolverInfoSemana(lunes)
+          const lunKey = format(lunes, 'yyyy-MM-dd')
+          const semanaDotKey = info?.semanaData?.fecha_inicio_semana
+            || (info?.bloque ? `${info.bloque.id}_${info.semanaNum}` : null)
           return (
             <div key={semIdx}>
               {info && (
                 <div
                   onClick={() => onSemanaClick && onSemanaClick(info, diasSem)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: semanaSeleccionada && semanaSeleccionada.bloqueId === info.bloque.id && semanaSeleccionada.semanaNum === info.semanaNum ? 'var(--accent-light)' : 'var(--bg2)', borderTop: '1px solid var(--border)', cursor: onSemanaClick ? 'pointer' : 'default' }}>
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: semanaSeleccionada && (semanaSeleccionada.semanaCliente === info.semanaCliente || (semanaSeleccionada.bloqueId === info.bloque?.id && semanaSeleccionada.semanaNum === info.semanaNum)) ? 'var(--accent-light)' : 'var(--bg2)', borderTop: '1px solid var(--border)', cursor: onSemanaClick ? 'pointer' : 'default' }}>
                   <span style={{ fontSize: 11.5, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <strong style={{ fontWeight: 600, color: 'var(--text)' }}>Semana {info.semanaNum}</strong>
-                    {info.sub && <> · SB{info.bloqueNum}.{info.subNum} {info.sub.nombre}</>}
-                    {semanasMap[`${info.bloque.id}_${info.semanaNum}`]?.comentario && (
+                    {/* Número global del cliente como referencia principal */}
+                    <strong style={{ fontWeight: 600, color: 'var(--text)' }}>
+                      {info.semanaCliente != null ? `Semana ${info.semanaCliente}` : `Semana ${info.semanaNum}`}
+                    </strong>
+                    {/* Contexto de bloque como secundario */}
+                    {info.bloque && (
+                      <span style={{ color: 'var(--text3)', fontSize: 11 }}>
+                        · Sem. {info.semanaNum}/{info.bloque.semanas}
+                        {info.sub && ` · ${info.sub.nombre}`}
+                      </span>
+                    )}
+                    {semanaDotKey && semanasMap[semanaDotKey]?.comentario && (
                       <span title="Tiene observaciones" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', flexShrink: 0 }} />
                     )}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: (info.bloque.color || '#2d6a4f') + '1a', color: info.bloque.color || '#2d6a4f' }}>
-                      B{info.bloqueNum} {info.bloque.nombre}
-                    </span>
+                    {info.bloque && (
+                      <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10, background: (info.bloque.color || '#2d6a4f') + '1a', color: info.bloque.color || '#2d6a4f' }}>
+                        B{info.bloqueNum} {info.bloque.nombre}
+                      </span>
+                    )}
                     {onCopiarSemana && (
                       <button title="Copiar semana" onClick={e => { e.stopPropagation(); onCopiarSemana(diasSem) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, opacity: 0.5, padding: '0 2px', lineHeight: 1 }}>📋</button>

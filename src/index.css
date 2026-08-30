@@ -330,6 +330,19 @@ tr:hover td { background: var(--bg); }
 .font-medium { font-weight: 500; }
 .w-full { width: 100%; }
 
+/* ── Fase 5.5 — Layout helpers ─────────────────────────────────────────────── */
+/* TabResumen: grid 2 columnas */
+.resumen-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 36%);
+  gap: 10px 14px;
+  align-items: start;
+}
+/* Información: ancho máximo cómodo */
+.perfil-info-wrap {
+  max-width: 1150px;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .sidebar {
@@ -369,6 +382,7 @@ tr:hover td { background: var(--bg); }
   }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .resumen-grid { grid-template-columns: 1fr; }
 }
 
 /* Tooltip pendiente */

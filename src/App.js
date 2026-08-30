@@ -5,6 +5,7 @@ import { exportarTodo } from './lib/export'
 import { useGenerarPagosMensuales } from './hooks/useGenerarPagosMensuales'
 import Dashboard from './pages/Dashboard'
 import Clientes from './pages/Clientes'
+import ClienteFicha from './pages/ClienteFicha'
 import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
 import Sesiones from './pages/Sesiones'
@@ -33,6 +34,7 @@ export default function App() {
   const [page, setPage] = useState('agenda')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [clientePlanificacion, setClientePlanificacion] = useState(null)
+  const [clienteFichaId, setClienteFichaId] = useState(null)
   const [sesionesContext, setSesionesContext] = useState({ clienteId: null, sesionId: null })
   const [recargarPlan, setRecargarPlan] = useState(0)
   const [authLoading, setAuthLoading] = useState(true)
@@ -87,6 +89,8 @@ export default function App() {
   }, [])
 
   useGenerarPagosMensuales()
+
+  useEffect(() => { if (page !== 'clientes') setClienteFichaId(null) }, [page])
 
   if (authLoading) return null
 
@@ -143,7 +147,8 @@ export default function App() {
       </aside>
       <main className="main" style={{ marginLeft: sidebarOpen ? 220 : 0, transition: 'margin-left 0.22s ease' }}>
         {page === 'dashboard'      && <Dashboard setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
-        {page === 'clientes'       && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
+        {page === 'clientes' && !clienteFichaId && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} onAbrirFicha={setClienteFichaId} />}
+        {page === 'clientes' && clienteFichaId && <ClienteFicha clienteId={clienteFichaId} onVolver={() => setClienteFichaId(null)} setPage={setPage} setClientePlanificacion={setClientePlanificacion} />}
         {page === 'pagos'          && <Pagos setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} recargarPlan={recargarPlan} />}
         {page === 'sesiones'       && <Sesiones clienteInicial={sesionesContext.clienteId} sesionInicialId={sesionesContext.sesionId} fechaNuevaSesion={sesionesContext.fechaNueva} esPlantilla={sesionesContext.esPlantilla} setPage={setPage} setClientePlanificacion={setClientePlanificacion} setRecargarPlan={setRecargarPlan} />}
