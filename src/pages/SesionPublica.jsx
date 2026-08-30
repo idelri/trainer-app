@@ -756,7 +756,7 @@ export default function SesionPublica({ token }) {
                     const tkn = clonToken || token
                     const { data: actArr, error: errAct } = await supabase.rpc('actualizar_feedback_por_token', { p_token: tkn, p_data: data })
                     if (errAct) { setEnviandoFeedback(false); alert('Error al guardar el feedback. Inténtalo de nuevo.'); return }
-                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: tkn, p_fecha: null, p_estado: nuevoEstado, p_fecha_realizada: format(new Date(), 'yyyy-MM-dd') })
+                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: tkn, p_fecha: null, p_estado: nuevoEstado, p_fecha_realizada: nuevoEstado === 'no_realizada' ? null : format(new Date(), 'yyyy-MM-dd') })
                     if (errEst) { setEnviandoFeedback(false); alert('El feedback se ha guardado, pero no se pudo actualizar el estado. Inténtalo de nuevo.'); return }
                     setSesion(s => ({ ...s, estado: nuevoEstado }))
                     setEnviandoFeedback(false)
@@ -766,7 +766,7 @@ export default function SesionPublica({ token }) {
                     // Sesión flexible ya guardada (dato antiguo): enviar feedback al clon
                     const { data: nuevoArr, error: errIns } = await supabase.rpc('insertar_feedback_por_token', { p_token: clonToken, p_data: data })
                     if (errIns) { setEnviandoFeedback(false); alert('Error al guardar el feedback. Inténtalo de nuevo.'); return }
-                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: clonToken, p_fecha: null, p_estado: nuevoEstado, p_fecha_realizada: format(new Date(), 'yyyy-MM-dd') })
+                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: clonToken, p_fecha: null, p_estado: nuevoEstado, p_fecha_realizada: nuevoEstado === 'no_realizada' ? null : format(new Date(), 'yyyy-MM-dd') })
                     if (errEst) { setEnviandoFeedback(false); alert('El feedback se ha guardado, pero no se pudo actualizar el estado. Inténtalo de nuevo.'); return }
                     setEnviandoFeedback(false)
                     if (nuevoArr?.[0]) setFeedbackEnviado(nuevoArr[0])
@@ -784,7 +784,7 @@ export default function SesionPublica({ token }) {
                     // Sesión fija: insertar feedback + marcar completada en un solo paso
                     const { data: nuevoArr, error: errIns } = await supabase.rpc('insertar_feedback_por_token', { p_token: token, p_data: data })
                     if (errIns) { setEnviandoFeedback(false); alert('Error al guardar el feedback. Inténtalo de nuevo.'); return }
-                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: sesion.fecha, p_estado: nuevoEstado, p_fecha_realizada: format(new Date(), 'yyyy-MM-dd') })
+                    const { error: errEst } = await supabase.rpc('completar_sesion_por_token', { p_token: token, p_fecha: sesion.fecha, p_estado: nuevoEstado, p_fecha_realizada: nuevoEstado === 'no_realizada' ? null : format(new Date(), 'yyyy-MM-dd') })
                     if (errEst) { setEnviandoFeedback(false); alert('El feedback se ha guardado, pero no se pudo actualizar el estado. Inténtalo de nuevo.'); return }
                     setSesion(s => ({ ...s, estado: nuevoEstado }))
                     setSesionFijaGuardada(true)
