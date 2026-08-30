@@ -634,6 +634,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [avisoSinGuardar, setAvisoSinGuardar] = useState(false)
   const [modalSesion, setModalSesion] = useState(null)
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
+  const [formCompletadaEl, setFormCompletadaEl] = useState('')
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(false)
@@ -1083,6 +1084,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
 
   function abrirEditarSesion(s) {
     setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [], modalidad: s.modalidad || 'autonoma', lugar: s.lugar || '', lista: s.lista || false, publicada: s.publicada !== false })
+    setFormCompletadaEl(s.completada_el || '')
     setModalSesion(s)
   }
 
@@ -1114,9 +1116,10 @@ async function guardarSesion() {
     setSaving(true)
     const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [], modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
     if (modalSesion?.id) {
-      await supabase.from('sesiones').update(datos).eq('id', modalSesion.id)
-      setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datos } : s))
-      setSesionAbierta(s => s ? { ...s, ...datos } : s)
+      const datosConFecha = { ...datos, completada_el: formCompletadaEl || null }
+      await supabase.from('sesiones').update(datosConFecha).eq('id', modalSesion.id)
+      setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datosConFecha } : s))
+      setSesionAbierta(s => s ? { ...s, ...datosConFecha } : s)
       setSaving(false); setModalSesion(null)
       return
     }
@@ -2594,6 +2597,15 @@ async function guardarSesion() {
                     )
                   })}
                 </div>
+              </div>
+            )}
+            {modalSesion !== 'nueva' && ['completada','parcial','realizada'].includes(formSesion.estado) && (
+              <div className="form-group">
+                <label className="form-label">📅 Fecha realizada <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>(corrección manual)</span></label>
+                <input className="form-input" type="date" value={formCompletadaEl} onChange={e => setFormCompletadaEl(e.target.value)} style={{ maxWidth: 180 }} />
+                {formCompletadaEl && modalSesion?.fecha && formCompletadaEl !== modalSesion.fecha && (
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Planificada: {modalSesion.fecha}</div>
+                )}
               </div>
             )}
             <div className="form-group">

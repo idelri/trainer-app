@@ -342,7 +342,12 @@ export default function ClientePortal({ token }) {
 
   function getSesionesCalMes() {
     const ini = startOfMonth(calMes), fin = endOfMonth(calMes)
-    return sesiones.filter(s => { if (!s.fecha) return false; const f = parseISO(s.fecha); return f >= ini && f <= fin })
+    return sesiones.filter(s => {
+      const fv = fechaVisualSesion(s)
+      if (!fv) return false
+      const f = parseISO(fv)
+      return f >= ini && f <= fin
+    })
   }
 
   function getItemsSemanaActual() {
@@ -404,6 +409,15 @@ export default function ClientePortal({ token }) {
   const card = { background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden' }
   const DIAS_SEM = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
+  // Fecha visual de una sesión: fecha real (completada_el) para completadas/parciales; fecha planificada para el resto
+  const fechaVisualSesion = s => {
+    const est = s.estado_efectivo || s.estado
+    if ((est === 'completada' || est === 'parcial' || est === 'realizada') && s.completada_el) {
+      return s.completada_el
+    }
+    return s.fecha
+  }
+
   /* ---- TAB: SEMANA ---- */
   function TabSemana() {
     // Semana navegada (semanaOffset=0 → semana actual)
@@ -439,7 +453,10 @@ export default function ClientePortal({ token }) {
     const colNav = bloqueNav?.color || T.green
 
     // Sesiones de la semana navegada
-    const sesNav = sesiones.filter(s => s.fecha && parseISO(s.fecha) >= lunNav && parseISO(s.fecha) <= domNav)
+    const sesNav = sesiones.filter(s => {
+      const fv = fechaVisualSesion(s)
+      return fv && parseISO(fv) >= lunNav && parseISO(fv) <= domNav
+    })
 
     const packsSemana = packs.filter(p => {
       if (!p.fecha_inicio || !p.fecha_fin) return false
@@ -685,7 +702,7 @@ export default function ClientePortal({ token }) {
                   }
 
                   const { idx, dia } = item
-                  const sesDia = sesNav.filter(s => s.fecha && isSameDay(parseISO(s.fecha), dia))
+                  const sesDia = sesNav.filter(s => { const fv = fechaVisualSesion(s); return fv && isSameDay(parseISO(fv), dia) })
                   const notasDia = notasNavSem.filter(x => isSameDay(parseISO(x.fecha), dia))
                   const hoyDia = isToday(dia)
                   const nombreDia = DIAS_SEM[idx]
@@ -743,6 +760,7 @@ export default function ClientePortal({ token }) {
                               <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>
                                 {item.duracion_min ? `${item.duracion_min} min` : ''}{item.duracion_min && item.tipo_sesion ? ' · ' : ''}{item.tipo_sesion === 'opcional' ? 'Opcional' : item.tipo_sesion === 'flexible' ? 'Flexible' : item.tipo_sesion === 'programada' ? 'Programada' : ''}
                               </div>
+                              {item.completada_el && item.fecha && item.completada_el !== item.fecha && <div style={{ fontSize: 9, color: T.ink3, marginTop: 1 }}>Prevista: {format(parseISO(item.fecha), "EEE d MMM", { locale: es })}</div>}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                               <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, whiteSpace: 'nowrap' }}>{bd.label}</span>
@@ -798,7 +816,7 @@ export default function ClientePortal({ token }) {
     const offset = (() => { const d = diasMes[0].getDay(); return d === 0 ? 6 : d - 1 })()
     const sesMes = getSesionesCalMes()
     const [diaSelec, setDiaSelec] = useState(new Date())
-    const sesDia = sesMes.filter(s => isSameDay(parseISO(s.fecha), diaSelec))
+    const sesDia = sesMes.filter(s => { const fv = fechaVisualSesion(s); return fv && isSameDay(parseISO(fv), diaSelec) })
     const extras = getItemsCalMes()
 
     return (
@@ -821,7 +839,7 @@ export default function ClientePortal({ token }) {
               ))}
               {Array(offset).fill(null).map((_, i) => <div key={'p'+i} />)}
               {diasMes.map(dia => {
-                const sesDia = sesMes.filter(s => isSameDay(parseISO(s.fecha), dia))
+                const sesDia = sesMes.filter(s => { const fv = fechaVisualSesion(s); return fv && isSameDay(parseISO(fv), dia) })
                 const hoyDia = isToday(dia)
                 const selec = isSameDay(dia, diaSelec)
                 return (
@@ -862,6 +880,7 @@ export default function ClientePortal({ token }) {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 500 }}>{s.titulo}</div>
                           {s.duracion_min && <div style={{ fontFamily: T.mono, fontSize: 10, color: T.ink3, marginTop: 1 }}>{s.duracion_min} min</div>}
+                          {s.completada_el && s.fecha && s.completada_el !== s.fecha && <div style={{ fontSize: 9, color: T.ink3, marginTop: 1 }}>Prevista: {format(parseISO(s.fecha), "EEE d MMM", { locale: es })}</div>}
                         </div>
                         <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, flexShrink: 0 }}>{bd.label}</span>
                       </div>

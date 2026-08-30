@@ -229,9 +229,10 @@ export default function CalendarioSesiones({
   }
 
   const sesionPorDia = {}
-  sesiones.filter(s => s.fecha).forEach(s => {
-    if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
-    sesionPorDia[s.fecha].push({ ...s, _tipo: 'sesion' })
+  sesiones.filter(s => s.fecha || s._fechaVisual).forEach(s => {
+    const key = s._fechaVisual || s.fecha
+    if (!sesionPorDia[key]) sesionPorDia[key] = []
+    sesionPorDia[key].push({ ...s, _tipo: 'sesion' })
   })
   competiciones.filter(c => c.fecha).forEach(c => {
     if (!sesionPorDia[c.fecha]) sesionPorDia[c.fecha] = []
@@ -430,7 +431,7 @@ export default function CalendarioSesiones({
                             }}
                             onMouseLeave={() => { ocultarTooltip(); ocultarFbTooltip() }}
                             style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, ...tipoEstilo, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', position: 'relative', opacity: dragWithinRef.current?.itemId === item.id ? 0.4 : 1 }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>{icono} {texto}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={item._prevista ? `Prevista: ${item._prevista}` : undefined}>{icono} {texto}{item._prevista ? <span style={{ opacity: 0.6, marginLeft: 2 }}>↩</span> : null}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                               {item._tipo === 'sesion' && (
                                 <span title={item.publicada === false ? 'Oculta al cliente 🔒' : item.lista ? 'Sesión lista ✅' : 'En preparación 📝'}

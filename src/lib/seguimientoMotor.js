@@ -114,11 +114,14 @@ export function calcularAspectosIndividuales(fb, ses) {
 }
 
 // ── Rachas acumulativas ───────────────────────────────────────────────────────
-// feedsConSesAsc: feedbacks con _fecha, ordenados ASC por fecha de sesión
+// feedsConSesAsc: feedbacks con _fecha (real), ordenados ASC
+// feedsConSesPlanAsc: feedbacks con _fecha_plan (planificada), ordenados ASC — para cumplimiento
 // Devuelve array de { categoria, label, sesionFeedbackId, fecha }
 // — cada racha se asocia al ÚLTIMO feedback de la racha activa actual
 
-export function calcularRachas(feedsConSesAsc) {
+export function calcularRachas(feedsConSesAsc, feedsConSesPlanAsc) {
+  // Si no se pasa feedsConSesPlanAsc, usar el mismo array (compatibilidad)
+  if (!feedsConSesPlanAsc) feedsConSesPlanAsc = feedsConSesAsc
   const rachas = []
 
   // ── SUEÑO ──
@@ -170,10 +173,10 @@ export function calcularRachas(feedsConSesAsc) {
   }
 
   // ── CUMPLIMIENTO ──
-  // Participan feedbacks con completion.status != null
-  // partial/missed cuenta; completed rompe
+  // Usa fechas planificadas (feedsConSesPlanAsc) — el cumplimiento
+  // se refiere a las sesiones prescritas, no a cuándo se hicieron
   {
-    const feedsStatus = feedsConSesAsc.filter(f => f.data?.completion?.status != null)
+    const feedsStatus = feedsConSesPlanAsc.filter(f => f.data?.completion?.status != null)
     let racha = []
     for (const f of feedsStatus) {
       const s = f.data.completion.status
@@ -185,7 +188,7 @@ export function calcularRachas(feedsConSesAsc) {
     }
     if (racha.length >= 2) {
       const last = racha[racha.length - 1]
-      rachas.push({ categoria: CAT.CUMPLIMIENTO, sesionFeedbackId: last.id, fecha: last._fecha, label: `Cumplimiento · ${racha.length} sesiones consecutivas sin completar al 100%` })
+      rachas.push({ categoria: CAT.CUMPLIMIENTO, sesionFeedbackId: last.id, fecha: last._fecha_plan || last._fecha, label: `Cumplimiento · ${racha.length} sesiones consecutivas sin completar al 100%` })
     }
   }
 
@@ -221,16 +224,28 @@ export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaRe
   const feedsEnriquecidos = feedbacks
     .map(fb => {
       const ses = sesMap[fb.sesion_id] || {}
+      // _fecha = fecha real de realización (para RPE, sueño, molestias, etc.)
+      // _fecha_plan = fecha planificada (para cumplimiento/adherencia)
+      const _fecha_plan = ses.fecha || fb.submitted_at?.slice(0, 10) || ''
+      const status = fb.data?.completion?.status
+      const _fecha = (
+        (status === 'completed' || status === 'partial') && ses.completada_el
+          ? ses.completada_el
+          : ses.fecha || fb.submitted_at?.slice(0, 10) || ''
+      )
       return {
         ...fb,
-        _ses:   ses,
-        _fecha: ses.fecha || fb.submitted_at?.slice(0, 10) || '',
+        _ses:        ses,
+        _fecha,
+        _fecha_plan,
       }
     })
     .filter(fb => fb._fecha) // descartar sin fecha
 
-  // Ordenar ASC para cálculo de rachas
+  // Ordenar ASC por fecha real para cálculo de rachas individuales
   const feedsAsc  = [...feedsEnriquecidos].sort((a, b) => a._fecha.localeCompare(b._fecha))
+  // Ordenar ASC por fecha planificada para racha cumplimiento
+  const feedsAscPlan = [...feedsEnriquecidos].sort((a, b) => a._fecha_plan.localeCompare(b._fecha_plan))
   // Ordenar DESC para display
   const feedsDesc = [...feedsEnriquecidos].sort((a, b) => b._fecha.localeCompare(a._fecha))
 
@@ -286,7 +301,7 @@ export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaRe
   // Cada racha se asocia al último feedback de la racha activa (por sesionFeedbackId).
   // Se añade como aspecto adicional al item de sesión que ya existe con ese id.
   // Si no hay item coincidente (caso edge muy improbable), la racha se descarta.
-  const rachas = calcularRachas(feedsAsc)
+  const rachas = calcularRachas(feedsAsc, feedsAscPlan)
   for (const racha of rachas) {
     const isRevisado = revisSet.has(`${racha.sesionFeedbackId}:${racha.categoria}`)
     const itemIdx = items.findIndex(i => i.sesionFeedbackId === racha.sesionFeedbackId)

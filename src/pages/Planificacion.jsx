@@ -1735,7 +1735,13 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 semanasMap={Object.fromEntries(semanasAll.map(s => [s.fecha_inicio_semana, s]))}
                 semanaSeleccionada={semanaSeleccionada}
                 onSemanaClick={info => setSemanaSeleccionada(info ? { semanaCliente: info.semanaCliente, bloqueId: info.bloque?.id, semanaNum: info.semanaNum } : null)}
-                sesiones={sesiones.map(s => ({ ...s, _estadoColor: colorEstado(s) }))}
+                sesiones={sesiones.map(s => {
+                  const estadoEfectivo = s.estado
+                  const esRealizada = estadoEfectivo === 'completada' || estadoEfectivo === 'parcial' || estadoEfectivo === 'realizada'
+                  const _fechaVisual = (esRealizada && s.completada_el) ? s.completada_el : s.fecha
+                  const _prevista = (esRealizada && s.completada_el && s.fecha && s.completada_el !== s.fecha) ? s.fecha : null
+                  return { ...s, _estadoColor: colorEstado(s), _fechaVisual, _prevista }
+                })}
                 feedbacksMap={Object.fromEntries(feedbacks.map(f => [f.sesion_id, f]))}
                 competiciones={competiciones}
                 controles={controles}

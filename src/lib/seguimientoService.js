@@ -24,7 +24,7 @@ export async function cargarSeguimientoCliente(clienteId) {
   // Sesiones del cliente con feedback, últimas 8 semanas
   const { data: sesiones } = await supabase
     .from('sesiones')
-    .select('id, titulo, fecha, duracion_min, cliente_id')
+    .select('id, titulo, fecha, completada_el, duracion_min, cliente_id')
     .eq('cliente_id', clienteId)
     .gte('fecha', desde)
     .not('fecha', 'is', null)
@@ -63,7 +63,7 @@ export async function cargarSeguimientoGlobal(clientes) {
   // Sesiones de todos los clientes
   const { data: sesiones } = await supabase
     .from('sesiones')
-    .select('id, titulo, fecha, duracion_min, cliente_id')
+    .select('id, titulo, fecha, completada_el, duracion_min, cliente_id')
     .in('cliente_id', clienteIds)
     .gte('fecha', desde)
     .not('fecha', 'is', null)
