@@ -1317,6 +1317,7 @@ async function guardarSesion() {
       titulo: sesionOrigen.titulo,
       fecha: fechaDestino,
       objetivo: sesionOrigen.objetivo,
+      notas_entrenador: sesionOrigen.notas_entrenador,
       duracion_min: sesionOrigen.duracion_min,
       material: sesionOrigen.material,
       indicaciones: sesionOrigen.indicaciones,
@@ -1324,6 +1325,14 @@ async function guardarSesion() {
       tipo_editor: sesionOrigen.tipo_editor || 'fuerza',
       con_feedback: sesionOrigen.con_feedback !== false,
       icono: sesionOrigen.icono,
+      funcion_sesion: sesionOrigen.funcion_sesion,
+      capacidades: sesionOrigen.capacidades,
+      objetivos_sesion: sesionOrigen.objetivos_sesion,
+      modalidad: sesionOrigen.modalidad || 'autonoma',
+      lugar: sesionOrigen.lugar,
+      lista: false,            // la copia empieza sin marcar como lista
+      publicada: sesionOrigen.publicada !== false,
+      estado: 'pendiente',     // la copia empieza siempre pendiente
     }).select().single()
     if (errSesion || !nuevaSesion) { alert('Error: ' + (errSesion?.message || errSesion?.code || JSON.stringify(errSesion))); setSaving(false); return }
     // Bloques fuerza
@@ -1376,23 +1385,48 @@ async function guardarSesion() {
   async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
     const { data: nuevaSesion } = await supabase.from('sesiones').insert({
-      cliente_id: s.cliente_id, titulo: s.titulo + ' (copia)', fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
-      objetivo: s.objetivo, duracion_min: s.duracion_min,
+      cliente_id: s.cliente_id,
+      titulo: s.titulo + ' (copia)',
+      fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
+      objetivo: s.objetivo,
+      notas_entrenador: s.notas_entrenador,
+      duracion_min: s.duracion_min,
+      material: s.material,
+      indicaciones: s.indicaciones,
+      tipo_sesion: s.tipo_sesion || 'programada',
+      tipo_editor: s.tipo_editor || 'fuerza',
+      con_feedback: s.con_feedback !== false,
+      icono: s.icono,
+      funcion_sesion: s.funcion_sesion,
+      capacidades: s.capacidades,
+      objetivos_sesion: s.objetivos_sesion,
+      modalidad: s.modalidad || 'autonoma',
+      lugar: s.lugar,
+      lista: false,
+      publicada: s.publicada !== false,
+      estado: 'pendiente',
     }).select().single()
+    if (!nuevaSesion) { setSaving(false); return }
+    // Bloques fuerza
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
       const { data: nb } = await supabase.from('sesion_bloques').insert({
         sesion_id: nuevaSesion.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
       }).select().single()
+      if (!nb) continue
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
       for (const e of ejs || []) {
         await supabase.from('sesion_ejercicios').insert({
           bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas,
           media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
+          variables_activas: e.variables_activas, peso: e.peso, duracion: e.duracion,
+          distancia: e.distancia, altura: e.altura, descanso: e.descanso,
+          ejecucion_tipo: e.ejecucion_tipo, ejecucion_texto: e.ejecucion_texto,
+          peso_der: e.peso_der, peso_izq: e.peso_izq, reps_por_lado: e.reps_por_lado,
         })
       }
     }
-    // Bloques carrera
+    // Bloques carrera (fases y grupos)
     const { data: grupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
     const gruposMap = {}
     for (const g of grupos || []) {
