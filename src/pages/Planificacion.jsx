@@ -525,25 +525,29 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               .in('fecha_inicio_semana', lunes)
           }
 
+          // ORDEN CRÍTICO: primero desplazar los bloques siguientes (de atrás hacia adelante)
+          // para que el trigger anti-solapamiento no rechace ningún UPDATE intermedio.
+          // Luego guardar el bloque extendido (A), que ya no solapa con nadie.
+          if (cascadeExtraSemanas > 0 && modalItem?.id) {
+            const bloquesADesplazar = bloques
+              .filter(b => b.id !== modalItem.id && parseISO(b.fecha_inicio) > parseISO(modalItem.fecha_inicio))
+              .sort((a, x) => parseISO(x.fecha_inicio) - parseISO(a.fecha_inicio)) // DESC: últimos primero
+            for (const b of bloquesADesplazar) {
+              const nuevaFecha = format(addWeeks(parseISO(b.fecha_inicio), cascadeExtraSemanas), 'yyyy-MM-dd')
+              const { error: errCasc } = await supabase.from('bloques').update({ fecha_inicio: nuevaFecha }).eq('id', b.id)
+              if (errCasc) { alert('Error al desplazar bloques: ' + errCasc.message); setSaving(false); return }
+              await asignarSemanasABloque(b.id, nuevaFecha, b.semanas)
+            }
+          }
+
           if (modalItem?.id) {
-            await supabase.from('bloques').update(datos).eq('id', modalItem.id)
+            const { error: errUpd } = await supabase.from('bloques').update(datos).eq('id', modalItem.id)
+            if (errUpd) { alert('Error al guardar el bloque: ' + errUpd.message); setSaving(false); return }
             await asignarSemanasABloque(modalItem.id, formData.fecha_inicio, semanasCalculadas)
           } else {
             const { data: nb } = await supabase.from('bloques').insert(datos).select().single()
             if (nb) {
               await asignarSemanasABloque(nb.id, formData.fecha_inicio, semanasCalculadas)
-            }
-          }
-
-          // Desplazar bloques posteriores si el usuario confirmó cascade
-          if (cascadeExtraSemanas > 0 && modalItem?.id) {
-            const bloquesADesplazar = bloques
-              .filter(b => b.id !== modalItem.id && parseISO(b.fecha_inicio) > parseISO(modalItem.fecha_inicio))
-              .sort((a, x) => parseISO(a.fecha_inicio) - parseISO(x.fecha_inicio))
-            for (const b of bloquesADesplazar) {
-              const nuevaFecha = format(addWeeks(parseISO(b.fecha_inicio), cascadeExtraSemanas), 'yyyy-MM-dd')
-              await supabase.from('bloques').update({ fecha_inicio: nuevaFecha }).eq('id', b.id)
-              await asignarSemanasABloque(b.id, nuevaFecha, b.semanas)
             }
           }
 
