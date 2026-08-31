@@ -319,6 +319,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
                 item={item}
                 expandido={expandidos.has(item.id + '_h')}
                 onToggle={() => toggleExpand(item.id + '_h')}
+                onAccionMolestia={handleAccionMolestia}
               />
             )
           })}
@@ -473,7 +474,7 @@ function AspectoLine({ aspecto, onNavSalud, sesionFeedbackId, onAccionMolestia }
   )
 }
 
-function HistorialLine({ item, expandido, onToggle }) {
+function HistorialLine({ item, expandido, onToggle, onAccionMolestia }) {
   const fechaLabel  = item.fecha ? format(parseISO(item.fecha), 'd MMM', { locale: es }) : '—'
   const badge       = item.status ? STATUS_BADGE[item.status] : null
   const hayAspectos = item.aspectos.length > 0
@@ -501,7 +502,7 @@ function HistorialLine({ item, expandido, onToggle }) {
       </div>
       {expandido && hayAspectos && (
         <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {item.aspectos.map((a, i) => <AspectoLine key={i} aspecto={a} />)}
+          {item.aspectos.map((a, i) => <AspectoLine key={i} aspecto={a} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />)}
         </div>
       )}
     </div>
