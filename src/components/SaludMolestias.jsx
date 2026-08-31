@@ -431,40 +431,40 @@ function SaludHeader({ onNueva }) {
 }
 
 function CardPendiente({ rep, sesionInfo, onVincular, onCrearEpisodio, onDescartar }) {
-  const fechaLabel = rep.fecha ? format(parseISO(rep.fecha), 'd MMM', { locale: es }) : '—'
+  const fechaLabel = rep.fecha ? format(parseISO(rep.fecha), 'd MMM yyyy', { locale: es }) : '—'
+  const sesionFecha = sesionInfo?.sesion_fecha ? format(parseISO(sesionInfo.sesion_fecha), 'd MMM yyyy', { locale: es }) : fechaLabel
   return (
-    <div style={{ border: '1px solid var(--border)', borderLeft: '3px solid #f59e0b', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#b45309', marginBottom: 3 }}>
-            Nueva molestia reportada
-          </div>
-          {sesionInfo && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
-              {sesionInfo.sesion_titulo || 'Sesión'} · {sesionInfo.sesion_fecha ? format(parseISO(sesionInfo.sesion_fecha), 'd MMM yyyy', { locale: es }) : fechaLabel}
-            </div>
-          )}
-          {!sesionInfo && (
-            <div style={{ fontSize: 12, color: 'var(--text3)' }}>{fechaLabel}</div>
-          )}
-          {rep.detalle && (
-            <div style={{ fontSize: 13, color: 'var(--text1)', marginTop: 4, fontStyle: 'italic' }}>
-              "{rep.detalle}"
-            </div>
-          )}
-          {rep.intensidad != null && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
-              Intensidad: {rep.intensidad}/10
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
-            {ORIGEN_LABEL[rep.origen] || rep.origen}
-          </div>
-        </div>
+    <div style={{ border: '1px solid var(--border)', borderLeft: '3px solid #f59e0b', borderRadius: 8, padding: '12px 14px', background: 'var(--surface)' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#b45309', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+        Molestia sin gestionar
       </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }} onClick={onVincular}>Vincular</button>
-        <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onCrearEpisodio}>Crear episodio</button>
+
+      {/* Sesión de origen */}
+      <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: rep.detalle ? 8 : 4 }}>
+        {sesionInfo ? (
+          <><strong>{sesionInfo.sesion_titulo || 'Sesión'}</strong> · {sesionFecha}</>
+        ) : (
+          fechaLabel
+        )}
+        {rep.intensidad != null && (
+          <span style={{ marginLeft: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 8,
+            background: rep.intensidad >= 7 ? '#fee2e2' : rep.intensidad >= 4 ? '#fff3cd' : '#dcfce7',
+            color: rep.intensidad >= 7 ? '#b91c1c' : rep.intensidad >= 4 ? '#92400e' : '#166534' }}>
+            {rep.intensidad}/10
+          </span>
+        )}
+      </div>
+
+      {/* Lo que escribió la clienta */}
+      {rep.detalle && (
+        <div style={{ fontSize: 13, color: 'var(--text1)', fontStyle: 'italic', background: 'var(--bg)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, borderLeft: '2px solid var(--border)' }}>
+          "{rep.detalle}"
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }} onClick={onCrearEpisodio}>+ Abrir como episodio</button>
+        <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onVincular}>Vincular a episodio existente</button>
         <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: 'var(--text3)' }} onClick={onDescartar}>Descartar</button>
       </div>
     </div>
@@ -704,6 +704,18 @@ function ModalFormEpisodio({ titulo, clienteId, inicial = {}, reporteVinculado, 
 
   return (
     <ModalWrapper titulo={titulo} onClose={onClose}>
+
+      {/* Contexto del feedback — solo cuando viene de un reporte de sesión */}
+      {reporteVinculado?.detalle && (
+        <div style={{ marginBottom: 16, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, borderLeft: '3px solid #f59e0b' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#b45309', marginBottom: 4 }}>Lo que escribió la clienta</div>
+          <div style={{ fontSize: 13, color: 'var(--text1)', fontStyle: 'italic' }}>"{reporteVinculado.detalle}"</div>
+          {reporteVinculado.intensidad != null && (
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>Intensidad reportada: {reporteVinculado.intensidad}/10</div>
+          )}
+        </div>
+      )}
+
       <Campo label="Zona *">
         <input className="input" value={form.zona} onChange={e => f('zona', e.target.value)} placeholder="p.ej. Aquiles, Rodilla, Isquio…" />
       </Campo>
@@ -713,14 +725,24 @@ function ModalFormEpisodio({ titulo, clienteId, inicial = {}, reporteVinculado, 
           {LATERALIDAD.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
         </select>
       </Campo>
-      <Campo label="Fecha inicio">
+      <Campo label="Fecha de inicio de la molestia">
         <input className="input" type="date" value={form.fecha_inicio} onChange={e => f('fecha_inicio', e.target.value)} />
       </Campo>
       <Campo label="Intensidad (0–10)">
-        <input className="input" type="number" min="0" max="10" value={form.intensidad} onChange={e => f('intensidad', e.target.value)} placeholder="0–10" style={{ width: 80 }} />
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
+            const on = String(form.intensidad) === String(n)
+            return (
+              <button key={n} type="button" onClick={() => f('intensidad', on ? '' : n)}
+                style={{ width: 34, height: 34, borderRadius: 7, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'var(--accent-light)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                {n}
+              </button>
+            )
+          })}
+        </div>
       </Campo>
-      <Campo label="Detalle">
-        <textarea className="input" rows={2} value={form.detalle} onChange={e => f('detalle', e.target.value)} placeholder="Descripción de la molestia…" style={{ resize: 'vertical' }} />
+      <Campo label="Detalle / notas">
+        <textarea className="input" rows={2} value={form.detalle} onChange={e => f('detalle', e.target.value)} placeholder="Descripción o notas adicionales…" style={{ resize: 'vertical' }} />
       </Campo>
       <Campo label="Diagnóstico (opcional)">
         <input className="input" value={form.diagnostico} onChange={e => f('diagnostico', e.target.value)} placeholder="p.ej. Tendinopatía, sobrecarga…" />
