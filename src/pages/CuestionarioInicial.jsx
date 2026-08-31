@@ -725,7 +725,29 @@ function Step5({ f, set }) {
         ⚕️ La información de este apartado se utiliza únicamente para adaptar el entrenamiento y no sustituye una valoración o diagnóstico médico.
       </div>
 
-      <Q label="¿Tienes actualmente alguna lesión, dolor o molestia?" required>
+      <Q label="¿Hay algún antecedente de salud que debamos conocer para adaptar tu entrenamiento?"
+        hint="Selecciona todo lo que aplique. Si no hay ninguno, selecciona «Ninguno».">
+        <Multi
+          options={ANTECEDENTES_OPTS}
+          selected={f.antecedentes_categorias}
+          onChange={handleAntecedentes}
+          exclusive={['Ninguno']}
+        />
+        {f.antecedentes_categorias.filter(c => c !== 'Ninguno').map(cat => (
+          <div key={cat} style={{ marginTop: 12, padding: '10px 14px', background: '#f8f7f4', borderRadius: 8, border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>{cat}</div>
+            <Textarea
+              value={(f.antecedentes_detalle || {})[ANTECEDENTES_KEY[cat]] || ''}
+              onChange={v => setDetalle(cat, v)}
+              placeholder={ANTECEDENTES_PLACEHOLDER[cat] || ''}
+              rows={2}
+            />
+          </div>
+        ))}
+      </Q>
+
+      <Q label="¿Tienes actualmente alguna lesión, dolor o molestia?" required
+        hint="Solo si lo notas ahora mismo. Las lesiones pasadas van en los antecedentes de arriba.">
         <YesNo selected={f.lesiones_actuales_yn} onChange={s('lesiones_actuales_yn')} />
         {f.lesiones_actuales_yn === 'Sí' && (
           <div style={{ marginTop: 12 }}>
@@ -746,7 +768,7 @@ function Step5({ f, set }) {
                   <div>
                     <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>Zona corporal</div>
                     <Single options={ZONAS} selected={l.zona}
-                      onChange={v => { setLesion(i, 'zona', v); if (v !== OTRO) setLesion(i, 'zona_otro', '') }} />
+                      onChange={v => set('lesiones_actuales', f.lesiones_actuales.map((l2, idx) => idx === i ? { ...l2, zona: v, ...(v !== OTRO ? { zona_otro: '' } : {}) } : l2))} />
                     <Reveal show={l.zona === OTRO}>
                       <Input value={l.zona_otro} onChange={v => setLesion(i, 'zona_otro', v)} placeholder="¿Qué zona?" />
                     </Reveal>
@@ -799,27 +821,6 @@ function Step5({ f, set }) {
         <Reveal show={!!f.tratamiento_actual && f.tratamiento_actual !== 'No'}>
           <Textarea value={f.tratamiento_actual_detalle} onChange={s('tratamiento_actual_detalle')} placeholder="Cuéntanos brevemente (opcional)" rows={2} />
         </Reveal>
-      </Q>
-
-      <Q label="¿Hay algún antecedente de salud que debamos conocer para adaptar tu entrenamiento?"
-        hint="Selecciona todo lo que aplique. Si no hay ninguno, selecciona «Ninguno».">
-        <Multi
-          options={ANTECEDENTES_OPTS}
-          selected={f.antecedentes_categorias}
-          onChange={handleAntecedentes}
-          exclusive={['Ninguno']}
-        />
-        {f.antecedentes_categorias.filter(c => c !== 'Ninguno').map(cat => (
-          <div key={cat} style={{ marginTop: 12, padding: '10px 14px', background: '#f8f7f4', borderRadius: 8, border: `1px solid ${T.border}` }}>
-            <div style={{ fontSize: 12, color: T.text2, marginBottom: 6, fontWeight: 500 }}>{cat}</div>
-            <Textarea
-              value={(f.antecedentes_detalle || {})[ANTECEDENTES_KEY[cat]] || ''}
-              onChange={v => setDetalle(cat, v)}
-              placeholder={ANTECEDENTES_PLACEHOLDER[cat] || ''}
-              rows={2}
-            />
-          </div>
-        ))}
       </Q>
     </>
   )
@@ -1171,10 +1172,16 @@ export default function CuestionarioInicial({ token }) {
 
     await supabase.from('cuestionario_inicial').update(payload).eq('token_publico', token)
 
-    // Actualizar foto_url en clientes si tenemos cliente_id y foto nueva
-    if (foto_url && cuestionario?.cliente_id) {
-      await supabase.from('clientes').update({ foto_url }).eq('id', cuestionario.cliente_id)
+    // Actualizar foto_url en clientes via RPC segura (página pública, no puede escribir clientes directamente)
+    if (foto_url) {
+      await supabase.rpc('actualizar_foto_desde_cuestionario', {
+        p_token_publico: token,
+        p_foto_url: foto_url,
+      })
     }
+
+    // Sincronizar datos del cuestionario a cliente_perfil (solo rellena campos vacíos)
+    await supabase.rpc('sincronizar_perfil_desde_cuestionario', { p_token_publico: token })
 
     setSaving(false)
     setDone(true)
