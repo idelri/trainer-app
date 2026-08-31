@@ -313,8 +313,27 @@ export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaRe
       : status === 'partial' ? 'Completada parcialmente'
       : null
 
-    const categoriasPendientes = aspectos.filter(a => !revisSet.has(`${fb.id}:${a.categoria}`)).map(a => a.categoria)
-    const categoriasRevisadas  = aspectos.filter(a =>  revisSet.has(`${fb.id}:${a.categoria}`)).map(a => a.categoria)
+    // Para molestia, si algún reporte está en estado 'pendiente' se fuerza como
+    // pendiente de revisión aunque ya exista un registro previo en feedback_alertas_revisadas.
+    // Esto cubre el caso de editar un feedback añadiendo más entries tras haber revisado antes.
+    const hayMolestiaPendienteReporte = aspectos.some(
+      a => a.categoria === CAT.MOLESTIA && a.molestiaEstado === 'pendiente'
+    )
+
+    const categoriasPendientes = aspectos.filter(a => {
+      if (revisSet.has(`${fb.id}:${a.categoria}`)) {
+        // Revisada — pero si es molestia con reporte aún pendiente, vuelve a pendiente
+        return a.categoria === CAT.MOLESTIA && hayMolestiaPendienteReporte
+      }
+      return true
+    }).map(a => a.categoria)
+
+    const categoriasRevisadas = aspectos.filter(a => {
+      if (!revisSet.has(`${fb.id}:${a.categoria}`)) return false
+      // Si la molestia tiene reportes pendientes, no se cuenta como revisada
+      if (a.categoria === CAT.MOLESTIA && hayMolestiaPendienteReporte) return false
+      return true
+    }).map(a => a.categoria)
 
     const clienteId = ses.cliente_id
     const clienteNombre = clienteMap[clienteId]?.nombre || null
