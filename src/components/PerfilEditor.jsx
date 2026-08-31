@@ -6,9 +6,7 @@
  *   - cliente_perfil    → resto del perfil vivo y editable
  *   - cliente_objetivos → objetivos con histórico
  *   - competiciones     → competiciones/retos
- *   - cuestionario_inicial → SOLO LECTURA (snapshot)
- *
- * NUNCA escribe en cuestionario_inicial.
+ *   - cuestionario_inicial → lectura + edición admin (via CuestionarioEditorAdmin)
  */
 
 import { useState, useRef } from 'react'
@@ -17,6 +15,7 @@ import SaludMolestias from './SaludMolestias'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ResumenCuestionario, RespuestasCompletas } from './CuestionarioViewer'
+import CuestionarioEditorAdmin from './CuestionarioEditorAdmin'
 import {
   OBJETIVOS, DEPORTES, DEPORTES_SIN_FREQ, FREC_ACT_OPTS, EXP,
   FRECUENCIA, DURACION, PREFERENCIA_ENTRENO, TIPOS_ENTRENO,
@@ -55,6 +54,9 @@ export default function PerfilEditor({
   cueTab, setCueTab,
   abrirNuevaMolestia, onAbrirMolestiaConsumido,
 }) {
+  const [mostrarEditorCue, setMostrarEditorCue] = useState(false)
+  const [cuestionarioLocal, setCuestionarioLocal] = useState(cuestionario)
+
   const objetivoActivo = objetivos.find(o => o.estado === 'activo')
   const historialObjetivos = objetivos.filter(o => o.estado !== 'activo')
 
@@ -119,10 +121,21 @@ export default function PerfilEditor({
 
       {/* 10. Cuestionario inicial */}
       <SecCuestionario
-        cuestionario={cuestionario}
+        cuestionario={cuestionarioLocal}
         verCuestionario={verCuestionario} setVerCuestionario={setVerCuestionario}
         cueTab={cueTab} setCueTab={setCueTab}
+        onEditar={() => setMostrarEditorCue(true)}
       />
+
+      {/* Modal editor cuestionario */}
+      {mostrarEditorCue && (cuestionarioLocal?.submitted_at) && (
+        <CuestionarioEditorAdmin
+          cuestionario={cuestionarioLocal}
+          clienteId={clienteId}
+          onSaved={updated => { setCuestionarioLocal(updated); setMostrarEditorCue(false) }}
+          onClose={() => setMostrarEditorCue(false)}
+        />
+      )}
     </div>
   )
 }
@@ -1273,17 +1286,24 @@ function SecBarreras({ perfil, savePerfil }) {
 // 10. CUESTIONARIO INICIAL
 // ══════════════════════════════════════════════════════════════════════════════
 
-function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cueTab, setCueTab }) {
+function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cueTab, setCueTab, onEditar }) {
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)' }}>10. Cuestionario inicial</span>
-        {cuestionario?.submitted_at && (
-          <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}
-            onClick={() => setVerCuestionario(v => !v)}>
-            {verCuestionario ? 'Ocultar ↑' : 'Ver cuestionario inicial ↓'}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {cuestionario?.submitted_at && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onEditar}>
+              ✏️ Editar cuestionario
+            </button>
+          )}
+          {cuestionario?.submitted_at && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}
+              onClick={() => setVerCuestionario(v => !v)}>
+              {verCuestionario ? 'Ocultar ↑' : 'Ver ↓'}
+            </button>
+          )}
+        </div>
       </div>
 
       {cuestionario?.submitted_at ? (
@@ -1292,7 +1312,6 @@ function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cu
             <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 6, background: 'var(--accent-light)', color: 'var(--accent-text)' }}>
               ✓ Completado el {format(parseISO(cuestionario.submitted_at), 'd MMM yyyy', { locale: es })}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text3)' }}>Solo lectura · No se puede editar</span>
           </div>
           {verCuestionario && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
