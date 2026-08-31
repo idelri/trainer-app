@@ -1305,51 +1305,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
             const preview = comentario?.detalle
             const cats = item.categoriasPendientes
 
-            // Líneas del tooltip expandido
-            const tooltipAspectos = item.aspectos.filter(a => a.detalle)
-
             return (
               <div
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
                 style={{ position:'relative', border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
-
-                {/* Tooltip expandido al hover */}
-                {hovered && (
-                  <div style={{
-                    position:'absolute', right:'calc(100% + 8px)', top:0,
-                    background:'var(--card)', border:'1px solid var(--border)',
-                    borderRadius:10, padding:'10px 12px', width:240,
-                    boxShadow:'0 4px 20px rgba(0,0,0,0.15)',
-                    zIndex:500, pointerEvents:'none',
-                  }}>
-                    <div style={{ fontSize:11,fontWeight:700,color:'var(--text1)',marginBottom:4 }}>
-                      {item.clienteNombre} · {fechaLabel}
-                    </div>
-                    {item.sesionTitulo && (
-                      <div style={{ fontSize:10,color:'var(--text2)',marginBottom:6 }}>{item.sesionTitulo}</div>
-                    )}
-                    {item.statusLabel && (
-                      <div style={{ fontSize:10,color:item.status==='missed'?'#991b1b':'#713f12',marginBottom:4,fontWeight:600 }}>
-                        {item.status==='missed'?'✗ No realizada':'~ Parcial'}
-                      </div>
-                    )}
-                    {tooltipAspectos.map((a, i) => (
-                      <div key={i} style={{ marginBottom:5 }}>
-                        <div style={{ fontSize:9,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.04em' }}>
-                          {CAT_LABEL[a.categoria] || a.categoria}
-                          {a.intensity != null ? ` · ${a.intensity}/10` : ''}
-                        </div>
-                        <div style={{ fontSize:10,color:'var(--text1)',lineHeight:1.4,wordBreak:'break-word' }}>{a.detalle}</div>
-                      </div>
-                    ))}
-                    {tooltipAspectos.length === 0 && (
-                      <div style={{ fontSize:10,color:'var(--text3)' }}>
-                        {[...new Set(cats)].map(c => CAT_LABEL[c]||c).join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Cabecera: cliente + fecha */}
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3 }}>
@@ -1378,9 +1338,10 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     </span>
                   ))}
                 </div>
-                {/* Preview comentario — 1 línea truncada */}
+                {/* Preview comentario — expandible al hover */}
                 {preview && (
-                  <div style={{ fontSize:9,color:'var(--text3)',fontStyle:'italic',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:5 }}>
+                  <div style={{ fontSize:9,color:'var(--text3)',fontStyle:'italic',marginBottom:5,
+                    ...(hovered ? { whiteSpace:'normal' } : { whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }) }}>
                     "{preview}"
                   </div>
                 )}
