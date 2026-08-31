@@ -1293,7 +1293,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
           const ayerStr = fKey(addDays(new Date(), -1))
 
           function FeedItemMotor({ item }) {
-            const [hovered, setHovered] = useState(false)
+            const [selectedCat, setSelectedCat] = useState(null)
             const nombreCorto = (item.clienteNombre || '—').split(' ')[0].toUpperCase()
             const iniciales = (item.clienteNombre || '—').split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase()
             const colores = ['#dc2626','#7c3aed','#059669','#d97706','#2563eb','#0891b2','#6366f1','#db2777','#65a30d']
@@ -1301,15 +1301,19 @@ export default function Agenda({ setPage, setSesionesContext }) {
             const fechaLabel = item.fecha === hoyStr ? 'Hoy' : item.fecha === ayerStr ? 'Ayer'
               : item.fecha ? format(new Date(item.fecha + 'T12:00:00'), 'd MMM', { locale: es }) : ''
             const saving = feedSavingId === item.id
-            const comentario = item.aspectos.find(a => a.categoria === 'comentario')
-            const preview = comentario?.detalle
-            const cats = item.categoriasPendientes
+            const cats = [...new Set(item.categoriasPendientes)]
+
+            // Aspecto seleccionado (o el primero con detalle si ninguno seleccionado)
+            const aspectoSeleccionado = selectedCat
+              ? item.aspectos.find(a => a.categoria === selectedCat)
+              : null
+
+            function toggleCat(c) {
+              setSelectedCat(prev => prev === c ? null : c)
+            }
 
             return (
-              <div
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-                style={{ position:'relative', border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
+              <div style={{ border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
 
                 {/* Cabecera: cliente + fecha */}
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3 }}>
@@ -1319,32 +1323,48 @@ export default function Agenda({ setPage, setSesionesContext }) {
                   </div>
                   <span style={{ fontSize:9,color:'var(--text3)' }}>{fechaLabel}</span>
                 </div>
+
                 {/* Sesión */}
                 {item.sesionTitulo && (
-                  <div style={{ fontSize:10,color:'var(--text2)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:3 }}>{item.sesionTitulo}</div>
+                  <div style={{ fontSize:10,color:'var(--text2)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:4 }}>{item.sesionTitulo}</div>
                 )}
-                {/* Status + categorías en línea */}
-                <div style={{ display:'flex',flexWrap:'wrap',alignItems:'center',gap:4,marginBottom:preview?4:6 }}>
-                  {item.statusLabel && (
-                    <span style={{ fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:6,
-                      background:item.status==='missed'?'#fee2e2':item.status==='partial'?'#fef9c3':'var(--bg2)',
-                      color:item.status==='missed'?'#991b1b':item.status==='partial'?'#713f12':'var(--text3)' }}>
-                      {item.status==='missed'?'✗ No realizada':item.status==='partial'?'~ Parcial':''}
-                    </span>
-                  )}
-                  {[...new Set(cats)].map(c => (
-                    <span key={c} style={{ fontSize:9,color:'var(--text2)',background:'var(--bg2)',padding:'1px 5px',borderRadius:6 }}>
-                      {CAT_LABEL[c] || c}
-                    </span>
-                  ))}
+
+                {/* Status */}
+                {item.statusLabel && (
+                  <span style={{ display:'inline-block',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:6,marginBottom:4,
+                    background:item.status==='missed'?'#fee2e2':'#fef9c3',
+                    color:item.status==='missed'?'#991b1b':'#713f12' }}>
+                    {item.status==='missed'?'✗ No realizada':'~ Parcial'}
+                  </span>
+                )}
+
+                {/* Chips de categoría — clicables */}
+                <div style={{ display:'flex',flexWrap:'wrap',gap:4,marginBottom:6 }}>
+                  {cats.map(c => {
+                    const sel = selectedCat === c
+                    const tieneDetalle = item.aspectos.some(a => a.categoria === c && a.detalle)
+                    return (
+                      <button key={c} type="button" onClick={() => tieneDetalle && toggleCat(c)}
+                        style={{ fontSize:9,padding:'2px 6px',borderRadius:6,border:`1px solid ${sel?'#15803d':'var(--border)'}`,
+                          background:sel?'#f0fdf4':'var(--bg2)',color:sel?'#15803d':'var(--text2)',
+                          cursor:tieneDetalle?'pointer':'default',fontWeight:sel?700:400,fontFamily:'inherit' }}>
+                        {CAT_LABEL[c] || c}
+                        {tieneDetalle && <span style={{ marginLeft:3,opacity:0.6 }}>{sel?'▲':'▼'}</span>}
+                      </button>
+                    )
+                  })}
                 </div>
-                {/* Preview comentario — expandible al hover */}
-                {preview && (
-                  <div style={{ fontSize:9,color:'var(--text3)',fontStyle:'italic',marginBottom:5,
-                    ...(hovered ? { whiteSpace:'normal' } : { whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }) }}>
-                    "{preview}"
+
+                {/* Detalle del aspecto seleccionado */}
+                {aspectoSeleccionado?.detalle && (
+                  <div style={{ fontSize:9,color:'var(--text2)',background:'var(--bg)',borderRadius:6,padding:'6px 8px',marginBottom:6,lineHeight:1.5,wordBreak:'break-word',fontStyle:aspectoSeleccionado.categoria==='comentario'?'italic':'normal' }}>
+                    {aspectoSeleccionado.intensity != null && (
+                      <span style={{ fontWeight:700,color:'var(--text1)',marginRight:6 }}>{aspectoSeleccionado.intensity}/10</span>
+                    )}
+                    {aspectoSeleccionado.detalle}
                   </div>
                 )}
+
                 {/* Acción */}
                 <button
                   onClick={() => handleRevisarFeed(item, item.clienteId)}
