@@ -736,6 +736,7 @@ function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
     zona:          ep.zona          || '',
     lateralidad:   ep.lateralidad   || '',
     fecha_inicio:  ep.fecha_inicio  || HOY(),
+    intensidad:    ep.intensidad    ?? '',
     diagnostico:   ep.diagnostico   || '',
     limitaciones:  ep.limitaciones  || '',
     observaciones: ep.observaciones || '',
@@ -752,6 +753,7 @@ function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
         zona:          form.zona.trim(),
         lateralidad:   form.lateralidad || null,
         fecha_inicio:  form.fecha_inicio,
+        intensidad:    form.intensidad !== '' ? parseInt(form.intensidad, 10) : null,
         diagnostico:   form.diagnostico.trim() || null,
         limitaciones:  form.limitaciones.trim() || null,
         observaciones: form.observaciones.trim() || null,
@@ -777,6 +779,21 @@ function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
       </Campo>
       <Campo label="Fecha de inicio">
         <input className="input" type="date" value={form.fecha_inicio} onChange={e => f('fecha_inicio', e.target.value)} />
+      </Campo>
+      <Campo label="Intensidad actual (0–10)">
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
+            const on = String(form.intensidad) === String(n)
+            return (
+              <button key={n} type="button"
+                onClick={() => f('intensidad', on ? '' : n)}
+                style={{ width: 34, height: 34, borderRadius: 7, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'var(--accent-light)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                {n}
+              </button>
+            )
+          })}
+        </div>
+        {form.intensidad === '' && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Sin seleccionar — se dejará vacío</div>}
       </Campo>
       <Campo label="Diagnóstico">
         <input className="input" value={form.diagnostico} onChange={e => f('diagnostico', e.target.value)} placeholder="Dejar vacío para quitar el diagnóstico" />
