@@ -37,7 +37,7 @@ export async function cargarSeguimientoCliente(clienteId) {
   const [fbRes, revisRes, molRes, notasRes] = await Promise.all([
     supabase.from('sesion_feedback').select('id, sesion_id, data, submitted_at').in('sesion_id', sesIds),
     supabase.from('feedback_alertas_revisadas').select('sesion_feedback_id, categoria').eq('cliente_id', clienteId),
-    supabase.from('molestia_reportes').select('id, sesion_feedback_id, estado, episodio_id, intensidad, detalle').eq('cliente_id', clienteId).not('sesion_feedback_id', 'is', null),
+    supabase.from('molestia_reportes').select('id, sesion_feedback_id, pain_entry_id, estado, episodio_id, intensidad, detalle').eq('cliente_id', clienteId).not('sesion_feedback_id', 'is', null),
     supabase.from('sesion_notas').select('id, fecha, texto, categoria, visibilidad, created_at').eq('cliente_id', clienteId).order('fecha', { ascending: false }),
   ])
 
@@ -76,7 +76,7 @@ export async function cargarSeguimientoGlobal(clientes) {
   const [fbRes, revisRes, molRes] = await Promise.all([
     supabase.from('sesion_feedback').select('id, sesion_id, data, submitted_at').in('sesion_id', sesIds),
     supabase.from('feedback_alertas_revisadas').select('sesion_feedback_id, categoria').in('cliente_id', clienteIds),
-    supabase.from('molestia_reportes').select('id, sesion_feedback_id, estado, episodio_id, intensidad, detalle').in('cliente_id', clienteIds).not('sesion_feedback_id', 'is', null),
+    supabase.from('molestia_reportes').select('id, sesion_feedback_id, pain_entry_id, estado, episodio_id, intensidad, detalle').in('cliente_id', clienteIds).not('sesion_feedback_id', 'is', null),
   ])
 
   return {

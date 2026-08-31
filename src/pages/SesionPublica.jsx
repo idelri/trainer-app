@@ -65,14 +65,23 @@ function FeedbackResumen({ data, submittedAt, onEditar }) {
         {d.duration?.minutes && <Row label="Duración real" value={`${d.duration.minutes} min`} />}
         {reasons.length > 0 && <Row label={status === 'partial' ? 'Por qué no completó al 100%' : 'Por qué no la realizó'} value={reasons.join(', ')} />}
         {d.completion?.partialDetails && <Row label="Detalle / parte no realizada" value={d.completion.partialDetails} />}
-        {/* Molestia — formato dual (nuevo: hasPain+intensity+details; legado: mainPainDetails / additionalPain) */}
-        {d.pain?.hasPain === true && (
-          <Row
-            label={`Molestia reportada${d.pain.intensity != null ? ` · ${d.pain.intensity}/10` : ''}`}
-            value={d.pain.details || '—'}
-          />
-        )}
-        {/* Legado: solo mostrar si no hay el nuevo formato */}
+        {/* Molestia — multi-entry (nuevo), single-entry y legado */}
+        {d.pain?.hasPain === true && Array.isArray(d.pain?.entries) && d.pain.entries.length > 0
+          ? d.pain.entries.map((e, i) => (
+              <Row
+                key={e.id ?? i}
+                label={`Molestia${d.pain.entries.length > 1 ? ` ${i + 1}` : ''}${e.intensity != null ? ` · ${e.intensity}/10` : ''}`}
+                value={e.details || '—'}
+              />
+            ))
+          : d.pain?.hasPain === true
+            ? <Row
+                label={`Molestia reportada${d.pain.intensity != null ? ` · ${d.pain.intensity}/10` : ''}`}
+                value={d.pain.details || '—'}
+              />
+            : null
+        }
+        {/* Legado: solo si no hay formato nuevo */}
         {d.pain?.hasPain !== true && d.pain?.mainPainDetails && (
           <Row label="Molestia principal" value={d.pain.mainPainDetails} />
         )}

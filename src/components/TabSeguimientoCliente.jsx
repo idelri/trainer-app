@@ -383,17 +383,35 @@ function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud, on
           {badge && <span style={{ fontSize: 10.5, fontWeight: 600, padding: '1px 7px', borderRadius: 8, background: badge.bg, color: badge.color }}>{badge.txt}</span>}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
-          {nAspectos} {nAspectos === 1 ? 'aspecto' : 'aspectos'} a revisar · {item.categoriasPendientes.map(c => CAT_LABEL[c] || c).join(', ')}
+          {nAspectos} {nAspectos === 1 ? 'aspecto' : 'aspectos'} a revisar · {[...new Set(item.categoriasPendientes)].map(c => {
+            if (c === CAT.MOLESTIA) {
+              const n = item.categoriasPendientes.filter(x => x === CAT.MOLESTIA).length
+              return n > 1 ? `Molestias · ${n}` : 'Molestia'
+            }
+            return CAT_LABEL[c] || c
+          }).join(', ')}
         </div>
 
         {/* Aspectos (expandibles) */}
-        {expandido && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-            {item.aspectos.map((a, i) => (
-              <AspectoLine key={i} aspecto={a} onNavSalud={onNavSalud} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />
-            ))}
-          </div>
-        )}
+        {expandido && (() => {
+          const molestias = item.aspectos.filter(a => a.categoria === CAT.MOLESTIA)
+          const resto = item.aspectos.filter(a => a.categoria !== CAT.MOLESTIA)
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+              {molestias.length > 1 && (
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                  Molestias · {molestias.length}
+                </div>
+              )}
+              {molestias.map((a, i) => (
+                <AspectoLine key={a.painEntryId ?? `m${i}`} aspecto={a} onNavSalud={onNavSalud} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />
+              ))}
+              {resto.map((a, i) => (
+                <AspectoLine key={i} aspecto={a} onNavSalud={onNavSalud} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />
+              ))}
+            </div>
+          )
+        })()}
 
         <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onToggle}>
@@ -492,7 +510,13 @@ function HistorialLine({ item, expandido, onToggle, onAccionMolestia }) {
         )}
         {hayAspectos && (
           <span style={{ fontSize: 11, color: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} onClick={onToggle}>
-            {item.aspectos.map(a => CAT_LABEL[a.categoria] || a.categoria).join(' · ')} {expandido ? '↑' : '↓'}
+            {[...new Set(item.aspectos.map(a => a.categoria))].map(c => {
+              if (c === CAT.MOLESTIA) {
+                const n = item.aspectos.filter(a => a.categoria === CAT.MOLESTIA).length
+                return n > 1 ? `Molestias · ${n}` : 'Molestia'
+              }
+              return CAT_LABEL[c] || c
+            }).join(' · ')} {expandido ? '↑' : '↓'}
           </span>
         )}
         {/* Estado semántico correcto */}
@@ -500,11 +524,21 @@ function HistorialLine({ item, expandido, onToggle, onAccionMolestia }) {
         {isPendiente  && <span style={{ fontSize: 11, color: '#d97706',      marginLeft: 'auto', flexShrink: 0 }}>● Pendiente</span>}
         {isRevisado   && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 'auto', flexShrink: 0 }}>✓ Revisado</span>}
       </div>
-      {expandido && hayAspectos && (
-        <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {item.aspectos.map((a, i) => <AspectoLine key={i} aspecto={a} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />)}
-        </div>
-      )}
+      {expandido && hayAspectos && (() => {
+        const molestias = item.aspectos.filter(a => a.categoria === CAT.MOLESTIA)
+        const resto = item.aspectos.filter(a => a.categoria !== CAT.MOLESTIA)
+        return (
+          <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {molestias.length > 1 && (
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Molestias · {molestias.length}
+              </div>
+            )}
+            {molestias.map((a, i) => <AspectoLine key={a.painEntryId ?? `m${i}`} aspecto={a} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />)}
+            {resto.map((a, i) => <AspectoLine key={i} aspecto={a} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />)}
+          </div>
+        )
+      })()}
     </div>
   )
 }

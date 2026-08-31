@@ -68,31 +68,34 @@ export function calcularAspectosIndividuales(fb, ses) {
     aspectos.push({ categoria: CAT.RPE, label: `RPE alto · ${d.rpe.value}/10`, detalle: null })
   }
 
-  // Molestia — formato dual:
-  //   Nuevo: pain.hasPain (bool) + pain.intensity (number) + pain.details (string)
-  //   Legado: pain.mainPainDetails / pain.additionalPain + pain.additionalPainDetails
+  // Molestia — soporta todos los formatos:
+  //   Multi-entry: pain.hasPain + pain.entries [{id, intensity, details}]
+  //   Single nuevo: pain.hasPain + pain.intensity + pain.details
+  //   Legado A: pain.mainPainDetails
+  //   Legado B: pain.additionalPain + pain.additionalPainDetails
   const p = d.pain
-  const painDetected = (() => {
-    if (!p) return null
-    // Formato nuevo
-    if (typeof p.hasPain === 'boolean' && p.hasPain) {
-      const detalle = p.details?.trim() || ''
+  if (p) {
+    // Multi-entry (formato nuevo canónico)
+    if (typeof p.hasPain === 'boolean' && p.hasPain && Array.isArray(p.entries) && p.entries.length > 0) {
+      for (const e of p.entries) {
+        const detalle = e.details?.trim() || null
+        const intensity = typeof e.intensity === 'number' ? e.intensity : null
+        const label = intensity != null ? `Molestia · ${intensity}/10` : 'Molestia'
+        aspectos.push({ categoria: CAT.MOLESTIA, label, detalle, intensity, painEntryId: e.id ?? null })
+      }
+    } else if (typeof p.hasPain === 'boolean' && p.hasPain) {
+      // Single nuevo (hasPain + intensity + details, sin entries array)
+      const detalle = p.details?.trim() || null
       const intensity = typeof p.intensity === 'number' ? p.intensity : null
       const label = intensity != null ? `Molestia · ${intensity}/10` : 'Molestia'
-      return { label, detalle: detalle || null, intensity }
+      aspectos.push({ categoria: CAT.MOLESTIA, label, detalle, intensity, painEntryId: null })
+    } else if (p.mainPainDetails?.trim()) {
+      // Legado A
+      aspectos.push({ categoria: CAT.MOLESTIA, label: 'Molestia', detalle: p.mainPainDetails.trim(), intensity: null, painEntryId: null })
+    } else if (p.additionalPain && p.additionalPainDetails?.trim()) {
+      // Legado B
+      aspectos.push({ categoria: CAT.MOLESTIA, label: 'Molestia', detalle: p.additionalPainDetails.trim(), intensity: null, painEntryId: null })
     }
-    // Formato legado A: mainPainDetails (Ruta A old)
-    if (p.hasPain && p.mainPainDetails?.trim()) {
-      return { label: 'Molestia', detalle: p.mainPainDetails.trim(), intensity: null }
-    }
-    // Formato legado B: additionalPain (Ruta B old)
-    if (p.additionalPain && p.additionalPainDetails?.trim()) {
-      return { label: 'Molestia', detalle: p.additionalPainDetails.trim(), intensity: null }
-    }
-    return null
-  })()
-  if (painDetected) {
-    aspectos.push({ categoria: CAT.MOLESTIA, label: painDetected.label, detalle: painDetected.detalle, intensity: painDetected.intensity })
   }
 
   // Técnica
@@ -234,9 +237,13 @@ export function calcularRachas(feedsConSesAsc, feedsConSesPlanAsc) {
 export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaReps = [], clienteMap = {} }) {
   const sesMap  = Object.fromEntries(sesiones.map(s => [s.id, s]))
   const revisSet = new Set(revisadas.map(r => `${r.sesion_feedback_id}:${r.categoria}`))
-  const molMap  = {}
+  // molMap: { sesion_feedback_id → Map<pain_entry_id|'__legacy__', reporte> }
+  const molMap = {}
   for (const r of molestiaReps) {
-    if (r.sesion_feedback_id) molMap[r.sesion_feedback_id] = r
+    if (!r.sesion_feedback_id) continue
+    if (!molMap[r.sesion_feedback_id]) molMap[r.sesion_feedback_id] = new Map()
+    const key = r.pain_entry_id ?? '__legacy__'
+    molMap[r.sesion_feedback_id].set(key, r)
   }
 
   // Enriquecer feedbacks con fecha de sesión y referencia a sesión
@@ -278,20 +285,24 @@ export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaRe
 
     const aspectos = calcularAspectosIndividuales(fb, ses)
 
-    // Enriquecer molestia con datos del reporte real si existe
-    const molIdx = aspectos.findIndex(a => a.categoria === CAT.MOLESTIA)
-    if (molIdx >= 0 && molMap[fb.id]) {
-      const rep = molMap[fb.id]
-      aspectos[molIdx].molestiaReporteId = rep.id
-      aspectos[molIdx].molestiaEstado    = rep.estado   // 'pendiente'|'vinculado'|'descartado'
-      aspectos[molIdx].molestiaEpisodio  = rep.episodio_id
-      // Usar intensidad y detalle del reporte (puede diferir del feedback si editado)
-      if (aspectos[molIdx].intensity == null && rep.intensidad != null) {
-        aspectos[molIdx].intensity = rep.intensidad
-        aspectos[molIdx].label = `Molestia · ${rep.intensidad}/10`
-      }
-      if (!aspectos[molIdx].detalle && rep.detalle) {
-        aspectos[molIdx].detalle = rep.detalle
+    // Enriquecer cada aspecto de molestia con su reporte real si existe
+    const feedMolMap = molMap[fb.id]  // Map<pain_entry_id|'__legacy__', reporte> | undefined
+    if (feedMolMap) {
+      for (const aspecto of aspectos) {
+        if (aspecto.categoria !== CAT.MOLESTIA) continue
+        const key = aspecto.painEntryId ?? '__legacy__'
+        const rep = feedMolMap.get(key)
+        if (!rep) continue
+        aspecto.molestiaReporteId = rep.id
+        aspecto.molestiaEstado    = rep.estado
+        aspecto.molestiaEpisodio  = rep.episodio_id
+        if (aspecto.intensity == null && rep.intensidad != null) {
+          aspecto.intensity = rep.intensidad
+          aspecto.label = `Molestia · ${rep.intensidad}/10`
+        }
+        if (!aspecto.detalle && rep.detalle) {
+          aspecto.detalle = rep.detalle
+        }
       }
     }
 

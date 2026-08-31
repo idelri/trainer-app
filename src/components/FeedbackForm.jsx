@@ -10,15 +10,14 @@ const RPE_LABELS = ['Nada de esfuerzo', 'Muy, muy suave', 'Muy suave', 'Suave', 
 const TQR_ANCHORS = { 0: 'Nada recuperado/a', 3: 'Poco recuperado/a', 5: 'Moderadamente recuperado/a', 7: 'Bastante recuperado/a', 10: 'Totalmente recuperado/a' }
 const SUENO_LABELS = ['Muy mal', 'Mal', 'Regular', 'Bien', 'Muy bien']
 
-// ── Estructura canónica nueva ──────────────────────────────────────────────────
-// pain.hasPain      null = no respondido | false = No | true = Sí
-// pain.intensity    number 0–10 | null
-// pain.details      string (texto libre)
+// ── Estructura canónica ────────────────────────────────────────────────────────
+// pain.hasPain   null = no respondido | false = No | true = Sí
+// pain.entries   [{ id: uuid|null, intensity: 0-10, details: string }]
+//   id=null → entry heredada de formato antiguo (sin UUID asignado)
+//   id=uuid → entry nueva creada en este formulario (crypto.randomUUID())
 //
-// Campos legados (conservados para compatibilidad al leer feedbacks históricos,
-// pero ya NO escritos por este formulario):
-//   mainPainDetails, mainPainRelatedToIncompleteSession,
-//   additionalPain, additionalPainLevel, additionalPainDetails
+// Campos legados preservados para leer feedbacks históricos pero nunca escritos
+// de nuevo por este formulario.
 
 function emptyFeedback() {
   return {
@@ -28,9 +27,8 @@ function emptyFeedback() {
     rpe:        { value: null },
     duration:   { minutes: null },
     pain: {
-      hasPain:   null,   // null | false | true
-      intensity: null,   // number 0-10 | null
-      details:   '',     // texto libre
+      hasPain: null,    // null | false | true
+      entries: [],      // [{ id, intensity, details }]
     },
     technical:  { hasDifficulty: false, mainTechnicalDetails: '', mainTechnicalRelatedToIncompleteSession: false, additionalTechnicalDifficulty: false, additionalTechnicalDetails: '' },
     equipment:  { missingEquipment: false, details: '' },
@@ -41,25 +39,89 @@ function emptyFeedback() {
   }
 }
 
-// Hidrata feedbacks históricos al nuevo formato
+// Hidrata cualquier formato histórico al nuevo formato con entries
 function hydratePain(raw) {
   const p = raw || {}
-  return {
-    // Campos nuevos canónicos
-    hasPain:   typeof p.hasPain === 'boolean' ? p.hasPain
-               : (p.additionalPain === true ? true : null),
-    intensity: p.intensity ?? null,       // no convertir string cualitativo → número
-    details:   p.details?.trim()
-               || p.mainPainDetails?.trim()
-               || p.additionalPainDetails?.trim()
-               || '',
-    // Conservar campos legados para que sigan siendo legibles externamente
-    mainPainDetails:                      p.mainPainDetails ?? '',
-    mainPainRelatedToIncompleteSession:   p.mainPainRelatedToIncompleteSession ?? false,
-    additionalPain:                       p.additionalPain ?? false,
-    additionalPainLevel:                  p.additionalPainLevel ?? null,
-    additionalPainDetails:                p.additionalPainDetails ?? '',
+
+  // Formato nuevo multi-entry
+  if (Array.isArray(p.entries) && p.entries.length > 0) {
+    return {
+      hasPain: p.hasPain ?? true,
+      entries: p.entries.map(e => ({
+        id:        e.id   ?? null,
+        intensity: e.intensity ?? null,
+        details:   e.details?.trim() ?? '',
+      })),
+      // Conservar legacy por si coexisten
+      mainPainDetails:                    p.mainPainDetails ?? '',
+      mainPainRelatedToIncompleteSession: p.mainPainRelatedToIncompleteSession ?? false,
+      additionalPain:                     p.additionalPain ?? false,
+      additionalPainLevel:                p.additionalPainLevel ?? null,
+      additionalPainDetails:              p.additionalPainDetails ?? '',
+    }
   }
+
+  // Formato nuevo single (hasPain + intensity + details, sin entries)
+  if (typeof p.hasPain === 'boolean') {
+    const entries = p.hasPain ? [{
+      id:        null,    // heredado del formato anterior — sin UUID
+      intensity: p.intensity ?? null,
+      details:   p.details?.trim() || p.mainPainDetails?.trim() || '',
+    }] : []
+    return {
+      hasPain: p.hasPain,
+      entries,
+      mainPainDetails:                    p.mainPainDetails ?? '',
+      mainPainRelatedToIncompleteSession: p.mainPainRelatedToIncompleteSession ?? false,
+      additionalPain:                     p.additionalPain ?? false,
+      additionalPainLevel:                p.additionalPainLevel ?? null,
+      additionalPainDetails:              p.additionalPainDetails ?? '',
+    }
+  }
+
+  // Formato legado A: mainPainDetails
+  if (p.mainPainDetails?.trim()) {
+    return {
+      hasPain: true,
+      entries: [{ id: null, intensity: null, details: p.mainPainDetails.trim() }],
+      mainPainDetails: p.mainPainDetails,
+      mainPainRelatedToIncompleteSession: p.mainPainRelatedToIncompleteSession ?? false,
+      additionalPain: p.additionalPain ?? false,
+      additionalPainLevel: p.additionalPainLevel ?? null,
+      additionalPainDetails: p.additionalPainDetails ?? '',
+    }
+  }
+
+  // Formato legado B: additionalPain
+  if (p.additionalPain === true) {
+    return {
+      hasPain: true,
+      entries: [{ id: null, intensity: null, details: p.additionalPainDetails?.trim() || '' }],
+      mainPainDetails: p.mainPainDetails ?? '',
+      mainPainRelatedToIncompleteSession: p.mainPainRelatedToIncompleteSession ?? false,
+      additionalPain: true,
+      additionalPainLevel: p.additionalPainLevel ?? null,
+      additionalPainDetails: p.additionalPainDetails ?? '',
+    }
+  }
+
+  // Sin dolor o sin respuesta
+  return {
+    hasPain: typeof p.hasPain === 'boolean' ? p.hasPain : null,
+    entries: [],
+    mainPainDetails: p.mainPainDetails ?? '',
+    mainPainRelatedToIncompleteSession: p.mainPainRelatedToIncompleteSession ?? false,
+    additionalPain: p.additionalPain ?? false,
+    additionalPainLevel: p.additionalPainLevel ?? null,
+    additionalPainDetails: p.additionalPainDetails ?? '',
+  }
+}
+
+function newEntry() {
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return { id, intensity: null, details: '' }
 }
 
 // ── Átomo UI ──────────────────────────────────────────────────────────────────
@@ -114,7 +176,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
     // Cuando seleccionan "Molestia o dolor" como motivo y el bloque de
     // molestia aún no tiene respuesta → pre-seleccionar Sí
     if (r === 'Molestia o dolor' && !teniamos && fb.pain.hasPain === null) {
-      set('pain.hasPain', true)
+      setFb(f => ({ ...f, pain: { ...f.pain, hasPain: true, entries: f.pain.entries.length > 0 ? f.pain.entries : [newEntry()] } }))
     }
   }
 
@@ -136,9 +198,14 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
       if (!fb.duration.minutes) return false
     }
     if (hayIncoherencia) return false
-    // Si marcó hasPain=true, tanto intensidad como detalle son obligatorios
-    if (fb.pain.hasPain === true && fb.pain.intensity == null) return false
-    if (fb.pain.hasPain === true && !fb.pain.details?.trim()) return false
+    // Si marcó hasPain=true: debe haber al menos una entry, y cada entry necesita intensidad + detalle
+    if (fb.pain.hasPain === true) {
+      if (fb.pain.entries.length === 0) return false
+      for (const e of fb.pain.entries) {
+        if (e.intensity == null) return false
+        if (!e.details?.trim()) return false
+      }
+    }
     return true
   }
 
@@ -304,7 +371,14 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
           </OptionBtn>
           <OptionBtn
             active={fb.pain.hasPain === true}
-            onClick={() => set('pain.hasPain', true)}>
+            onClick={() => setFb(f => ({
+              ...f,
+              pain: {
+                ...f.pain,
+                hasPain: true,
+                entries: f.pain.entries.length > 0 ? f.pain.entries : [newEntry()],
+              }
+            }))}>
             Sí
           </OptionBtn>
 
@@ -315,34 +389,65 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
             </p>
           )}
 
-          {/* Detalle de molestia */}
+          {/* Entries de molestia */}
           {fb.pain.hasPain === true && (
             <div style={{ marginTop: 12 }}>
-              {/* Intensidad 0–10 */}
-              <p style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, margin: '0 0 8px' }}>¿Qué intensidad tuvo?</p>
-              <p style={{ fontSize: 11.5, color: T.ink3, margin: '-4px 0 10px' }}>0 = sin molestia · 10 = máxima intensidad</p>
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 16 }}>
-                {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
-                  const sel = fb.pain.intensity === n
-                  return (
-                    <button key={n} type="button" onClick={() => set('pain.intensity', sel ? null : n)}
-                      style={{ width: 36, height: 36, borderRadius: 9, border: `1.5px solid ${sel ? T.accent : T.line}`, background: sel ? T.accent + '18' : T.card, color: sel ? T.accent : T.ink2, fontSize: 13, fontWeight: sel ? 700 : 400, cursor: 'pointer' }}>
-                      {n}
-                    </button>
-                  )
-                })}
-              </div>
-              {fb.pain.hasPain === true && fb.pain.intensity == null && (
-                <p style={{ fontSize: 12, color: T.accent, marginBottom: 8 }}>Elige una intensidad para continuar.</p>
-              )}
+              {fb.pain.entries.map((entry, idx) => (
+                <div key={entry.id ?? `legacy-${idx}`} style={{ background: T.paper, borderRadius: 12, padding: '12px 14px', marginBottom: 10, position: 'relative' }}>
+                  {/* Cabecera de la entry */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
+                      {fb.pain.entries.length > 1 ? `Molestia ${idx + 1}` : 'Detalla la molestia'}
+                    </span>
+                    {fb.pain.entries.length > 1 && (
+                      <button type="button" onClick={() => {
+                        const next = fb.pain.entries.filter((_, i) => i !== idx)
+                        setFb(f => ({ ...f, pain: { ...f.pain, entries: next } }))
+                      }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: T.ink3, lineHeight: 1, padding: '0 4px' }}>×</button>
+                    )}
+                  </div>
 
-              {/* Detalle */}
-              <p style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, margin: '0 0 8px' }}>¿Qué notaste y dónde?</p>
-              <TextArea
-                value={fb.pain.details}
-                onChange={v => set('pain.details', v)}
-                placeholder="Ej: molestia en Aquiles derecho al correr, tensión en zona lumbar durante las planchas..."
-              />
+                  {/* Intensidad */}
+                  <p style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, margin: '0 0 6px' }}>Intensidad <span style={{ fontWeight: 400, color: T.ink3 }}>0 = mínima · 10 = máxima</span></p>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
+                      const sel = entry.intensity === n
+                      return (
+                        <button key={n} type="button" onClick={() => {
+                          const next = fb.pain.entries.map((e, i) => i === idx ? { ...e, intensity: sel ? null : n } : e)
+                          setFb(f => ({ ...f, pain: { ...f.pain, entries: next } }))
+                        }} style={{ width: 34, height: 34, borderRadius: 8, border: `1.5px solid ${sel ? T.accent : T.line}`, background: sel ? T.accent + '18' : T.card, color: sel ? T.accent : T.ink2, fontSize: 13, fontWeight: sel ? 700 : 400, cursor: 'pointer' }}>
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {entry.intensity == null && (
+                    <p style={{ fontSize: 11.5, color: T.accent, marginBottom: 8 }}>Elige una intensidad para continuar.</p>
+                  )}
+
+                  {/* Detalle */}
+                  <p style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, margin: '0 0 6px' }}>¿Qué notaste y dónde?</p>
+                  <TextArea
+                    value={entry.details}
+                    onChange={v => {
+                      const next = fb.pain.entries.map((e, i) => i === idx ? { ...e, details: v } : e)
+                      setFb(f => ({ ...f, pain: { ...f.pain, entries: next } }))
+                    }}
+                    placeholder="Ej: molestia en Aquiles derecho al correr, tensión en zona lumbar..."
+                  />
+                  {!entry.details?.trim() && (
+                    <p style={{ fontSize: 11.5, color: T.accent, marginTop: 4 }}>Describe la molestia para continuar.</p>
+                  )}
+                </div>
+              ))}
+
+              {/* Botón añadir otra molestia */}
+              <button type="button"
+                onClick={() => setFb(f => ({ ...f, pain: { ...f.pain, entries: [...f.pain.entries, newEntry()] } }))}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: `1.5px dashed ${T.line}`, background: 'transparent', color: T.ink2, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Añadir otra molestia
+              </button>
             </div>
           )}
         </Section>
