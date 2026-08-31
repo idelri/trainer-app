@@ -64,7 +64,7 @@ export default function SaludMolestias({
   const [loading,   setLoading]   = useState(true)
   const [syncing,   setSyncing]   = useState(false)
 
-  // modal: null | { tipo: 'nueva'|'resolver'|'vincular'|'crearDesde'|'cuestionario'|'ver', data }
+  // modal: null | { tipo: 'nueva'|'resolver'|'vincular'|'crearDesde'|'cuestionario'|'editar', data }
   const [modal, setModal] = useState(null)
   const [expandidos, setExpandidos] = useState(new Set())
 
@@ -292,6 +292,7 @@ export default function SaludMolestias({
                 expandido={expandidos.has(ep.id)}
                 onToggle={() => toggleExpandido(ep.id)}
                 onResolver={() => setModal({ tipo: 'resolver', data: { ep } })}
+                onEditar={() => setModal({ tipo: 'editar', data: { ep } })}
                 sesionMap={sesionMap}
               />
             ))}
@@ -314,6 +315,7 @@ export default function SaludMolestias({
                 expandido={expandidos.has(ep.id)}
                 onToggle={() => toggleExpandido(ep.id)}
                 onReabrir={() => reabrirEpisodio(ep)}
+                onEditar={() => setModal({ tipo: 'editar', data: { ep } })}
               />
             ))}
           </div>
@@ -379,6 +381,17 @@ export default function SaludMolestias({
           reporteVinculado={modal.data.rep}
           inicial={{ detalle: modal.data.rep.detalle, fecha_inicio: modal.data.rep.fecha }}
           onGuardar={cargar}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal?.tipo === 'editar' && (
+        <ModalEditarEpisodio
+          episodio={modal.data.ep}
+          onGuardar={ep => {
+            setEpisodios(prev => prev.map(e => e.id === ep.id ? ep : e))
+            setModal(null)
+          }}
           onClose={() => setModal(null)}
         />
       )}
@@ -458,7 +471,7 @@ function CardPendiente({ rep, sesionInfo, onVincular, onCrearEpisodio, onDescart
   )
 }
 
-function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, sesionMap }) {
+function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, onEditar, sesionMap }) {
   const ultimoRep = reps.length ? reps[reps.length - 1] : null
   const fechaInicio = ep.fecha_inicio ? format(parseISO(ep.fecha_inicio), 'd MMM yyyy', { locale: es }) : '—'
 
@@ -491,6 +504,7 @@ function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, sesionMap }) 
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onToggle}>
             {expandido ? 'Ocultar evolución ↑' : 'Ver evolución ↓'}
           </button>
+          <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onEditar}>Editar</button>
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onResolver}>Resolver</button>
         </div>
       </div>
@@ -514,7 +528,7 @@ function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, sesionMap }) 
   )
 }
 
-function CardEpisodioResuelto({ ep, reps, expandido, onToggle, onReabrir }) {
+function CardEpisodioResuelto({ ep, reps, expandido, onToggle, onReabrir, onEditar }) {
   const fechaRes = ep.fecha_resolucion ? format(parseISO(ep.fecha_resolucion), 'd MMM yyyy', { locale: es }) : null
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', opacity: 0.8 }}>
@@ -535,6 +549,7 @@ function CardEpisodioResuelto({ ep, reps, expandido, onToggle, onReabrir }) {
                 {expandido ? '↑' : 'Historial'}
               </button>
             )}
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onEditar}>Editar</button>
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onReabrir}>Reabrir</button>
           </div>
         </div>
@@ -709,6 +724,73 @@ function ModalFormEpisodio({ titulo, clienteId, inicial = {}, reporteVinculado, 
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
         <button className="btn btn-primary btn-sm" onClick={guardar} disabled={saving}>
           {saving ? 'Guardando…' : 'Guardar'}
+        </button>
+      </div>
+    </ModalWrapper>
+  )
+}
+
+function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
+  const ep = episodio
+  const [form, setForm] = useState({
+    zona:          ep.zona          || '',
+    lateralidad:   ep.lateralidad   || '',
+    fecha_inicio:  ep.fecha_inicio  || HOY(),
+    diagnostico:   ep.diagnostico   || '',
+    limitaciones:  ep.limitaciones  || '',
+    observaciones: ep.observaciones || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const f = (k, v) => setForm(p => ({ ...p, [k]: v }))
+
+  async function guardar() {
+    if (!form.zona.trim()) return alert('La zona es obligatoria.')
+    setSaving(true)
+    const { data, error } = await supabase
+      .from('molestia_episodios')
+      .update({
+        zona:          form.zona.trim(),
+        lateralidad:   form.lateralidad || null,
+        fecha_inicio:  form.fecha_inicio,
+        diagnostico:   form.diagnostico.trim() || null,
+        limitaciones:  form.limitaciones.trim() || null,
+        observaciones: form.observaciones.trim() || null,
+      })
+      .eq('id', ep.id)
+      .select()
+      .single()
+    setSaving(false)
+    if (error) { alert('Error al guardar: ' + error.message); return }
+    onGuardar(data)
+  }
+
+  return (
+    <ModalWrapper titulo="Editar episodio" onClose={onClose}>
+      <Campo label="Zona *">
+        <input className="input" value={form.zona} onChange={e => f('zona', e.target.value)} placeholder="p.ej. Isquiotibiales izquierdo…" />
+      </Campo>
+      <Campo label="Lateralidad">
+        <select className="input" value={form.lateralidad} onChange={e => f('lateralidad', e.target.value)}>
+          <option value="">No especificada</option>
+          {LATERALIDAD.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
+        </select>
+      </Campo>
+      <Campo label="Fecha de inicio">
+        <input className="input" type="date" value={form.fecha_inicio} onChange={e => f('fecha_inicio', e.target.value)} />
+      </Campo>
+      <Campo label="Diagnóstico">
+        <input className="input" value={form.diagnostico} onChange={e => f('diagnostico', e.target.value)} placeholder="Dejar vacío para quitar el diagnóstico" />
+      </Campo>
+      <Campo label="Limitaciones">
+        <textarea className="input" rows={2} value={form.limitaciones} onChange={e => f('limitaciones', e.target.value)} style={{ resize: 'vertical' }} placeholder="Limitaciones funcionales…" />
+      </Campo>
+      <Campo label="Observaciones">
+        <textarea className="input" rows={2} value={form.observaciones} onChange={e => f('observaciones', e.target.value)} style={{ resize: 'vertical' }} />
+      </Campo>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
+        <button className="btn btn-primary btn-sm" onClick={guardar} disabled={saving}>
+          {saving ? 'Guardando…' : 'Guardar cambios'}
         </button>
       </div>
     </ModalWrapper>
