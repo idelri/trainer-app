@@ -732,11 +732,12 @@ function ModalFormEpisodio({ titulo, clienteId, inicial = {}, reporteVinculado, 
 
 function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
   const ep = episodio
+  const [primerReporteId, setPrimerReporteId] = useState(null)
   const [form, setForm] = useState({
     zona:          ep.zona          || '',
     lateralidad:   ep.lateralidad   || '',
     fecha_inicio:  ep.fecha_inicio  || HOY(),
-    intensidad:    ep.intensidad    ?? '',
+    intensidad:    '',
     diagnostico:   ep.diagnostico   || '',
     limitaciones:  ep.limitaciones  || '',
     observaciones: ep.observaciones || '',
@@ -744,16 +745,33 @@ function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
   const [saving, setSaving] = useState(false)
   const f = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
+  // Cargar intensidad del primer reporte del episodio
+  useEffect(() => {
+    supabase
+      .from('molestia_reportes')
+      .select('id, intensidad')
+      .eq('episodio_id', ep.id)
+      .order('fecha', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPrimerReporteId(data.id)
+          setForm(p => ({ ...p, intensidad: data.intensidad ?? '' }))
+        }
+      })
+  }, [ep.id])
+
   async function guardar() {
     if (!form.zona.trim()) return alert('La zona es obligatoria.')
     setSaving(true)
+
     const { data, error } = await supabase
       .from('molestia_episodios')
       .update({
         zona:          form.zona.trim(),
         lateralidad:   form.lateralidad || null,
         fecha_inicio:  form.fecha_inicio,
-        intensidad:    form.intensidad !== '' ? parseInt(form.intensidad, 10) : null,
         diagnostico:   form.diagnostico.trim() || null,
         limitaciones:  form.limitaciones.trim() || null,
         observaciones: form.observaciones.trim() || null,
@@ -761,8 +779,19 @@ function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
       .eq('id', ep.id)
       .select()
       .single()
+
+    if (error) { setSaving(false); alert('Error al guardar: ' + error.message); return }
+
+    // Actualizar intensidad en el primer reporte si existe
+    if (primerReporteId) {
+      const intensidad = form.intensidad !== '' ? parseInt(form.intensidad, 10) : null
+      await supabase
+        .from('molestia_reportes')
+        .update({ intensidad: !isNaN(intensidad) ? intensidad : null })
+        .eq('id', primerReporteId)
+    }
+
     setSaving(false)
-    if (error) { alert('Error al guardar: ' + error.message); return }
     onGuardar(data)
   }
 
