@@ -1306,8 +1306,17 @@ export default function Agenda({ setPage, setSesionesContext }) {
             // categorías sin comentario para no duplicar
             const cats = item.categoriasPendientes
 
+            // Tooltip con toda la información del item
+            const tooltipLines = [
+              `${item.clienteNombre || '—'} · ${fechaLabel}`,
+              item.sesionTitulo,
+              item.statusLabel ? (item.status === 'missed' ? 'No realizada' : 'Parcial') : null,
+              cats.length ? `Aspectos: ${[...new Set(cats)].map(c => CAT_LABEL[c]||c).join(', ')}` : null,
+              ...item.aspectos.filter(a => a.detalle).map(a => `${CAT_LABEL[a.categoria]||a.categoria}: ${a.detalle}`),
+            ].filter(Boolean).join('\n')
+
             return (
-              <div style={{ border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
+              <div title={tooltipLines} style={{ border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
                 {/* Cabecera: cliente + fecha */}
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:6 }}>
@@ -1329,7 +1338,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                       {item.status==='missed'?'✗ No realizada':item.status==='partial'?'~ Parcial':''}
                     </span>
                   )}
-                  {cats.map(c => (
+                  {[...new Set(cats)].map(c => (
                     <span key={c} style={{ fontSize:9,color:'var(--text2)',background:'var(--bg2)',padding:'1px 5px',borderRadius:6 }}>
                       {CAT_LABEL[c] || c}
                     </span>
