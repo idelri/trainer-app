@@ -488,11 +488,16 @@ function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, onEditar, ses
               <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 10, background: '#fef3c7', color: '#92400e' }}>
                 Activa
               </span>
+              {ultimoRep?.intensidad != null && (
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 9px', borderRadius: 10, background: ultimoRep.intensidad >= 7 ? '#fee2e2' : ultimoRep.intensidad >= 4 ? '#fff3cd' : '#dcfce7', color: ultimoRep.intensidad >= 7 ? '#b91c1c' : ultimoRep.intensidad >= 4 ? '#92400e' : '#166534' }}>
+                  {ultimoRep.intensidad}/10
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>
               Desde {fechaInicio}
               {ultimoRep && (
-                <span> · Último reporte: {format(parseISO(ultimoRep.fecha), 'd MMM', { locale: es })}{ultimoRep.intensidad != null ? ` · ${ultimoRep.intensidad}/10` : ''}</span>
+                <span> · Último reporte: {format(parseISO(ultimoRep.fecha), 'd MMM', { locale: es })}</span>
               )}
               {reps.length > 0 && <span> · {reps.length} {reps.length === 1 ? 'reporte' : 'reportes'}</span>}
             </div>
@@ -530,15 +535,21 @@ function CardEpisodio({ ep, reps, expandido, onToggle, onResolver, onEditar, ses
 
 function CardEpisodioResuelto({ ep, reps, expandido, onToggle, onReabrir, onEditar }) {
   const fechaRes = ep.fecha_resolucion ? format(parseISO(ep.fecha_resolucion), 'd MMM yyyy', { locale: es }) : null
+  const ultimoRep = reps.length ? reps[reps.length - 1] : null
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', opacity: 0.8 }}>
       <div style={{ padding: '9px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}>
               {ep.zona}{ep.lateralidad && ep.lateralidad !== 'no especificada' ? ` · ${ep.lateralidad}` : ''}
             </span>
-            <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 10 }}>
+            {ultimoRep?.intensidad != null && (
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
+                {ultimoRep.intensidad}/10
+              </span>
+            )}
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>
               Resuelta{fechaRes ? ` · ${fechaRes}` : ''}
               {reps.length > 0 && ` · ${reps.length} ${reps.length === 1 ? 'reporte' : 'reportes'}`}
             </span>
