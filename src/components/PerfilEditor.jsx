@@ -122,6 +122,7 @@ export default function PerfilEditor({
       {/* 10. Cuestionario inicial */}
       <SecCuestionario
         cuestionario={cuestionarioLocal}
+        clienteId={clienteId}
         verCuestionario={verCuestionario} setVerCuestionario={setVerCuestionario}
         cueTab={cueTab} setCueTab={setCueTab}
         onEditar={() => setMostrarEditorCue(true)}
@@ -1287,15 +1288,68 @@ function SecBarreras({ perfil, savePerfil }) {
 // 10. CUESTIONARIO INICIAL
 // ══════════════════════════════════════════════════════════════════════════════
 
-function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cueTab, setCueTab, onEditar, onSincronizar }) {
+function SecCuestionario({ cuestionario, clienteId, verCuestionario, setVerCuestionario, cueTab, setCueTab, onEditar, onSincronizar }) {
   const [sincronizando, setSincronizando] = useState(false)
   const [sincronizado, setSincronizado] = useState(false)
+  const [errorSync, setErrorSync] = useState(null)
 
   async function sincronizar() {
-    if (!cuestionario?.token_publico) return
+    if (!cuestionario || !clienteId) return
     setSincronizando(true)
-    await supabase.rpc('sincronizar_perfil_desde_cuestionario', { p_token_publico: cuestionario.token_publico })
+    setErrorSync(null)
+    const c = cuestionario
+    const det = c.antecedentes_detalle || {}
+
+    // Upsert directo — sin COALESCE, sobrescribe todo desde el cuestionario
+    const { error } = await supabase.from('cliente_perfil').upsert({
+      cliente_id: clienteId,
+      nombre_preferido: c.nombre_preferido || null,
+      fecha_nacimiento: c.fecha_nacimiento || null,
+      profesion: c.profesion || null,
+      ciudad: c.ciudad || null,
+      deportes_actuales: c.deportes_actuales || [],
+      frecuencia_por_actividad: c.frecuencia_por_actividad || [],
+      frecuencia_actual: c.frecuencia_actual || null,
+      duracion_habitual: c.duracion_habitual || null,
+      experiencia_fuerza: c.experiencia_fuerza || null,
+      experiencia_fuerza_obs: c.experiencia_fuerza_obs || null,
+      experiencia_resistencia: c.experiencia_resistencia || null,
+      experiencia_resistencia_obs: c.experiencia_resistencia_obs || null,
+      experiencia_funcional: c.experiencia_funcional || null,
+      preferencia_entreno: c.preferencia_entreno || [],
+      tipos_entreno_disfruta: c.tipos_entreno_disfruta || [],
+      evitar_ejercicios_yn: c.evitar_ejercicios_yn || null,
+      evitar_ejercicios_detalle: c.evitar_ejercicios_detalle || null,
+      dias_semana: c.dias_semana || null,
+      dias_preferentes: c.dias_preferentes || [],
+      tiempo_sesion: c.tiempo_sesion || null,
+      horarios: c.horarios_preferentes || [],
+      lugares_entrenamiento: c.lugares_entrenamiento || [],
+      tiene_gimnasio: c.tiene_gimnasio ?? null,
+      gimnasio_nombre: c.gimnasio_nombre || null,
+      material_casa: c.material_casa || [],
+      tiene_wearable: c.tiene_wearable ?? null,
+      wearable_marca: c.wearable_marca || null,
+      wearable_modelo: c.wearable_modelo || null,
+      horas_sueno: c.horas_sueno || null,
+      calidad_sueno: c.calidad_sueno || null,
+      nivel_estres: c.nivel_estres || null,
+      tipo_trabajo: c.tipo_trabajo || null,
+      pasos_diarios: c.pasos_diarios || null,
+      consumo_tabaco: c.consumo_tabaco || null,
+      confianza_rutina: c.confianza_rutina || null,
+      barreras_adherencia: c.barreras_adherencia || [],
+      antecedentes_categorias: c.antecedentes_categorias || [],
+      lesiones_previas: det.lesiones_anteriores || null,
+      operaciones: det.operaciones || null,
+      condiciones_medicas: det.enfermedades || null,
+      medicacion: det.medicacion || null,
+      restricciones_medicas: det.restricciones_medicas || null,
+      tratamiento_actual: c.tratamiento_actual || null,
+    }, { onConflict: 'cliente_id' })
+
     setSincronizando(false)
+    if (error) { setErrorSync(error.message); return }
     setSincronizado(true)
     setTimeout(() => setSincronizado(false), 3000)
     onSincronizar?.()
@@ -1307,9 +1361,12 @@ function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cu
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)' }}>10. Cuestionario inicial</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {cuestionario?.submitted_at && (
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={sincronizar} disabled={sincronizando}>
-              {sincronizado ? '✓ Sincronizado' : sincronizando ? 'Sincronizando…' : '↻ Sincronizar perfil'}
-            </button>
+            <>
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: 12, color: sincronizado ? 'var(--accent)' : errorSync ? '#b91c1c' : undefined }} onClick={sincronizar} disabled={sincronizando}>
+                {sincronizado ? '✓ Sincronizado' : sincronizando ? 'Sincronizando…' : '↻ Volcar en perfil'}
+              </button>
+              {errorSync && <span style={{ fontSize: 11, color: '#b91c1c', alignSelf: 'center' }}>{errorSync}</span>}
+            </>
           )}
           {cuestionario?.submitted_at && (
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onEditar}>
