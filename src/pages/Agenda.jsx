@@ -1293,6 +1293,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
           const ayerStr = fKey(addDays(new Date(), -1))
 
           function FeedItemMotor({ item }) {
+            const [hovered, setHovered] = useState(false)
             const nombreCorto = (item.clienteNombre || '—').split(' ')[0].toUpperCase()
             const iniciales = (item.clienteNombre || '—').split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase()
             const colores = ['#dc2626','#7c3aed','#059669','#d97706','#2563eb','#0891b2','#6366f1','#db2777','#65a30d']
@@ -1300,23 +1301,56 @@ export default function Agenda({ setPage, setSesionesContext }) {
             const fechaLabel = item.fecha === hoyStr ? 'Hoy' : item.fecha === ayerStr ? 'Ayer'
               : item.fecha ? format(new Date(item.fecha + 'T12:00:00'), 'd MMM', { locale: es }) : ''
             const saving = feedSavingId === item.id
-            // preview del primer comentario (truncado)
             const comentario = item.aspectos.find(a => a.categoria === 'comentario')
             const preview = comentario?.detalle
-            // categorías sin comentario para no duplicar
             const cats = item.categoriasPendientes
 
-            // Tooltip con toda la información del item
-            const tooltipLines = [
-              `${item.clienteNombre || '—'} · ${fechaLabel}`,
-              item.sesionTitulo,
-              item.statusLabel ? (item.status === 'missed' ? 'No realizada' : 'Parcial') : null,
-              cats.length ? `Aspectos: ${[...new Set(cats)].map(c => CAT_LABEL[c]||c).join(', ')}` : null,
-              ...item.aspectos.filter(a => a.detalle).map(a => `${CAT_LABEL[a.categoria]||a.categoria}: ${a.detalle}`),
-            ].filter(Boolean).join('\n')
+            // Líneas del tooltip expandido
+            const tooltipAspectos = item.aspectos.filter(a => a.detalle)
 
             return (
-              <div title={tooltipLines} style={{ border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
+              <div
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                style={{ position:'relative', border:'1px solid var(--border)',borderRadius:8,background:'var(--card)',marginBottom:6,padding:'8px 10px' }}>
+
+                {/* Tooltip expandido al hover */}
+                {hovered && (
+                  <div style={{
+                    position:'absolute', right:'calc(100% + 8px)', top:0,
+                    background:'var(--card)', border:'1px solid var(--border)',
+                    borderRadius:10, padding:'10px 12px', width:240,
+                    boxShadow:'0 4px 20px rgba(0,0,0,0.15)',
+                    zIndex:500, pointerEvents:'none',
+                  }}>
+                    <div style={{ fontSize:11,fontWeight:700,color:'var(--text1)',marginBottom:4 }}>
+                      {item.clienteNombre} · {fechaLabel}
+                    </div>
+                    {item.sesionTitulo && (
+                      <div style={{ fontSize:10,color:'var(--text2)',marginBottom:6 }}>{item.sesionTitulo}</div>
+                    )}
+                    {item.statusLabel && (
+                      <div style={{ fontSize:10,color:item.status==='missed'?'#991b1b':'#713f12',marginBottom:4,fontWeight:600 }}>
+                        {item.status==='missed'?'✗ No realizada':'~ Parcial'}
+                      </div>
+                    )}
+                    {tooltipAspectos.map((a, i) => (
+                      <div key={i} style={{ marginBottom:5 }}>
+                        <div style={{ fontSize:9,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.04em' }}>
+                          {CAT_LABEL[a.categoria] || a.categoria}
+                          {a.intensity != null ? ` · ${a.intensity}/10` : ''}
+                        </div>
+                        <div style={{ fontSize:10,color:'var(--text1)',lineHeight:1.4,wordBreak:'break-word' }}>{a.detalle}</div>
+                      </div>
+                    ))}
+                    {tooltipAspectos.length === 0 && (
+                      <div style={{ fontSize:10,color:'var(--text3)' }}>
+                        {[...new Set(cats)].map(c => CAT_LABEL[c]||c).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Cabecera: cliente + fecha */}
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:3 }}>
                   <div style={{ display:'flex',alignItems:'center',gap:6 }}>
