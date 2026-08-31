@@ -125,6 +125,7 @@ export default function PerfilEditor({
         verCuestionario={verCuestionario} setVerCuestionario={setVerCuestionario}
         cueTab={cueTab} setCueTab={setCueTab}
         onEditar={() => setMostrarEditorCue(true)}
+        onSincronizar={() => window.location.reload()}
       />
 
       {/* Modal editor cuestionario */}
@@ -1286,15 +1287,33 @@ function SecBarreras({ perfil, savePerfil }) {
 // 10. CUESTIONARIO INICIAL
 // ══════════════════════════════════════════════════════════════════════════════
 
-function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cueTab, setCueTab, onEditar }) {
+function SecCuestionario({ cuestionario, verCuestionario, setVerCuestionario, cueTab, setCueTab, onEditar, onSincronizar }) {
+  const [sincronizando, setSincronizando] = useState(false)
+  const [sincronizado, setSincronizado] = useState(false)
+
+  async function sincronizar() {
+    if (!cuestionario?.token_publico) return
+    setSincronizando(true)
+    await supabase.rpc('sincronizar_perfil_desde_cuestionario', { p_token_publico: cuestionario.token_publico })
+    setSincronizando(false)
+    setSincronizado(true)
+    setTimeout(() => setSincronizado(false), 3000)
+    onSincronizar?.()
+  }
+
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text2)' }}>10. Cuestionario inicial</span>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {cuestionario?.submitted_at && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={sincronizar} disabled={sincronizando}>
+              {sincronizado ? '✓ Sincronizado' : sincronizando ? 'Sincronizando…' : '↻ Sincronizar perfil'}
+            </button>
+          )}
           {cuestionario?.submitted_at && (
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 12 }} onClick={onEditar}>
-              ✏️ Editar cuestionario
+              ✏️ Editar
             </button>
           )}
           {cuestionario?.submitted_at && (
