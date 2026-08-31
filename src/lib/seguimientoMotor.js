@@ -68,12 +68,31 @@ export function calcularAspectosIndividuales(fb, ses) {
     aspectos.push({ categoria: CAT.RPE, label: `RPE alto · ${d.rpe.value}/10`, detalle: null })
   }
 
-  // Molestia: mainPain o additionalPain, solo si hay texto
+  // Molestia — formato dual:
+  //   Nuevo: pain.hasPain (bool) + pain.intensity (number) + pain.details (string)
+  //   Legado: pain.mainPainDetails / pain.additionalPain + pain.additionalPainDetails
   const p = d.pain
-  if (p?.hasPain && p.mainPainDetails?.trim()) {
-    aspectos.push({ categoria: CAT.MOLESTIA, label: 'Molestia', detalle: p.mainPainDetails.trim() })
-  } else if (p?.additionalPain && p.additionalPainDetails?.trim()) {
-    aspectos.push({ categoria: CAT.MOLESTIA, label: 'Molestia', detalle: p.additionalPainDetails.trim() })
+  const painDetected = (() => {
+    if (!p) return null
+    // Formato nuevo
+    if (typeof p.hasPain === 'boolean' && p.hasPain) {
+      const detalle = p.details?.trim() || ''
+      const intensity = typeof p.intensity === 'number' ? p.intensity : null
+      const label = intensity != null ? `Molestia · ${intensity}/10` : 'Molestia'
+      return { label, detalle: detalle || null, intensity }
+    }
+    // Formato legado A: mainPainDetails (Ruta A old)
+    if (p.hasPain && p.mainPainDetails?.trim()) {
+      return { label: 'Molestia', detalle: p.mainPainDetails.trim(), intensity: null }
+    }
+    // Formato legado B: additionalPain (Ruta B old)
+    if (p.additionalPain && p.additionalPainDetails?.trim()) {
+      return { label: 'Molestia', detalle: p.additionalPainDetails.trim(), intensity: null }
+    }
+    return null
+  })()
+  if (painDetected) {
+    aspectos.push({ categoria: CAT.MOLESTIA, label: painDetected.label, detalle: painDetected.detalle, intensity: painDetected.intensity })
   }
 
   // Técnica
@@ -259,11 +278,21 @@ export function calcularSeguimiento({ feedbacks, sesiones, revisadas, molestiaRe
 
     const aspectos = calcularAspectosIndividuales(fb, ses)
 
-    // Enriquecer molestia con estado de salud si existe
+    // Enriquecer molestia con datos del reporte real si existe
     const molIdx = aspectos.findIndex(a => a.categoria === CAT.MOLESTIA)
     if (molIdx >= 0 && molMap[fb.id]) {
-      aspectos[molIdx].molestiaEstado   = molMap[fb.id].estado   // 'pendiente'|'vinculado'|'descartado'
-      aspectos[molIdx].molestiaEpisodio = molMap[fb.id].episodio_id
+      const rep = molMap[fb.id]
+      aspectos[molIdx].molestiaReporteId = rep.id
+      aspectos[molIdx].molestiaEstado    = rep.estado   // 'pendiente'|'vinculado'|'descartado'
+      aspectos[molIdx].molestiaEpisodio  = rep.episodio_id
+      // Usar intensidad y detalle del reporte (puede diferir del feedback si editado)
+      if (aspectos[molIdx].intensity == null && rep.intensidad != null) {
+        aspectos[molIdx].intensity = rep.intensidad
+        aspectos[molIdx].label = `Molestia · ${rep.intensidad}/10`
+      }
+      if (!aspectos[molIdx].detalle && rep.detalle) {
+        aspectos[molIdx].detalle = rep.detalle
+      }
     }
 
     // Parcial sin motivo crítico → no genera aspecto individual, solo participa en racha

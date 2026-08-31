@@ -65,9 +65,23 @@ function FeedbackResumen({ data, submittedAt, onEditar }) {
         {d.duration?.minutes && <Row label="Duración real" value={`${d.duration.minutes} min`} />}
         {reasons.length > 0 && <Row label={status === 'partial' ? 'Por qué no completó al 100%' : 'Por qué no la realizó'} value={reasons.join(', ')} />}
         {d.completion?.partialDetails && <Row label="Detalle / parte no realizada" value={d.completion.partialDetails} />}
-        {d.pain?.mainPainDetails && <Row label="Molestia principal" value={d.pain.mainPainDetails} />}
-        {d.pain?.additionalPainLevel && <Row label="Molestia durante sesión" value={d.pain.additionalPainLevel} />}
-        {d.pain?.additionalPainDetails && <Row label="Zona / ejercicio" value={d.pain.additionalPainDetails} />}
+        {/* Molestia — formato dual (nuevo: hasPain+intensity+details; legado: mainPainDetails / additionalPain) */}
+        {d.pain?.hasPain === true && (
+          <Row
+            label={`Molestia reportada${d.pain.intensity != null ? ` · ${d.pain.intensity}/10` : ''}`}
+            value={d.pain.details || '—'}
+          />
+        )}
+        {/* Legado: solo mostrar si no hay el nuevo formato */}
+        {d.pain?.hasPain !== true && d.pain?.mainPainDetails && (
+          <Row label="Molestia principal" value={d.pain.mainPainDetails} />
+        )}
+        {d.pain?.hasPain !== true && d.pain?.additionalPainLevel && (
+          <Row label="Molestia durante sesión" value={d.pain.additionalPainLevel} />
+        )}
+        {d.pain?.hasPain !== true && d.pain?.additionalPainDetails && (
+          <Row label="Zona / ejercicio" value={d.pain.additionalPainDetails} />
+        )}
         {d.technical?.mainTechnicalDetails && <Row label="Dificultad técnica" value={d.technical.mainTechnicalDetails} />}
         {d.technical?.additionalTechnicalDifficulty === true && <Row label="Ejercicio difícil" value={d.technical.additionalTechnicalDetails || 'Sí'} />}
         {d.equipment?.details && <Row label="Material no disponible" value={d.equipment.details} />}

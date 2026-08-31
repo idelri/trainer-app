@@ -19,6 +19,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { ModalFormEpisodio, ModalVincular, ModalWrapper, Campo } from './ModalMolestia'
 
 const HOY = () => new Date().toISOString().slice(0, 10)
 const LATERALIDAD = ['derecha', 'izquierda', 'bilateral', 'no especificada']
@@ -30,22 +31,40 @@ const ORIGEN_LABEL = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// Detecta si un feedback tiene datos de molestia válidos — formato dual
 function hasPainData(fb) {
   const p = fb?.data?.pain
   if (!p) return false
-  return (p.hasPain && p.mainPainDetails?.trim()) ||
-         (p.additionalPain && p.additionalPainDetails?.trim())
+  // Formato nuevo: hasPain=true (con o sin texto)
+  if (typeof p.hasPain === 'boolean' && p.hasPain) return true
+  // Legado A: mainPainDetails
+  if (p.hasPain && p.mainPainDetails?.trim()) return true
+  // Legado B: additionalPain
+  if (p.additionalPain && p.additionalPainDetails?.trim()) return true
+  return false
 }
 
+// Extrae texto descriptivo del campo pain — formato dual
 function extractPainText(p) {
   if (!p) return ''
+  // Formato nuevo
+  if (typeof p.hasPain === 'boolean' && p.hasPain) {
+    return p.details?.trim() || ''
+  }
+  // Legado A
   if (p.hasPain && p.mainPainDetails?.trim()) return p.mainPainDetails.trim()
+  // Legado B
   if (p.additionalPain && p.additionalPainDetails?.trim()) {
-    const nivel = p.additionalPainLevel && p.additionalPainLevel !== 'No'
-      ? `${p.additionalPainLevel}. ` : ''
-    return `${nivel}${p.additionalPainDetails.trim()}`
+    return p.additionalPainDetails.trim()
   }
   return ''
+}
+
+// Extrae intensidad numérica del campo pain — solo formato nuevo
+function extractPainIntensity(p) {
+  if (!p) return null
+  if (typeof p.hasPain === 'boolean' && p.hasPain && typeof p.intensity === 'number') return p.intensity
+  return null
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -105,6 +124,7 @@ export default function SaludMolestias({
           sesion_feedback_id: fb.id,
           fecha:              sesMap[fb.sesion_id]?.fecha || fb.submitted_at?.slice(0, 10) || HOY(),
           detalle:            extractPainText(fb.data?.pain),
+          intensidad:         extractPainIntensity(fb.data?.pain),
           origen:             'feedback_sesion',
           estado:             'pendiente',
         }))
@@ -619,149 +639,9 @@ function CardLesionInicial({ lesion, onCrear }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODALS
+// ModalFormEpisodio, ModalVincular, ModalWrapper, Campo → importados de ModalMolestia.jsx
+// ModalEditarEpisodio, ModalResolver → específicos de esta vista, definidos aquí
 // ══════════════════════════════════════════════════════════════════════════════
-
-// Modal genérico — crear/registrar episodio (nuevo, desde reporte, desde cuestionario)
-function ModalFormEpisodio({ titulo, clienteId, inicial = {}, reporteVinculado, cuestionarioRef, origenOverride, onGuardar, onClose }) {
-  const [form, setForm] = useState({
-    zona:         inicial.zona         || '',
-    lateralidad:  inicial.lateralidad  || '',
-    fecha_inicio: inicial.fecha_inicio || HOY(),
-    intensidad:   inicial.intensidad   ?? '',
-    detalle:      inicial.detalle      || '',
-    diagnostico:  inicial.diagnostico  || '',
-    limitaciones: inicial.limitaciones || '',
-    observaciones:'',
-  })
-  const [saving, setSaving] = useState(false)
-  const f = (k, v) => setForm(p => ({ ...p, [k]: v }))
-
-  async function guardar() {
-    if (!form.zona.trim()) return alert('La zona es obligatoria.')
-    setSaving(true)
-    const origen = origenOverride || (reporteVinculado ? reporteVinculado.origen : 'entrenadora')
-
-    const episodioData = {
-      cliente_id:   clienteId,
-      zona:         form.zona.trim(),
-      lateralidad:  form.lateralidad || null,
-      fecha_inicio: form.fecha_inicio || HOY(),
-      diagnostico:  form.diagnostico.trim() || null,
-      limitaciones: form.limitaciones.trim() || null,
-      observaciones:form.observaciones.trim() || null,
-      origen,
-      estado:       'activo',
-      ...(cuestionarioRef ? {
-        cuestionario_inicial_id: cuestionarioRef.id,
-        cuestionario_lesion_idx: cuestionarioRef.idx,
-      } : {}),
-    }
-
-    const { data: ep } = await supabase
-      .from('molestia_episodios').insert(episodioData).select().single()
-
-    if (ep) {
-      const intensidad = form.intensidad !== '' ? parseInt(form.intensidad, 10) : null
-
-      // Si viene de un reporte existente → vincular
-      if (reporteVinculado) {
-        await supabase.from('molestia_reportes').update({
-          episodio_id: ep.id,
-          estado: 'vinculado',
-        }).eq('id', reporteVinculado.id)
-      } else {
-        // Crear primer reporte manual
-        await supabase.from('molestia_reportes').insert({
-          cliente_id:   clienteId,
-          episodio_id:  ep.id,
-          fecha:        form.fecha_inicio || HOY(),
-          intensidad:   intensidad != null && !isNaN(intensidad) ? intensidad : null,
-          detalle:      form.detalle.trim() || null,
-          origen,
-          estado:       'vinculado',
-        })
-      }
-
-      // Si viene del cuestionario → crear reporte inicial también con datos
-      if (cuestionarioRef && (form.detalle.trim() || form.intensidad !== '')) {
-        const intVal = form.intensidad !== '' ? parseInt(form.intensidad, 10) : null
-        await supabase.from('molestia_reportes').insert({
-          cliente_id:   clienteId,
-          episodio_id:  ep.id,
-          fecha:        form.fecha_inicio || HOY(),
-          intensidad:   intVal != null && !isNaN(intVal) ? intVal : null,
-          detalle:      form.detalle.trim() || null,
-          origen:       'cuestionario_inicial',
-          estado:       'vinculado',
-        })
-      }
-    }
-
-    setSaving(false)
-    onGuardar()
-    onClose()
-  }
-
-  return (
-    <ModalWrapper titulo={titulo} onClose={onClose}>
-
-      {/* Contexto del feedback — solo cuando viene de un reporte de sesión */}
-      {reporteVinculado?.detalle && (
-        <div style={{ marginBottom: 16, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, borderLeft: '3px solid #f59e0b' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#b45309', marginBottom: 4 }}>Lo que escribió la clienta</div>
-          <div style={{ fontSize: 13, color: 'var(--text1)', fontStyle: 'italic' }}>"{reporteVinculado.detalle}"</div>
-          {reporteVinculado.intensidad != null && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>Intensidad reportada: {reporteVinculado.intensidad}/10</div>
-          )}
-        </div>
-      )}
-
-      <Campo label="Zona *">
-        <input className="input" value={form.zona} onChange={e => f('zona', e.target.value)} placeholder="p.ej. Aquiles, Rodilla, Isquio…" />
-      </Campo>
-      <Campo label="Lateralidad">
-        <select className="input" value={form.lateralidad} onChange={e => f('lateralidad', e.target.value)}>
-          <option value="">No especificada</option>
-          {LATERALIDAD.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
-        </select>
-      </Campo>
-      <Campo label="Fecha de inicio de la molestia">
-        <input className="input" type="date" value={form.fecha_inicio} onChange={e => f('fecha_inicio', e.target.value)} />
-      </Campo>
-      <Campo label="Intensidad (0–10)">
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
-            const on = String(form.intensidad) === String(n)
-            return (
-              <button key={n} type="button" onClick={() => f('intensidad', on ? '' : n)}
-                style={{ width: 34, height: 34, borderRadius: 7, border: `1.5px solid ${on ? 'var(--accent)' : 'var(--border)'}`, background: on ? 'var(--accent-light)' : 'transparent', color: on ? 'var(--accent-text)' : 'var(--text2)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                {n}
-              </button>
-            )
-          })}
-        </div>
-      </Campo>
-      <Campo label="Detalle / notas">
-        <textarea className="input" rows={2} value={form.detalle} onChange={e => f('detalle', e.target.value)} placeholder="Descripción o notas adicionales…" style={{ resize: 'vertical' }} />
-      </Campo>
-      <Campo label="Diagnóstico (opcional)">
-        <input className="input" value={form.diagnostico} onChange={e => f('diagnostico', e.target.value)} placeholder="p.ej. Tendinopatía, sobrecarga…" />
-      </Campo>
-      <Campo label="Limitaciones (opcional)">
-        <textarea className="input" rows={2} value={form.limitaciones} onChange={e => f('limitaciones', e.target.value)} placeholder="Limitaciones funcionales…" style={{ resize: 'vertical' }} />
-      </Campo>
-      <Campo label="Observaciones (opcional)">
-        <textarea className="input" rows={2} value={form.observaciones} onChange={e => f('observaciones', e.target.value)} style={{ resize: 'vertical' }} />
-      </Campo>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
-        <button className="btn btn-primary btn-sm" onClick={guardar} disabled={saving}>
-          {saving ? 'Guardando…' : 'Guardar'}
-        </button>
-      </div>
-    </ModalWrapper>
-  )
-}
 
 function ModalEditarEpisodio({ episodio, onGuardar, onClose }) {
   const ep = episodio
@@ -898,80 +778,5 @@ function ModalResolver({ episodio, onGuardar, onClose }) {
   )
 }
 
-function ModalVincular({ reporte, episodios, onVincular, onClose }) {
-  const [seleccionado, setSeleccionado] = useState(null)
-  const activos   = episodios.filter(e => e.estado === 'activo')
-  const resueltos = episodios.filter(e => e.estado === 'resuelto')
-
-  return (
-    <ModalWrapper titulo="Vincular a episodio" onClose={onClose}>
-      {episodios.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text3)' }}>No hay episodios para vincular. Crea uno nuevo desde el reporte.</p>
-      ) : (
-        <>
-          {activos.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)', marginBottom: 6 }}>Activos</div>
-              {activos.map(ep => (
-                <label key={ep.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', cursor: 'pointer', borderRadius: 6 }}>
-                  <input type="radio" name="ep" value={ep.id} checked={seleccionado?.id === ep.id} onChange={() => setSeleccionado(ep)} />
-                  <span style={{ fontSize: 13 }}>{ep.zona}{ep.lateralidad && ep.lateralidad !== 'no especificada' ? ` · ${ep.lateralidad}` : ''}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>desde {format(parseISO(ep.fecha_inicio), 'd MMM', { locale: es })}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          {resueltos.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text3)', marginBottom: 6 }}>Anteriores — se reabrirán</div>
-              {resueltos.map(ep => (
-                <label key={ep.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', cursor: 'pointer', borderRadius: 6 }}>
-                  <input type="radio" name="ep" value={ep.id} checked={seleccionado?.id === ep.id} onChange={() => setSeleccionado(ep)} />
-                  <span style={{ fontSize: 13, color: 'var(--text2)' }}>{ep.zona}{ep.lateralidad && ep.lateralidad !== 'no especificada' ? ` · ${ep.lateralidad}` : ''}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>Reabrir</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancelar</button>
-        <button className="btn btn-primary btn-sm" onClick={() => seleccionado && onVincular(seleccionado)} disabled={!seleccionado}>Vincular</button>
-      </div>
-    </ModalWrapper>
-  )
-}
-
-// ── Atoms ─────────────────────────────────────────────────────────────────────
-
-function ModalWrapper({ titulo, onClose, children }) {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 900,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{
-        background: 'var(--surface)', borderRadius: 14, padding: '22px 24px',
-        width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text3)', lineHeight: 1 }}>×</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function Campo({ label, children }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginBottom: 4 }}>{label}</label>
-      {children}
-    </div>
-  )
-}
+// ModalVincular, ModalWrapper, Campo → importados de ModalMolestia.jsx
 

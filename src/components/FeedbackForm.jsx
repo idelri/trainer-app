@@ -7,30 +7,70 @@ const T = {
 }
 
 const RPE_LABELS = ['Nada de esfuerzo', 'Muy, muy suave', 'Muy suave', 'Suave', 'Moderada', 'Algo exigente', 'Exigente', 'Muy exigente', 'Muy dura', 'Extremadamente dura', 'Máximo esfuerzo']
-
 const TQR_ANCHORS = { 0: 'Nada recuperado/a', 3: 'Poco recuperado/a', 5: 'Moderadamente recuperado/a', 7: 'Bastante recuperado/a', 10: 'Totalmente recuperado/a' }
 const SUENO_LABELS = ['Muy mal', 'Mal', 'Regular', 'Bien', 'Muy bien']
 
-const emptyFeedback = () => ({
-  completion: { status: null, reasons: [], partialDetails: '' },
-  sueno: { value: null },
-  tqr: { value: null },
-  rpe: { value: null },
-  duration: { minutes: null },
-  pain: { hasPain: false, mainPainDetails: '', mainPainRelatedToIncompleteSession: false, additionalPain: false, additionalPainLevel: null, additionalPainDetails: '' },
-  technical: { hasDifficulty: false, mainTechnicalDetails: '', mainTechnicalRelatedToIncompleteSession: false, additionalTechnicalDifficulty: false, additionalTechnicalDetails: '' },
-  equipment: { missingEquipment: false, details: '' },
-  understanding: { unclearExercise: false, details: '' },
-  postSessionFeeling: null,
-  generalComments: '',
-  submittedAt: null,
-})
+// ── Estructura canónica nueva ──────────────────────────────────────────────────
+// pain.hasPain      null = no respondido | false = No | true = Sí
+// pain.intensity    number 0–10 | null
+// pain.details      string (texto libre)
+//
+// Campos legados (conservados para compatibilidad al leer feedbacks históricos,
+// pero ya NO escritos por este formulario):
+//   mainPainDetails, mainPainRelatedToIncompleteSession,
+//   additionalPain, additionalPainLevel, additionalPainDetails
 
-function Section({ children }) {
-  return <div style={{ marginTop: 20 }}>{children}</div>
+function emptyFeedback() {
+  return {
+    completion: { status: null, reasons: [], partialDetails: '' },
+    sueno:      { value: null },
+    tqr:        { value: null },
+    rpe:        { value: null },
+    duration:   { minutes: null },
+    pain: {
+      hasPain:   null,   // null | false | true
+      intensity: null,   // number 0-10 | null
+      details:   '',     // texto libre
+    },
+    technical:  { hasDifficulty: false, mainTechnicalDetails: '', mainTechnicalRelatedToIncompleteSession: false, additionalTechnicalDifficulty: false, additionalTechnicalDetails: '' },
+    equipment:  { missingEquipment: false, details: '' },
+    understanding: { unclearExercise: false, details: '' },
+    postSessionFeeling: null,
+    generalComments: '',
+    submittedAt: null,
+  }
 }
-function Q({ children }) {
-  return <p style={{ fontSize: 14, fontWeight: 600, color: T.ink, margin: '0 0 10px' }}>{children}</p>
+
+// Hidrata feedbacks históricos al nuevo formato
+function hydratePain(raw) {
+  const p = raw || {}
+  return {
+    // Campos nuevos canónicos
+    hasPain:   typeof p.hasPain === 'boolean' ? p.hasPain
+               : (p.additionalPain === true ? true : null),
+    intensity: p.intensity ?? null,       // no convertir string cualitativo → número
+    details:   p.details?.trim()
+               || p.mainPainDetails?.trim()
+               || p.additionalPainDetails?.trim()
+               || '',
+    // Conservar campos legados para que sigan siendo legibles externamente
+    mainPainDetails:                      p.mainPainDetails ?? '',
+    mainPainRelatedToIncompleteSession:   p.mainPainRelatedToIncompleteSession ?? false,
+    additionalPain:                       p.additionalPain ?? false,
+    additionalPainLevel:                  p.additionalPainLevel ?? null,
+    additionalPainDetails:                p.additionalPainDetails ?? '',
+  }
+}
+
+// ── Átomo UI ──────────────────────────────────────────────────────────────────
+function Section({ children }) { return <div style={{ marginTop: 20 }}>{children}</div> }
+function Q({ children, hint }) {
+  return (
+    <>
+      <p style={{ fontSize: 14, fontWeight: 600, color: T.ink, margin: '0 0 6px' }}>{children}</p>
+      {hint && <p style={{ fontSize: 12, color: T.ink3, margin: '-2px 0 10px' }}>{hint}</p>}
+    </>
+  )
 }
 function OptionBtn({ active, onClick, children }) {
   return (
@@ -49,8 +89,13 @@ function TextArea({ value, onChange, placeholder }) {
   )
 }
 
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor, submitLabel }) {
-  const [fb, setFb] = useState(initial || emptyFeedback())
+  const [fb, setFb] = useState(() => {
+    const base = initial ? { ...emptyFeedback(), ...initial } : emptyFeedback()
+    return { ...base, pain: hydratePain(base.pain) }
+  })
+
   const set = (path, value) => setFb(f => {
     const next = JSON.parse(JSON.stringify(f))
     let o = next; const keys = path.split('.')
@@ -59,12 +104,30 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
     return next
   })
 
-  const status = fb.completion.status
-  const reasons = fb.completion.reasons
-  const has = r => reasons.includes(r)
-  const toggleReason = r => set('completion.reasons', has(r) ? reasons.filter(x => x !== r) : [...reasons, r])
+  const status   = fb.completion.status
+  const reasons  = fb.completion.reasons
+  const has      = r => reasons.includes(r)
 
-  const motivosBC = ['Falta de tiempo', 'Fatiga acumulada', 'Molestia o dolor', 'Dificultad técnica con algún ejercicio', 'No tenía material disponible', 'No entendí algún ejercicio', status === 'partial' ? 'Preferí reducir la sesión' : 'Preferí no hacerla', 'Otro motivo']
+  function toggleReason(r) {
+    const teniamos = has(r)
+    set('completion.reasons', teniamos ? reasons.filter(x => x !== r) : [...reasons, r])
+    // Cuando seleccionan "Molestia o dolor" como motivo y el bloque de
+    // molestia aún no tiene respuesta → pre-seleccionar Sí
+    if (r === 'Molestia o dolor' && !teniamos && fb.pain.hasPain === null) {
+      set('pain.hasPain', true)
+    }
+  }
+
+  const motivosBC = [
+    'Falta de tiempo', 'Fatiga acumulada', 'Molestia o dolor',
+    'Dificultad técnica con algún ejercicio', 'No tenía material disponible',
+    'No entendí algún ejercicio',
+    status === 'partial' ? 'Preferí reducir la sesión' : 'Preferí no hacerla',
+    'Otro motivo',
+  ]
+
+  // Incoherencia: motivo=dolor pero hasPain=false (explícitamente No)
+  const hayIncoherencia = has('Molestia o dolor') && fb.pain.hasPain === false
 
   function puedeEnviar() {
     if (!status) return false
@@ -72,6 +135,10 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
       if (fb.rpe.value == null) return false
       if (!fb.duration.minutes) return false
     }
+    if (hayIncoherencia) return false
+    // Si marcó hasPain=true, tanto intensidad como detalle son obligatorios
+    if (fb.pain.hasPain === true && fb.pain.intensity == null) return false
+    if (fb.pain.hasPain === true && !fb.pain.details?.trim()) return false
     return true
   }
 
@@ -90,8 +157,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         <p style={{ fontSize: 14, fontWeight: 600, color: T.ink, margin: '0 0 10px' }}>¿Cómo has dormido esta noche?</p>
         <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
           {SUENO_LABELS.map((label, i) => {
-            const n = i + 1
-            const sel = fb.sueno.value === n
+            const n = i + 1; const sel = fb.sueno.value === n
             return (
               <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
                 <button type="button" onClick={() => set('sueno.value', n)}
@@ -117,15 +183,15 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </div>
       </div>
 
-      {/* Estado de finalización */}
+      {/* ── 1. Estado de finalización ── */}
       <Section>
         <Q>¿Has completado la sesión?</Q>
         <OptionBtn active={status === 'completed'} onClick={() => set('completion.status', 'completed')}>Sí, completada al 100%</OptionBtn>
-        <OptionBtn active={status === 'partial'} onClick={() => set('completion.status', 'partial')}>Parcialmente completada</OptionBtn>
-        <OptionBtn active={status === 'missed'} onClick={() => set('completion.status', 'missed')}>No realizada</OptionBtn>
+        <OptionBtn active={status === 'partial'}   onClick={() => set('completion.status', 'partial')}>Parcialmente completada</OptionBtn>
+        <OptionBtn active={status === 'missed'}    onClick={() => set('completion.status', 'missed')}>No realizada</OptionBtn>
       </Section>
 
-      {/* CASO B y C: motivo */}
+      {/* ── 2. Motivo (partial / missed) ── */}
       {(status === 'partial' || status === 'missed') && (
         <Section>
           <Q>{status === 'partial' ? '¿Por qué no completaste la sesión al 100%?' : '¿Por qué no realizaste la sesión?'}</Q>
@@ -135,16 +201,10 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
-      {/* Molestia o dolor (motivo) */}
-      {(status === 'partial' || status === 'missed') && has('Molestia o dolor') && (
-        <Section>
-          <Q>{status === 'partial' ? '¿Qué molestia o dolor hizo que no completaras la sesión? ¿Dónde lo notaste y con qué ejercicio ocurrió?' : '¿Qué molestia o dolor te impidió realizar la sesión? ¿Dónde lo notaste?'}</Q>
-          <TextArea value={fb.pain.mainPainDetails} onChange={v => { set('pain.hasPain', true); set('pain.mainPainRelatedToIncompleteSession', true); set('pain.mainPainDetails', v) }}
-            placeholder="Ej: dolor lumbar en plancha lateral, molestia en rodilla durante el step-up..." />
-        </Section>
-      )}
+      {/* Nota: "Molestia o dolor" como motivo NO despliega pregunta de detalle aquí.
+           La molestia se registra en el bloque único de abajo. */}
 
-      {/* Dificultad técnica (motivo) */}
+      {/* ── Dificultad técnica (motivo) ── */}
       {status === 'partial' && has('Dificultad técnica con algún ejercicio') && (
         <Section>
           <Q>¿Qué ejercicio te impidió completar la sesión o te hizo reducirla? ¿Qué problema técnico tuviste?</Q>
@@ -169,7 +229,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
-      {/* No entendí (motivo, solo caso B) */}
+      {/* No entendí (motivo, solo parcial) */}
       {status === 'partial' && has('No entendí algún ejercicio') && (
         <Section>
           <Q>¿Qué ejercicio no entendiste?</Q>
@@ -186,7 +246,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
-      {/* B3: parte no realizada */}
+      {/* Parte no realizada (partial) */}
       {status === 'partial' && (
         <Section>
           <Q>¿Qué parte de la sesión no realizaste?</Q>
@@ -195,12 +255,12 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
-      {/* RPE y duración: solo completed o partial */}
+      {/* ── 3. RPE + Duración (completed / partial) ── */}
       {(status === 'completed' || status === 'partial') && (
         <>
           <Section>
             <Q>¿Cómo de dura te ha parecido la sesión en global?</Q>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {Array.from({ length: 11 }, (_, n) => (
                 <button key={n} type="button" onClick={() => set('rpe.value', n)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 12px', borderRadius: 9, border: `1.5px solid ${fb.rpe.value === n ? T.accent : T.line}`, background: fb.rpe.value === n ? T.accent + '14' : T.card, cursor: 'pointer', textAlign: 'left' }}>
@@ -221,23 +281,74 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </>
       )}
 
-      {/* Dolor general (si no se preguntó ya como motivo principal) */}
-      {(status === 'completed' || (status === 'partial' && !has('Molestia o dolor'))) && (
+      {/* ── 4. BLOQUE ÚNICO DE MOLESTIAS ── */}
+      {status && (
         <Section>
-          <Q>{status === 'partial' ? '¿Tuviste alguna molestia, dolor o síntoma durante la parte de sesión que realizaste?' : '¿Tuviste alguna molestia, dolor o síntoma durante la sesión?'}</Q>
-          {['No', 'Sí, leve y tolerable', 'Sí, moderado', 'Sí, alto', 'Sí, tuve que parar'].map(op => (
-            <OptionBtn key={op} active={fb.pain.additionalPainLevel === op || (op === 'No' && fb.pain.additionalPainLevel === 'No')}
-              onClick={() => { set('pain.additionalPainLevel', op); set('pain.additionalPain', op !== 'No'); if (op !== 'No') set('pain.hasPain', true) }}>{op}</OptionBtn>
-          ))}
-          {fb.pain.additionalPainLevel && fb.pain.additionalPainLevel !== 'No' && (
-            <div style={{ marginTop: 8 }}>
-              <TextArea value={fb.pain.additionalPainDetails} onChange={v => set('pain.additionalPainDetails', v)} placeholder="¿Dónde lo notaste y con qué ejercicio ocurrió?" />
+          <Q>
+            {status === 'missed'
+              ? '¿Tuviste alguna molestia, dolor o síntoma ese día?'
+              : '¿Tuviste alguna molestia, dolor o síntoma durante la sesión?'}
+          </Q>
+
+          {/* Si el motivo fue dolor, contexto informativo */}
+          {has('Molestia o dolor') && (
+            <p style={{ fontSize: 12, color: '#92400e', background: '#fef3c7', borderRadius: 8, padding: '7px 10px', marginBottom: 10 }}>
+              Indicaste que la molestia afectó al cumplimiento de la sesión. Describe aquí qué notaste.
+            </p>
+          )}
+
+          <OptionBtn
+            active={fb.pain.hasPain === false}
+            onClick={() => set('pain.hasPain', false)}>
+            No
+          </OptionBtn>
+          <OptionBtn
+            active={fb.pain.hasPain === true}
+            onClick={() => set('pain.hasPain', true)}>
+            Sí
+          </OptionBtn>
+
+          {/* Incoherencia */}
+          {hayIncoherencia && (
+            <p style={{ fontSize: 12, color: T.accent, marginTop: 4 }}>
+              Has indicado que la molestia afectó a la sesión pero seleccionaste "No" aquí. Cambia el motivo de incumplimiento o selecciona "Sí".
+            </p>
+          )}
+
+          {/* Detalle de molestia */}
+          {fb.pain.hasPain === true && (
+            <div style={{ marginTop: 12 }}>
+              {/* Intensidad 0–10 */}
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, margin: '0 0 8px' }}>¿Qué intensidad tuvo?</p>
+              <p style={{ fontSize: 11.5, color: T.ink3, margin: '-4px 0 10px' }}>0 = sin molestia · 10 = máxima intensidad</p>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 16 }}>
+                {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
+                  const sel = fb.pain.intensity === n
+                  return (
+                    <button key={n} type="button" onClick={() => set('pain.intensity', sel ? null : n)}
+                      style={{ width: 36, height: 36, borderRadius: 9, border: `1.5px solid ${sel ? T.accent : T.line}`, background: sel ? T.accent + '18' : T.card, color: sel ? T.accent : T.ink2, fontSize: 13, fontWeight: sel ? 700 : 400, cursor: 'pointer' }}>
+                      {n}
+                    </button>
+                  )
+                })}
+              </div>
+              {fb.pain.hasPain === true && fb.pain.intensity == null && (
+                <p style={{ fontSize: 12, color: T.accent, marginBottom: 8 }}>Elige una intensidad para continuar.</p>
+              )}
+
+              {/* Detalle */}
+              <p style={{ fontSize: 13.5, fontWeight: 600, color: T.ink, margin: '0 0 8px' }}>¿Qué notaste y dónde?</p>
+              <TextArea
+                value={fb.pain.details}
+                onChange={v => set('pain.details', v)}
+                placeholder="Ej: molestia en Aquiles derecho al correr, tensión en zona lumbar durante las planchas..."
+              />
             </div>
           )}
         </Section>
       )}
 
-      {/* Dificultad técnica general (si no se preguntó ya) */}
+      {/* ── 5. Dificultad técnica general ── */}
       {(status === 'completed' || status === 'partial') && (tipoEditor === 'carrera' || (!has('Dificultad técnica con algún ejercicio') && !has('No entendí algún ejercicio'))) && (
         <Section>
           {tipoEditor === 'carrera'
@@ -260,9 +371,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
-     
-
-      {/* Observaciones generales: siempre */}
+      {/* ── 6. Observaciones generales ── */}
       {status && (
         <Section>
           <Q>Observaciones generales</Q>
@@ -271,6 +380,7 @@ export default function FeedbackForm({ onSubmit, submitting, initial, tipoEditor
         </Section>
       )}
 
+      {/* ── Enviar ── */}
       {status && (
         <Section>
           <button type="button" disabled={!puedeEnviar() || submitting} onClick={enviar}

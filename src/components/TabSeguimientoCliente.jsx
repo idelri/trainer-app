@@ -11,6 +11,8 @@ import { format, parseISO, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { calcularSeguimiento, CAT, CAT_LABEL } from '../lib/seguimientoMotor'
 import { cargarSeguimientoCliente, marcarRevisado, crearNota, SEMANAS_DISPLAY } from '../lib/seguimientoService'
+import { supabase } from '../lib/supabase'
+import { ModalFormEpisodio, ModalVincular } from './ModalMolestia'
 
 const HOY = () => new Date().toISOString().slice(0, 10)
 
@@ -94,6 +96,11 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
   const [expandidos, setExpandidos] = useState(new Set())
   const [modalNota,  setModalNota]  = useState(false)
 
+  // Estado para modales de acción de molestia desde Seguimiento
+  // modalMolestia: null | { tipo: 'abrir'|'vincular', reporte: {...} }
+  const [modalMolestia,  setModalMolestia]  = useState(null)
+  const [episodiosCache, setEpisodiosCache] = useState([])
+
   const cargar = useCallback(async () => {
     setLoading(true)
     const resultado = await cargarSeguimientoCliente(clienteId)
@@ -164,6 +171,56 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
     setSaving(null)
   }
 
+  async function handleAccionMolestia(sesionFeedbackId, accion, aspecto) {
+    if (accion === 'descartado') {
+      // Actualiza el reporte directamente y refresca
+      if (aspecto?.molestiaReporteId) {
+        await supabase
+          .from('molestia_reportes')
+          .update({ estado: 'descartado' })
+          .eq('id', aspecto.molestiaReporteId)
+      } else {
+        await supabase
+          .from('molestia_reportes')
+          .update({ estado: 'descartado' })
+          .eq('sesion_feedback_id', sesionFeedbackId)
+          .eq('estado', 'pendiente')
+      }
+      await cargar()
+    } else if (accion === 'abrir' || accion === 'vincular') {
+      // Cargar episodios del cliente si no los tenemos
+      const { data: eps } = await supabase
+        .from('molestia_episodios')
+        .select('id, zona, lateralidad, fecha_inicio, diagnostico, estado')
+        .eq('cliente_id', clienteId)
+        .order('fecha_inicio', { ascending: false })
+      setEpisodiosCache(eps || [])
+
+      // Construir objeto reporte para pasar al modal
+      const reporte = {
+        id:         aspecto?.molestiaReporteId,
+        detalle:    aspecto?.detalle || '',
+        intensidad: aspecto?.intensity ?? null,
+        origen:     'feedback_sesion',
+        fecha:      null, // Se determinará por la fecha del episodio
+      }
+
+      setModalMolestia({ tipo: accion, reporte, sesionFeedbackId })
+    }
+  }
+
+  async function handleVincularEpisodio(ep) {
+    if (!modalMolestia?.reporte?.id) return
+    // Solo se vincula a episodios activos (ModalVincular ya filtra resueltos)
+    if (ep.estado !== 'activo') return
+    await supabase.from('molestia_reportes').update({
+      episodio_id: ep.id,
+      estado:      'vinculado',
+    }).eq('id', modalMolestia.reporte.id)
+    setModalMolestia(null)
+    await cargar()
+  }
+
   function toggleExpand(id) {
     setExpandidos(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
   }
@@ -226,6 +283,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
                 onRevisar={() => handleRevisar(item)}
                 saving={saving === item.id}
                 onNavSalud={onNavSalud}
+                onAccionMolestia={handleAccionMolestia}
               />
             ))}
           </div>
@@ -274,6 +332,34 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
           onClose={() => setModalNota(false)}
         />
       )}
+
+      {/* Modal: Abrir como episodio desde Seguimiento */}
+      {modalMolestia?.tipo === 'abrir' && (
+        <ModalFormEpisodio
+          titulo="Abrir como episodio"
+          clienteId={clienteId}
+          reporteVinculado={modalMolestia.reporte}
+          inicial={{
+            detalle:    modalMolestia.reporte.detalle || '',
+            intensidad: modalMolestia.reporte.intensidad ?? '',
+          }}
+          onGuardar={async () => {
+            setModalMolestia(null)
+            await cargar()
+          }}
+          onClose={() => setModalMolestia(null)}
+        />
+      )}
+
+      {/* Modal: Vincular a episodio existente desde Seguimiento */}
+      {modalMolestia?.tipo === 'vincular' && (
+        <ModalVincular
+          reporte={modalMolestia.reporte}
+          episodios={episodiosCache}
+          onVincular={handleVincularEpisodio}
+          onClose={() => setModalMolestia(null)}
+        />
+      )}
     </div>
   )
 }
@@ -282,7 +368,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
 // SUBCOMPONENTES
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud }) {
+function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud, onAccionMolestia }) {
   const fechaLabel = item.fecha ? format(parseISO(item.fecha), 'd MMM', { locale: es }) : '—'
   const badge = item.status ? STATUS_BADGE[item.status] : null
   const nAspectos = item.aspectos.length
@@ -303,7 +389,7 @@ function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud }) 
         {expandido && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
             {item.aspectos.map((a, i) => (
-              <AspectoLine key={i} aspecto={a} onNavSalud={onNavSalud} />
+              <AspectoLine key={i} aspecto={a} onNavSalud={onNavSalud} sesionFeedbackId={item.sesionFeedbackId} onAccionMolestia={onAccionMolestia} />
             ))}
           </div>
         )}
@@ -324,19 +410,29 @@ function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud }) 
 // Categorías que pueden tener nulo legítimo y necesitan fallback explícito
 const CAT_DETALLE_REQUERIDO = new Set([CAT.TECNICA, CAT.COMPRENSION, CAT.MATERIAL])
 
-function AspectoLine({ aspecto, onNavSalud }) {
+function AspectoLine({ aspecto, onNavSalud, sesionFeedbackId, onAccionMolestia }) {
   const a = aspecto
   const mostrarSinDetalle = !a.detalle && CAT_DETALLE_REQUERIDO.has(a.categoria)
+  const [descartando, setDescartando] = useState(false)
+  const esMolestiaPendiente = a.categoria === CAT.MOLESTIA && a.molestiaEstado === 'pendiente'
+
+  async function handleDescartar() {
+    if (!onAccionMolestia) return
+    setDescartando(true)
+    await onAccionMolestia(sesionFeedbackId, 'descartado', a)
+    setDescartando(false)
+  }
+
   return (
     <div style={{ fontSize: 13 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 600, color: 'var(--text1)' }}>{a.label}</span>
-        {a.categoria === CAT.MOLESTIA && a.molestiaEstado && (
+        {a.categoria === CAT.MOLESTIA && a.molestiaEstado && a.molestiaEstado !== 'pendiente' && (
           <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg)', padding: '1px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
             {MOLESTIA_ESTADO_LABEL[a.molestiaEstado] || a.molestiaEstado}
           </span>
         )}
-        {a.categoria === CAT.MOLESTIA && onNavSalud && (
+        {a.categoria === CAT.MOLESTIA && onNavSalud && !esMolestiaPendiente && (
           <button onClick={onNavSalud} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
             Ver en Salud →
           </button>
@@ -351,6 +447,28 @@ function AspectoLine({ aspecto, onNavSalud }) {
           Sin detalle añadido.
         </div>
       ) : null}
+
+      {/* Botones de acción: solo para molestias pendientes */}
+      {esMolestiaPendiente && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => onAccionMolestia && onAccionMolestia(sesionFeedbackId, 'abrir', a)}
+            style={{ fontSize: 11.5, fontWeight: 600, padding: '5px 10px', borderRadius: 8, border: '1.5px solid #15803d', background: '#dcfce7', color: '#15803d', cursor: 'pointer' }}>
+            + Abrir como episodio
+          </button>
+          <button
+            onClick={() => onAccionMolestia && onAccionMolestia(sesionFeedbackId, 'vincular', a)}
+            style={{ fontSize: 11.5, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text2)', cursor: 'pointer' }}>
+            Vincular a episodio existente
+          </button>
+          <button
+            onClick={handleDescartar}
+            disabled={descartando}
+            style={{ fontSize: 11.5, padding: '5px 10px', borderRadius: 8, border: '1px solid #fca5a5', background: '#fff', color: '#b91c1c', cursor: 'pointer', opacity: descartando ? 0.6 : 1 }}>
+            {descartando ? 'Descartando…' : 'Descartar'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
