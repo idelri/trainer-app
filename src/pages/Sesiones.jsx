@@ -1123,30 +1123,9 @@ async function guardarSesion() {
       setSaving(false); setModalSesion(null)
       return
     }
-    // Nueva sesión: si es fuerza crear 4 bloques x 3 ejercicios; si es carrera crear 3 fases
+    // Nueva sesión: se crea vacía, sin bloques ni ejercicios por defecto
     const { data: nueva } = await supabase.from('sesiones').insert({ ...datos, cliente_id: clienteSeleccionado }).select().single()
     if (nueva) {
-      if (datos.tipo_editor === 'carrera') {
-        await supabase.from('sesion_fases').insert([
-          { sesion_id: nueva.id, nombre: 'Calentamiento', orden: 0 },
-          { sesion_id: nueva.id, nombre: 'Trabajo principal', orden: 1 },
-          { sesion_id: nueva.id, nombre: 'Vuelta a la calma', orden: 2 },
-        ])
-      } else {
-        for (let i = 0; i < 4; i++) {
-          const { data: b } = await supabase.from('sesion_bloques').insert({
-            sesion_id: nueva.id, nombre: `Bloque ${i + 1}`, color: COLORES[i % COLORES.length], nota: '', orden: i,
-          }).select().single()
-          if (b) {
-            for (let j = 0; j < 3; j++) {
-              await supabase.from('sesion_ejercicios').insert({
-                bloque_id: b.id, nombre: '', series: '', reps: '', rpe: '', notas: '',
-                media_tipo: 'youtube', media_url: '', video_url: '', orden: j,
-              })
-            }
-          }
-        }
-      }
       setSesionAbierta(nueva)
     }
     setSaving(false); setModalSesion(null); cargarSesiones()
