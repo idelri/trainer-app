@@ -1314,23 +1314,18 @@ async function guardarSesion() {
       estado: 'pendiente',     // la copia empieza siempre pendiente
     }).select().single()
     if (errSesion || !nuevaSesion) { alert('Error: ' + (errSesion?.message || errSesion?.code || JSON.stringify(errSesion))); setSaving(false); return }
-    // Bloques fuerza
+    // Bloques fuerza — spread completo: lleva todos los campos presentes en BD
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
     for (const b of bls || []) {
+      const { id: _bid, sesion_id: _bsid, ...bloquePayload } = b
       const { data: nb } = await supabase.from('sesion_bloques').insert({
-        sesion_id: nuevaSesion.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
+        ...bloquePayload, sesion_id: nuevaSesion.id,
       }).select().single()
       if (!nb) continue
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
       for (const e of ejs || []) {
-        await supabase.from('sesion_ejercicios').insert({
-          bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas,
-          media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
-          variables_activas: e.variables_activas, peso: e.peso, duracion: e.duracion,
-          distancia: e.distancia, altura: e.altura, descanso: e.descanso,
-          ejecucion_tipo: e.ejecucion_tipo, ejecucion_texto: e.ejecucion_texto,
-          peso_der: e.peso_der, peso_izq: e.peso_izq, reps_por_lado: e.reps_por_lado,
-        })
+        const { id: _eid, bloque_id: _ebid, valores_reales: _vr, ...ejPayload } = e
+        await supabase.from('sesion_ejercicios').insert({ ...ejPayload, bloque_id: nb.id })
       }
     }
     // Bloques carrera (fases sueltas y grupos con repeticiones)
@@ -1386,23 +1381,18 @@ async function guardarSesion() {
       estado: 'pendiente',
     }).select().single()
     if (!nuevaSesion) { setSaving(false); return }
-    // Bloques fuerza
+    // Bloques fuerza — spread completo: lleva todos los campos presentes en BD
     const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
     for (const b of bls || []) {
+      const { id: _bid, sesion_id: _bsid, ...bloquePayload } = b
       const { data: nb } = await supabase.from('sesion_bloques').insert({
-        sesion_id: nuevaSesion.id, nombre: b.nombre, color: b.color, nota: b.nota, orden: b.orden,
+        ...bloquePayload, sesion_id: nuevaSesion.id,
       }).select().single()
       if (!nb) continue
       const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
       for (const e of ejs || []) {
-        await supabase.from('sesion_ejercicios').insert({
-          bloque_id: nb.id, nombre: e.nombre, series: e.series, reps: e.reps, rpe: e.rpe, notas: e.notas,
-          media_tipo: e.media_tipo, media_url: e.media_url, video_url: e.video_url, orden: e.orden,
-          variables_activas: e.variables_activas, peso: e.peso, duracion: e.duracion,
-          distancia: e.distancia, altura: e.altura, descanso: e.descanso,
-          ejecucion_tipo: e.ejecucion_tipo, ejecucion_texto: e.ejecucion_texto,
-          peso_der: e.peso_der, peso_izq: e.peso_izq, reps_por_lado: e.reps_por_lado,
-        })
+        const { id: _eid, bloque_id: _ebid, valores_reales: _vr, ...ejPayload } = e
+        await supabase.from('sesion_ejercicios').insert({ ...ejPayload, bloque_id: nb.id })
       }
     }
     // Bloques carrera (fases y grupos)
