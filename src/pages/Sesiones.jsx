@@ -2134,27 +2134,10 @@ async function guardarSesion() {
                           if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                           setDraggingEj(null)
                         }}
-                        style={{ padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
-                        {/* Thumbnail grande arriba */}
-                        {thumb && (
-                          <div
-                            style={{ width: '100%', height: 110, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 8, cursor: 'pointer', position: 'relative', flexShrink: 0 }}
-                            onMouseEnter={ev => {
-                              clearTimeout(mediaPreviewTimeout.current)
-                              const rect = ev.currentTarget.getBoundingClientRect()
-                              setMediaPreview({ tipo: e.media_tipo, ytid, url: e.media_url, x: rect.right + 8, y: rect.top })
-                            }}
-                            onMouseLeave={() => {
-                              mediaPreviewTimeout.current = setTimeout(() => setMediaPreview(null), 300)
-                            }}
-                          >
-                            <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.32)', pointerEvents: 'none' }}>
-                              <span style={{ fontSize: 24, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}>{e.media_tipo === 'youtube' || e.media_tipo === 'video' ? '▶' : '🔍'}</span>
-                            </div>
-                          </div>
-                        )}
-                        {/* ROW: drag handle + name + delete */}
+                        style={{ padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab', display: 'flex', gap: 8, alignItems: 'stretch', minHeight: thumb ? 160 : 'auto' }}>
+                        {/* COLUMNA IZQUIERDA: toda la info */}
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                        {/* ROW: número + nombre + delete */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
                             <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>{idx + 1}.{eIdx + 1}.</span>
@@ -2363,6 +2346,27 @@ async function guardarSesion() {
                           <div style={{ marginTop: 4 }}>
                             <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
                               onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
+                          </div>
+                        )}
+                        </div>{/* fin columna izquierda */}
+
+                        {/* COLUMNA DERECHA: thumbnail grande */}
+                        {thumb && (
+                          <div
+                            style={{ width: '45%', flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', cursor: 'pointer', margin: '2px 0' }}
+                            onMouseEnter={ev => {
+                              clearTimeout(mediaPreviewTimeout.current)
+                              const rect = ev.currentTarget.getBoundingClientRect()
+                              setMediaPreview({ tipo: e.media_tipo, ytid, url: e.media_url, x: rect.right + 8, y: rect.top })
+                            }}
+                            onMouseLeave={() => {
+                              mediaPreviewTimeout.current = setTimeout(() => setMediaPreview(null), 300)
+                            }}
+                          >
+                            <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.28)', pointerEvents: 'none' }}>
+                              <span style={{ fontSize: 26, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.6))' }}>{e.media_tipo === 'youtube' || e.media_tipo === 'video' ? '▶' : '🔍'}</span>
+                            </div>
                           </div>
                         )}
                       </div>
