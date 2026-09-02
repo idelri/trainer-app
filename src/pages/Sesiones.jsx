@@ -647,6 +647,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [busquedaBiblioteca, setBusquedaBiblioteca] = useState('')
   const [bibFiltros, setBibFiltros] = useState({}) // { [campo]: subvariable | null } — campos activos
   const [guardadoOk, setGuardadoOk] = useState(false)
+  const [mediaPreview, setMediaPreview] = useState(null) // { tipo, ytid, url, x, y }
+  const mediaPreviewTimeout = useRef(null)
 const [modalDuplicar, setModalDuplicar] = useState(null)
   const [fechaDuplicar, setFechaDuplicar] = useState('')
   const [clipboard, setClipboard] = useState(null)
@@ -2133,6 +2135,25 @@ async function guardarSesion() {
                           setDraggingEj(null)
                         }}
                         style={{ padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab' }}>
+                        {/* Thumbnail grande arriba */}
+                        {thumb && (
+                          <div
+                            style={{ width: '100%', height: 110, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 8, cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+                            onMouseEnter={ev => {
+                              clearTimeout(mediaPreviewTimeout.current)
+                              const rect = ev.currentTarget.getBoundingClientRect()
+                              setMediaPreview({ tipo: e.media_tipo, ytid, url: e.media_url, x: rect.right + 8, y: rect.top })
+                            }}
+                            onMouseLeave={() => {
+                              mediaPreviewTimeout.current = setTimeout(() => setMediaPreview(null), 300)
+                            }}
+                          >
+                            <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.32)', pointerEvents: 'none' }}>
+                              <span style={{ fontSize: 24, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}>{e.media_tipo === 'youtube' || e.media_tipo === 'video' ? '▶' : '🔍'}</span>
+                            </div>
+                          </div>
+                        )}
                         {/* ROW: drag handle + name + delete */}
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
@@ -2142,11 +2163,6 @@ async function guardarSesion() {
                                 onSave={v => actualizarEjercicio(b.id, e.id, 'nombre', v)} />
                             </div>
                           </div>
-                          {thumb && (
-                            <div style={{ width: 72, height: 72, borderRadius: 7, flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                              <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
-                          )}
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminarEjercicio(b.id, e.id)}><X size={12} /></button>
                         </div>
 
@@ -3307,6 +3323,38 @@ async function guardarSesion() {
       {libDragActive && sesionAbierta?.tipo_editor !== 'carrera' && (
         <div style={{ position: 'fixed', bottom: 24, right: 310, background: '#1e3a2f', color: '#6ee7b7', border: '2px dashed #6ee7b7', borderRadius: 12, padding: '10px 18px', fontSize: 12, fontWeight: 600, zIndex: 500, pointerEvents: 'none' }}>
           ↓ Suelta sobre un bloque (ejercicio) o aquí (bloque completo)
+        </div>
+      )}
+
+      {/* Panel flotante preview de media al pasar el ratón por el thumbnail */}
+      {mediaPreview && (
+        <div
+          onMouseEnter={() => clearTimeout(mediaPreviewTimeout.current)}
+          onMouseLeave={() => { mediaPreviewTimeout.current = setTimeout(() => setMediaPreview(null), 200) }}
+          style={{
+            position: 'fixed',
+            left: Math.min(mediaPreview.x, window.innerWidth - 340),
+            top: Math.max(8, Math.min(mediaPreview.y, window.innerHeight - 230)),
+            width: 320,
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            zIndex: 1200,
+            overflow: 'hidden',
+          }}>
+          {mediaPreview.ytid ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${mediaPreview.ytid}?autoplay=1&mute=0`}
+              style={{ width: '100%', height: 210, border: 'none', display: 'block' }}
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          ) : mediaPreview.tipo === 'video' ? (
+            <video src={mediaPreview.url} controls autoPlay style={{ width: '100%', maxHeight: 210, display: 'block', background: '#000' }} />
+          ) : (
+            <img src={mediaPreview.url} alt="" style={{ width: '100%', maxHeight: 210, objectFit: 'contain', display: 'block', background: 'var(--bg2)' }} />
+          )}
         </div>
       )}
     </div>
