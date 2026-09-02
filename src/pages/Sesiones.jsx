@@ -2097,7 +2097,7 @@ async function guardarSesion() {
                     )
                   })}
                 </div>
-                <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ padding: '0 16px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {(ejercicios[b.id] || []).map((e, eIdx) => {
                     const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
                     const thumb = e.media_tipo === 'youtube' && ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
@@ -2143,7 +2143,7 @@ async function guardarSesion() {
                             </div>
                           </div>
                           {thumb && (
-                            <div style={{ width: 48, height: 48, borderRadius: 7, flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            <div style={{ width: 72, height: 72, borderRadius: 7, flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)' }}>
                               <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                           )}
@@ -2352,7 +2352,7 @@ async function guardarSesion() {
                       </div>
                     )
                   })}
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, gridColumn: '1 / -1' }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => abrirCrearEjercicio(b.id, b.variables_default || [])}>
                       <Plus size={12} /> Ejercicio
                     </button>
