@@ -1123,6 +1123,7 @@ async function guardarSesion() {
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datosConFecha } : s))
       setSesionAbierta(s => s ? { ...s, ...datosConFecha } : s)
       setSaving(false); setModalSesion(null)
+      cargarSesiones() // refresca la lista para que el clipboard siempre tenga datos completos
       return
     }
     // Nueva sesión: se crea vacía, sin bloques ni ejercicios por defecto
@@ -1515,11 +1516,7 @@ async function guardarSesion() {
           clientes={clientes}
           clienteSeleccionado={clienteSeleccionado}
           feedbacks={feedbacks}
-          onCopiar={async (item) => {
-            // Leer siempre de BD para tener todos los campos actualizados
-            const { data: fresh } = await supabase.from('sesiones').select('*').eq('id', item.id).single()
-            setClipboard(fresh || item)
-          }}
+          onCopiar={(item) => setClipboard(item)}
           onPegar={async (item, fecha, clienteDestino) => {
             if (item._tipo === 'sesion') {
               await pegarSesion(item, fecha, clienteDestino)
