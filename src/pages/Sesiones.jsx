@@ -1515,7 +1515,11 @@ async function guardarSesion() {
           clientes={clientes}
           clienteSeleccionado={clienteSeleccionado}
           feedbacks={feedbacks}
-          onCopiar={(item) => setClipboard(item)}
+          onCopiar={async (item) => {
+            // Leer siempre de BD para tener todos los campos actualizados
+            const { data: fresh } = await supabase.from('sesiones').select('*').eq('id', item.id).single()
+            setClipboard(fresh || item)
+          }}
           onPegar={async (item, fecha, clienteDestino) => {
             if (item._tipo === 'sesion') {
               await pegarSesion(item, fecha, clienteDestino)
@@ -1597,7 +1601,7 @@ async function guardarSesion() {
               placeholder="Ej: Esterilla, discos y mancuernas, goma (resistencia baja)..."
               textarea
               fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })); setDirty(true) }}
+              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, material: v } : s)); setDirty(true) }}
             />
           </div>
 
@@ -1608,7 +1612,7 @@ async function guardarSesion() {
               placeholder="Ej: Realiza los ejercicios del bloque en orden, las series que toquen y pasa al siguiente..."
               textarea
               fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })); setDirty(true) }}
+              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, indicaciones: v } : s)); setDirty(true) }}
             />
           </div>
 
