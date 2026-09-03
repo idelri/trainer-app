@@ -1297,10 +1297,13 @@ async function guardarSesion() {
     // Spread completo: copia todos los campos presentes, sobreescribiendo solo lo que debe cambiar
     const {
       id: _sid, cliente_id: _cid, token_publico: _tok, created_at: _cat, orden: _ord,
+      pack_id: _pid, sesion_original_id: _soi,
       // Datos reales de la sesión original — no se copian
       km_real: _kr, duracion_real: _dr, rpe_real: _rr,
       zona1_2_real: _z1r, zona3_4_real: _z3r, zona5_real: _z5r,
-      completada_el: _cel, sesion_original_id: _soi,
+      completada_el: _cel,
+      // Campos virtuales del calendario — no existen en BD
+      _tipo: __tipo,
       ...sesionPayload
     } = sesionOrigen
     const { data: nuevaSesion, error: errSesion } = await supabase.from('sesiones').insert({
@@ -1355,9 +1358,11 @@ async function guardarSesion() {
     setSaving(true)
     const {
       id: _sid, cliente_id: _cid, token_publico: _tok, created_at: _cat, orden: _ord,
+      pack_id: _pid, sesion_original_id: _soi,
       km_real: _kr, duracion_real: _dr, rpe_real: _rr,
       zona1_2_real: _z1r, zona3_4_real: _z3r, zona5_real: _z5r,
-      completada_el: _cel, sesion_original_id: _soi,
+      completada_el: _cel,
+      _tipo: __tipo,
       titulo: _titulo,
       ...sesionPayload
     } = s
