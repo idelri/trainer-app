@@ -1293,27 +1293,21 @@ async function guardarSesion() {
 
   async function pegarSesion(sesionOrigen, fechaDestino, clienteDestino) {
     setSaving(true)
+    // Spread completo: copia todos los campos presentes, sobreescribiendo solo lo que debe cambiar
+    const {
+      id: _sid, cliente_id: _cid, token_publico: _tok, created_at: _cat, orden: _ord,
+      // Datos reales de la sesión original — no se copian
+      km_real: _kr, duracion_real: _dr, rpe_real: _rr,
+      zona1_2_real: _z1r, zona3_4_real: _z3r, zona5_real: _z5r,
+      completada_el: _cel, sesion_original_id: _soi,
+      ...sesionPayload
+    } = sesionOrigen
     const { data: nuevaSesion, error: errSesion } = await supabase.from('sesiones').insert({
+      ...sesionPayload,
       cliente_id: clienteDestino,
-      titulo: sesionOrigen.titulo,
       fecha: fechaDestino,
-      objetivo: sesionOrigen.objetivo,
-      notas_entrenador: sesionOrigen.notas_entrenador,
-      duracion_min: sesionOrigen.duracion_min,
-      material: sesionOrigen.material,
-      indicaciones: sesionOrigen.indicaciones,
-      tipo_sesion: sesionOrigen.tipo_sesion || 'programada',
-      tipo_editor: sesionOrigen.tipo_editor || 'fuerza',
-      con_feedback: sesionOrigen.con_feedback !== false,
-      icono: sesionOrigen.icono,
-      funcion_sesion: sesionOrigen.funcion_sesion,
-      capacidades: sesionOrigen.capacidades,
-      objetivos_sesion: sesionOrigen.objetivos_sesion,
-      modalidad: sesionOrigen.modalidad || 'autonoma',
-      lugar: sesionOrigen.lugar,
-      lista: false,            // la copia empieza sin marcar como lista
-      publicada: sesionOrigen.publicada !== false,
-      estado: 'pendiente',     // la copia empieza siempre pendiente
+      lista: false,        // la copia empieza sin marcar como lista
+      estado: 'pendiente', // la copia empieza siempre pendiente
     }).select().single()
     if (errSesion || !nuevaSesion) { alert('Error: ' + (errSesion?.message || errSesion?.code || JSON.stringify(errSesion))); setSaving(false); return }
     // Bloques fuerza — spread completo: lleva todos los campos presentes en BD
@@ -1358,26 +1352,20 @@ async function guardarSesion() {
   }
   async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
+    const {
+      id: _sid, cliente_id: _cid, token_publico: _tok, created_at: _cat, orden: _ord,
+      km_real: _kr, duracion_real: _dr, rpe_real: _rr,
+      zona1_2_real: _z1r, zona3_4_real: _z3r, zona5_real: _z5r,
+      completada_el: _cel, sesion_original_id: _soi,
+      titulo: _titulo,
+      ...sesionPayload
+    } = s
     const { data: nuevaSesion } = await supabase.from('sesiones').insert({
+      ...sesionPayload,
       cliente_id: s.cliente_id,
-      titulo: s.titulo + ' (copia)',
+      titulo: _titulo + ' (copia)',
       fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
-      objetivo: s.objetivo,
-      notas_entrenador: s.notas_entrenador,
-      duracion_min: s.duracion_min,
-      material: s.material,
-      indicaciones: s.indicaciones,
-      tipo_sesion: s.tipo_sesion || 'programada',
-      tipo_editor: s.tipo_editor || 'fuerza',
-      con_feedback: s.con_feedback !== false,
-      icono: s.icono,
-      funcion_sesion: s.funcion_sesion,
-      capacidades: s.capacidades,
-      objetivos_sesion: s.objetivos_sesion,
-      modalidad: s.modalidad || 'autonoma',
-      lugar: s.lugar,
       lista: false,
-      publicada: s.publicada !== false,
       estado: 'pendiente',
     }).select().single()
     if (!nuevaSesion) { setSaving(false); return }
