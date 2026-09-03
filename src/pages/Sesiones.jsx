@@ -1344,13 +1344,11 @@ async function guardarSesion() {
     const { data: fasesSrc, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', sesionOrigen.id).order('orden')
 
     for (const f of fasesSrc || []) {
+      const { id: _fid, sesion_id: _fsid, grupo_id: _fgid, ...fasePayload } = f
       const { error: errF } = await supabase.from('sesion_fases').insert({
+        ...fasePayload,
         sesion_id: nuevaSesion.id,
         grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
-        nombre: f.nombre, descripcion: f.descripcion,
-        volumen_min: f.volumen_min, volumen_km: f.volumen_km,
-        fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin,
-        rpe: f.rpe, orden: f.orden,
       })
       if (errF) console.error('[copy] error fase insert:', errF)
     }
@@ -1408,13 +1406,11 @@ async function guardarSesion() {
     }
     const { data: fasesSrc } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
     for (const f of fasesSrc || []) {
+      const { id: _fid, sesion_id: _fsid, grupo_id: _fgid, ...fasePayload } = f
       await supabase.from('sesion_fases').insert({
+        ...fasePayload,
         sesion_id: nuevaSesion.id,
         grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
-        nombre: f.nombre, descripcion: f.descripcion,
-        volumen_min: f.volumen_min, volumen_km: f.volumen_km,
-        fc_zona: f.fc_zona, ritmo_inicio: f.ritmo_inicio, ritmo_fin: f.ritmo_fin,
-        rpe: f.rpe, orden: f.orden,
       })
     }
     setSaving(false)
