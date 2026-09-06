@@ -41,7 +41,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
   const [clienteData, setClienteData]   = useState({})   // { id: { sesiones, semanaRec } }
   const [loading, setLoading]           = useState(false)
   const [modalBloque, setModalBloque]   = useState(false)
-  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
+  const [formBloque, setFormBloque]     = useState({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [], fecha_fin: '', sin_hora: false })
   const [modoBloque, setModoBloque]     = useState('dia')   // 'dia' | 'rango'
   const [rangoFin, setRangoFin]         = useState('')
   const [diasRango, setDiasRango]       = useState([0,1,2,3]) // índices 0=lun…6=dom
@@ -103,7 +103,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
     const [{ data: cls }, { data: ses }, { data: abs }] = await Promise.all([
       supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre'),
       supabase.from('sesiones').select('id, cliente_id, titulo, fecha, hora_inicio, modalidad, lugar, duracion_min, sesion_bloques(id)').in('modalidad', ['presencial', 'online']).gte('fecha', semIni).lte('fecha', semFin),
-      supabase.from('agenda_bloques').select('*').gte('fecha', semIni).lte('fecha', semFin).order('hora_inicio'),
+      supabase.from('agenda_bloques').select('*').lte('fecha', semFin).or(`fecha_fin.gte.${semIni},fecha.gte.${semIni}`).order('hora_inicio'),
     ])
     const clientesList = cls || []
     setClientes(clientesList)
@@ -137,7 +137,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
     const key = fKey(diaNav)
     const [{ data: ses }, { data: abs }] = await Promise.all([
       supabase.from('sesiones').select('id, cliente_id, titulo, fecha, modalidad, lugar, duracion_min').in('modalidad', ['presencial', 'online']).eq('fecha', key),
-      supabase.from('agenda_bloques').select('*').eq('fecha', key).order('hora_inicio'),
+      supabase.from('agenda_bloques').select('*').lte('fecha', key).or(`fecha_fin.gte.${key},fecha.eq.${key}`).order('hora_inicio'),
     ])
     setSesionesDia(ses || [])
     setBloquesDia2(abs || [])
@@ -150,7 +150,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
     const mesFin = fKey(endOfMonth(mesNav))
     const [{ data: ses }, { data: abs }] = await Promise.all([
       supabase.from('sesiones').select('id, cliente_id, titulo, fecha, modalidad, lugar, duracion_min').in('modalidad', ['presencial', 'online']).gte('fecha', mesIni).lte('fecha', mesFin),
-      supabase.from('agenda_bloques').select('*').gte('fecha', mesIni).lte('fecha', mesFin).order('hora_inicio'),
+      supabase.from('agenda_bloques').select('*').lte('fecha', mesFin).or(`fecha_fin.gte.${mesIni},fecha.gte.${mesIni}`).order('hora_inicio'),
     ])
     setSesionesMes(ses || [])
     setBloquesMes(abs || [])
@@ -160,13 +160,14 @@ export default function Agenda({ setPage, setSesionesContext }) {
   function cerrarModalBloque() {
     setModalBloque(false); setEditandoBloque(null); setEditandoBloqueData(null)
     setScopeBloque(null); setErrorBloque(null)
-    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [] })
+    setFormBloque({ fecha: '', hora_inicio: '', hora_fin: '', titulo: '', tipo: 'personal', lugar: '', cliente_ids: [], fecha_fin: '', sin_hora: false })
     setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3])
   }
 
   async function guardarBloque() {
-    if (!formBloque.titulo?.trim() || !formBloque.fecha || !formBloque.hora_inicio || !formBloque.hora_fin) {
-      setErrorBloque('Rellena título, fecha y horario.')
+    const sinHora = formBloque.sin_hora
+    if (!formBloque.titulo?.trim() || !formBloque.fecha || (!sinHora && (!formBloque.hora_inicio || !formBloque.hora_fin))) {
+      setErrorBloque(sinHora ? 'Rellena título y fecha.' : 'Rellena título, fecha y horario (o marca "Sin hora concreta").')
       return
     }
     // Si tiene grupo y no eligió scope, exigir elección
@@ -177,14 +178,17 @@ export default function Agenda({ setPage, setSesionesContext }) {
     setSavingBloque(true)
     setErrorBloque(null)
     const ids = formBloque.cliente_ids || []
+    // fecha_fin solo aplica en modo "dia" (un único evento multiday), no en modo rango (genera entradas separadas)
+    const fechaFinVal = (modoBloque === 'dia' && formBloque.fecha_fin && formBloque.fecha_fin > formBloque.fecha) ? formBloque.fecha_fin : null
     const payload = {
       titulo:      formBloque.titulo.trim(),
-      hora_inicio: formBloque.hora_inicio.slice(0, 5),
-      hora_fin:    formBloque.hora_fin.slice(0, 5),
+      hora_inicio: sinHora ? null : formBloque.hora_inicio.slice(0, 5),
+      hora_fin:    sinHora ? null : formBloque.hora_fin.slice(0, 5),
       tipo:        formBloque.tipo,
       lugar:       formBloque.lugar?.trim() || null,
       cliente_ids: ids,
       cliente_id:  ids[0] || null,
+      fecha_fin:   fechaFinVal,
     }
 
     if (editandoBloque) {
@@ -489,9 +493,11 @@ export default function Agenda({ setPage, setSesionesContext }) {
               const key = fKey(dia)
               const esHoyCol = key === hoy
               const sesDia = sesiones.filter(s => s.fecha === key)
-              const bloqDia = agendaBloques.filter(b => b.fecha === key)
+              const bloqDia = agendaBloques.filter(b => b.fecha <= key && (b.fecha_fin ? b.fecha_fin >= key : b.fecha === key))
               const sesSinHora = sesDia.filter(s => !s.hora_inicio)
               const sesConHora = sesDia.filter(s => s.hora_inicio)
+              const bloqSinHora = bloqDia.filter(b => !b.hora_inicio)
+              const bloqConHora = bloqDia.filter(b => !!b.hora_inicio)
 
               return (
                 <div key={i} style={{ borderLeft: '1px solid var(--border)', position: 'relative', minHeight: (H_FIN - H_INI) * PX_H, background: esHoyCol ? 'rgba(100,150,120,0.04)' : 'transparent' }}>
@@ -513,8 +519,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     </>
                   )}
 
-                  {/* Sesiones sin hora → tira superior */}
-                  {sesSinHora.length > 0 && (
+                  {/* Sesiones + franjas sin hora → tira superior */}
+                  {(sesSinHora.length > 0 || bloqSinHora.length > 0) && (
                     <div style={{ position: 'absolute', top: 2, left: 2, right: 2, zIndex: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {sesSinHora.map(s => (
                         <div key={s.id} onClick={() => irASesion(s.cliente_id, s.id)}
@@ -523,11 +529,25 @@ export default function Agenda({ setPage, setSesionesContext }) {
                           {s.titulo}
                         </div>
                       ))}
+                      {bloqSinHora.map(b => {
+                        const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+                        return (
+                          <div key={b.id}
+                            onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio || '', hora_fin: b.hora_fin || '', titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []), fecha_fin: b.fecha_fin || '', sin_hora: !b.hora_inicio }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                            onMouseEnter={e => setTooltipBloque({ b, x: e.clientX, y: e.clientY })}
+                            onMouseMove={e => { if (tooltipBloque?.b?.id === b.id) setTooltipBloque(t => ({ ...t, x: e.clientX, y: e.clientY })) }}
+                            onMouseLeave={() => setTooltipBloque(null)}
+                            style={{ borderRadius: 4, padding: '2px 5px', fontSize: 9, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              background: cfg.bg, color: cfg.color, borderLeft: `3px solid ${cfg.border}` }}>
+                            {cfg.emoji} {b.titulo}{b.fecha_fin ? ' →' : ''}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
-                  {/* Franjas ocupadas */}
-                  {bloqDia.map(b => {
+                  {/* Franjas ocupadas con hora */}
+                  {bloqConHora.map(b => {
                     const top = tTop(b.hora_inicio)
                     if (top === null) return null
                     const height = tHeight(b.hora_inicio, b.hora_fin)
@@ -535,7 +555,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                     const cortito = height < 32
                     return (
                       <div key={b.id}
-                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                        onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio || '', hora_fin: b.hora_fin || '', titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []), fecha_fin: b.fecha_fin || '', sin_hora: !b.hora_inicio }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                         onMouseEnter={e => { if (cortito || b.lugar || (b.cliente_ids?.length > 0)) setTooltipBloque({ b, x: e.clientX, y: e.clientY }) }}
                         onMouseMove={e => { if (tooltipBloque?.b?.id === b.id) setTooltipBloque(t => ({ ...t, x: e.clientX, y: e.clientY })) }}
                         onMouseLeave={() => setTooltipBloque(null)}
@@ -599,6 +619,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
 
     const sesSinHora = sesionesDia.filter(s => !s.hora_inicio)
     const sesConHora = sesionesDia.filter(s => s.hora_inicio)
+    const bloqDia2SinHora = bloquesDia2.filter(b => !b.hora_inicio)
+    const bloqDia2ConHora = bloquesDia2.filter(b => !!b.hora_inicio)
 
     return (
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -611,8 +633,8 @@ export default function Agenda({ setPage, setSesionesContext }) {
           {sesSinHora.length > 0 && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 'auto' }}>{sesSinHora.length} sin hora fija</span>}
         </div>
 
-        {/* Sesiones sin hora */}
-        {sesSinHora.length > 0 && (
+        {/* Sesiones + franjas sin hora */}
+        {(sesSinHora.length > 0 || bloqDia2SinHora.length > 0) && (
           <div style={{ display: 'flex', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', background: 'var(--bg2)' }}>
             {sesSinHora.map(s => (
               <div key={s.id} onClick={() => irASesion(s.cliente_id, s.id)}
@@ -621,6 +643,16 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 {s.modalidad === 'presencial' ? '🏋️' : '💻'} {s.titulo}
               </div>
             ))}
+            {bloqDia2SinHora.map(b => {
+              const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
+              return (
+                <div key={b.id}
+                  onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: '', hora_fin: '', titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []), fecha_fin: b.fecha_fin || '', sin_hora: true }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                  style={{ borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 500, background: cfg.bg, color: cfg.color }}>
+                  {cfg.emoji} {b.titulo}{b.fecha_fin ? ` → ${b.fecha_fin}` : ''}
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -649,14 +681,14 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 </>
               )}
 
-              {/* Franjas ocupadas */}
-              {bloquesDia2.map(b => {
+              {/* Franjas ocupadas con hora */}
+              {bloqDia2ConHora.map(b => {
                 const top = tTop(b.hora_inicio)
                 if (top === null) return null
                 const height = tHeight(b.hora_inicio, b.hora_fin)
                 return (
                   <div key={b.id}
-                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                    onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio || '', hora_fin: b.hora_fin || '', titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []), fecha_fin: b.fecha_fin || '', sin_hora: false }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                     style={{ position: 'absolute', top, left: 4, right: 4, height, borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer', overflow: 'hidden', zIndex: 2,
                       background: (TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).bg,
                       borderLeft: `3px solid ${(TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal).border}`,
@@ -719,7 +751,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
             if (!d) return <div key={i} style={{ borderLeft: i % 7 > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)', padding: 4, minHeight: 60, background: 'var(--bg2)', opacity: 0.3 }} />
             const key = fKey(d)
             const sesDia = sesionesMes.filter(s => s.fecha === key)
-            const bloquesDia = bloquesMes.filter(b => b.fecha === key)
+            const bloquesDia = bloquesMes.filter(b => b.fecha <= key && (b.fecha_fin ? b.fecha_fin >= key : b.fecha === key))
             const esHoyDia = key === hoy
             const col = i % 7
             const esFinSemana = col >= 5
@@ -729,14 +761,14 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', minWidth: 0 }}>
                 {bloquesDia.map(b => {
                   const cfg = TIPO_CONFIG[b.tipo] || TIPO_CONFIG.personal
-                  const tooltip = `${cfg.emoji} ${b.titulo}${b.hora_inicio ? ' · ' + b.hora_inicio.slice(0,5) : ''}${b.lugar ? ' · ' + b.lugar : ''}`
+                  const tooltip = `${cfg.emoji} ${b.titulo}${b.fecha_fin ? ' → ' + b.fecha_fin : ''}${b.hora_inicio ? ' · ' + b.hora_inicio.slice(0,5) : ''}${b.lugar ? ' · ' + b.lugar : ''}`
                   return (
                     <div key={b.id}
                       title={tooltip}
-                      onClick={() => { setEditandoBloque(b.id); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio, hora_fin: b.hora_fin, titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []) }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
+                      onClick={() => { setEditandoBloque(b.id); setModoBloque('dia'); setFormBloque({ fecha: b.fecha, hora_inicio: b.hora_inicio || '', hora_fin: b.hora_fin || '', titulo: b.titulo, tipo: b.tipo, lugar: b.lugar || '', cliente_ids: b.cliente_ids?.length ? b.cliente_ids : (b.cliente_id ? [b.cliente_id] : []), fecha_fin: b.fecha_fin || '', sin_hora: !b.hora_inicio }); setEditandoBloqueData(b); setScopeBloque(null); setModalBloque(true) }}
                       style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', borderLeft: `2px solid ${cfg.border}`, background: cfg.bg, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', minWidth: 0, flexShrink: 0 }}>
                       <span style={{ fontSize: 9, flexShrink: 0 }}>{cfg.emoji}</span>
-                      <span style={{ fontSize: 9, color: cfg.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{b.hora_inicio?.slice(0,5)} {b.titulo}</span>
+                      <span style={{ fontSize: 9, color: cfg.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{b.hora_inicio?.slice(0,5) || '📅'} {b.titulo}</span>
                     </div>
                   )
                 })}
@@ -875,7 +907,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
             </button>
             {dropdownOpen === 'añadir' && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.13)', width: 200, zIndex: 300, overflow: 'hidden' }}>
-                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'presencial', lugar: '', cliente_ids: [] }); setModalBloque(true) }}
+                <button onClick={() => { setDropdownOpen(null); setEditandoBloque(null); setModoBloque('dia'); setRangoFin(''); setDiasRango([0,1,2,3]); setFormBloque({ fecha: hoy, hora_inicio: '09:00', hora_fin: '10:00', titulo: '', tipo: 'presencial', lugar: '', cliente_ids: [], fecha_fin: '', sin_hora: false }); setModalBloque(true) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: 16 }}>🗓</span>
                   <div>
@@ -1724,7 +1756,25 @@ export default function Agenda({ setPage, setSesionesContext }) {
               </>
             )}
 
+            {/* Fecha fin (solo modo día, para eventos multiday) */}
+            {(modoBloque === 'dia' || editandoBloque) && (
+              <div className="form-group">
+                <label className="form-label">Fecha fin <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(opcional, si dura varios días)</span></label>
+                <input className="form-input" type="date" value={formBloque.fecha_fin} min={formBloque.fecha} onChange={e => setFormBloque(f => ({ ...f, fecha_fin: e.target.value }))} />
+              </div>
+            )}
+
+            {/* Sin hora / Con hora toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <button type="button"
+                onClick={() => setFormBloque(f => ({ ...f, sin_hora: !f.sin_hora, hora_inicio: f.sin_hora ? '09:00' : '', hora_fin: f.sin_hora ? '10:00' : '' }))}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, background: formBloque.sin_hora ? 'var(--accent)' : 'transparent', color: formBloque.sin_hora ? '#fff' : 'var(--text2)' }}>
+                📅 Sin hora concreta
+              </button>
+            </div>
+
             {/* Horas */}
+            {!formBloque.sin_hora && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
                 <label className="form-label">Hora inicio</label>
@@ -1735,6 +1785,7 @@ export default function Agenda({ setPage, setSesionesContext }) {
                 <input className="form-input" type="time" value={formBloque.hora_fin} onChange={e => setFormBloque(f => ({ ...f, hora_fin: e.target.value }))} />
               </div>
             </div>
+            )}
             {errorBloque && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 12, color: '#dc2626' }}>
                 ⚠️ {errorBloque}

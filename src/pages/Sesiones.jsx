@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { clonarSesion } from '../lib/clonarSesion'
 import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId, colorDePatronId, patronesRecomendadosActivos } from '../lib/taxonomia'
 import { FUNCIONES_SESION, GRUPOS_CAPACIDAD, objetivosAgrupados, filtrarObjetivosCompatibles } from '../lib/metodologia'
 import { format, parseISO } from 'date-fns'
@@ -1294,137 +1295,31 @@ async function guardarSesion() {
 
   async function pegarSesion(sesionOrigen, fechaDestino, clienteDestino) {
     setSaving(true)
-    // Recargar siempre desde BD para garantizar todos los campos actualizados
-    const { data: src } = await supabase.from('sesiones').select('*').eq('id', sesionOrigen.id).single()
-    const fuente = src || sesionOrigen
-    const { data: nuevaSesion, error: errSesion } = await supabase.from('sesiones').insert({
-      titulo: fuente.titulo,
-      objetivo: fuente.objetivo,
-      notas_entrenador: fuente.notas_entrenador,
-      duracion_min: fuente.duracion_min,
-      material: fuente.material,
-      indicaciones: fuente.indicaciones,
-      tipo_sesion: fuente.tipo_sesion,
-      tipo_editor: fuente.tipo_editor,
-      con_feedback: fuente.con_feedback,
-      icono: fuente.icono,
-      funcion_sesion: fuente.funcion_sesion,
-      capacidades: fuente.capacidades,
-      objetivos_sesion: fuente.objetivos_sesion,
-      modalidad: fuente.modalidad,
-      lugar: fuente.lugar,
-      publicada: fuente.publicada,
-      tipo_actividad: fuente.tipo_actividad,
-      tipos_actividad: fuente.tipos_actividad,
-      etiquetas: fuente.etiquetas,
-      hora_inicio: fuente.hora_inicio,
-      km_objetivo: fuente.km_objetivo,
-      rpe_objetivo: fuente.rpe_objetivo,
-      zona1_2_objetivo: fuente.zona1_2_objetivo,
-      zona3_4_objetivo: fuente.zona3_4_objetivo,
-      zona5_objetivo: fuente.zona5_objetivo,
-      estado_manual: fuente.estado_manual,
-      es_plantilla: fuente.es_plantilla,
-      // Campos de destino / siempre reseteados
-      cliente_id: clienteDestino,
+    const { data: nuevaSesion, error } = await clonarSesion(supabase, sesionOrigen.id, {
+      clienteDestino,
       fecha: fechaDestino,
-      lista: false,
-      estado: 'pendiente',
-    }).select().single()
-    if (errSesion || !nuevaSesion) { alert('Error al copiar sesión: ' + (errSesion?.message || JSON.stringify(errSesion))); setSaving(false); return }
-    // Bloques fuerza — spread completo: lleva todos los campos presentes en BD
-    const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', fuente.id).order('orden')
-    for (const b of bls || []) {
-      const { id: _bid, sesion_id: _bsid, ...bloquePayload } = b
-      const { data: nb } = await supabase.from('sesion_bloques').insert({
-        ...bloquePayload, sesion_id: nuevaSesion.id,
-      }).select().single()
-      if (!nb) continue
-      const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
-      for (const e of ejs || []) {
-        const { id: _eid, bloque_id: _ebid, valores_reales: _vr, biblioteca_id: _bid2, ...ejPayload } = e
-        const { error: errEj } = await supabase.from('sesion_ejercicios').insert({ ...ejPayload, bloque_id: nb.id })
-        if (errEj) console.error('[copy] error ejercicio insert:', errEj, ejPayload)
-      }
-    }
-    // Bloques carrera (fases sueltas y grupos con repeticiones)
-    const { data: grupos, error: errGrupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', fuente.id).order('orden')
-
-    const gruposMap = {}
-    for (const g of grupos || []) {
-      const { data: ng, error: errNg } = await supabase.from('sesion_fase_grupos').insert({
-        sesion_id: nuevaSesion.id, repeticiones: g.repeticiones, orden: g.orden,
-      }).select().single()
-
-      if (ng) gruposMap[g.id] = ng.id
-    }
-    const { data: fasesSrc, error: errFases } = await supabase.from('sesion_fases').select('*').eq('sesion_id', fuente.id).order('orden')
-
-    for (const f of fasesSrc || []) {
-      const { id: _fid, sesion_id: _fsid, grupo_id: _fgid, ...fasePayload } = f
-      const { error: errF } = await supabase.from('sesion_fases').insert({
-        ...fasePayload,
-        sesion_id: nuevaSesion.id,
-        grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
-      })
-      if (errF) console.error('[copy] error fase insert:', errF)
+    })
+    if (error || !nuevaSesion) {
+      alert('Error al copiar sesión: ' + (error?.message || 'sin datos'))
+      setSaving(false)
+      return
     }
     setSaving(false)
     if (clienteDestino !== clienteSeleccionado) setClienteSeleccionado(clienteDestino)
     else cargarSesiones()
   }
+
   async function duplicarSesion(s, fechaDestino) {
     setSaving(true)
-    const {
-      id: _sid, cliente_id: _cid, token_publico: _tok, created_at: _cat, orden: _ord,
-      pack_id: _pid, sesion_original_id: _soi,
-      km_real: _kr, duracion_real: _dr, rpe_real: _rr,
-      zona1_2_real: _z1r, zona3_4_real: _z3r, zona5_real: _z5r,
-      completada_el: _cel,
-      _tipo: __tipo,
-      titulo: _titulo,
-      ...sesionPayload
-    } = s
-    const { data: nuevaSesion } = await supabase.from('sesiones').insert({
-      ...sesionPayload,
-      cliente_id: s.cliente_id,
-      titulo: _titulo + ' (copia)',
+    const { data: nuevaSesion, error } = await clonarSesion(supabase, s.id, {
+      clienteDestino: s.cliente_id,
       fecha: fechaDestino || format(new Date(), 'yyyy-MM-dd'),
-      lista: false,
-      estado: 'pendiente',
-    }).select().single()
-    if (!nuevaSesion) { setSaving(false); return }
-    // Bloques fuerza — spread completo: lleva todos los campos presentes en BD
-    const { data: bls } = await supabase.from('sesion_bloques').select('*').eq('sesion_id', s.id).order('orden')
-    for (const b of bls || []) {
-      const { id: _bid, sesion_id: _bsid, ...bloquePayload } = b
-      const { data: nb } = await supabase.from('sesion_bloques').insert({
-        ...bloquePayload, sesion_id: nuevaSesion.id,
-      }).select().single()
-      if (!nb) continue
-      const { data: ejs } = await supabase.from('sesion_ejercicios').select('*').eq('bloque_id', b.id).order('orden')
-      for (const e of ejs || []) {
-        const { id: _eid, bloque_id: _ebid, valores_reales: _vr, ...ejPayload } = e
-        await supabase.from('sesion_ejercicios').insert({ ...ejPayload, bloque_id: nb.id })
-      }
-    }
-    // Bloques carrera (fases y grupos)
-    const { data: grupos } = await supabase.from('sesion_fase_grupos').select('*').eq('sesion_id', s.id).order('orden')
-    const gruposMap = {}
-    for (const g of grupos || []) {
-      const { data: ng } = await supabase.from('sesion_fase_grupos').insert({
-        sesion_id: nuevaSesion.id, repeticiones: g.repeticiones, orden: g.orden,
-      }).select().single()
-      if (ng) gruposMap[g.id] = ng.id
-    }
-    const { data: fasesSrc } = await supabase.from('sesion_fases').select('*').eq('sesion_id', s.id).order('orden')
-    for (const f of fasesSrc || []) {
-      const { id: _fid, sesion_id: _fsid, grupo_id: _fgid, ...fasePayload } = f
-      await supabase.from('sesion_fases').insert({
-        ...fasePayload,
-        sesion_id: nuevaSesion.id,
-        grupo_id: f.grupo_id ? (gruposMap[f.grupo_id] ?? null) : null,
-      })
+      titulo: (s.titulo || '') + ' (copia)',
+    })
+    if (error || !nuevaSesion) {
+      alert('Error al duplicar sesión: ' + (error?.message || 'sin datos'))
+      setSaving(false)
+      return
     }
     setSaving(false)
     cargarSesiones()
