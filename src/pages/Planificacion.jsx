@@ -586,6 +586,9 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           const bloque_id       = modalItem?.bloque?.id || modalItem?.bloque_id
           const numero          = modalItem?.numero     ?? modalItem?.numeroSemana
           const semanaExistente = modalItem?.semanaData
+          console.log('[semana guardar] modalItem:', JSON.stringify(modalItem))
+          console.log('[semana guardar] semanaExistente:', semanaExistente)
+          console.log('[semana guardar] formData.objetivo:', formData.objetivo)
           const datos = {
             objetivo:     formData.objetivo || null,
             carga:        formData.carga,
@@ -619,6 +622,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               semErr = error
             }
           }
+          console.log('[semana guardar] semErr:', semErr)
           if (semErr) { console.error('guardarModal semana:', semErr); alert('Error al guardar: ' + semErr.message); break }
           closeModal(); cargarPlanificacion()
           break
