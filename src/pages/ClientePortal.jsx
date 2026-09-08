@@ -1087,20 +1087,35 @@ export default function ClientePortal({ token }) {
                                                   <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink2 }}>{kmStr}</span>
                                                 )}
                                                 {tieneZonas && (
-                                                  <div style={{ display: 'flex', gap: 8 }}>
+                                                  <div style={{ display: 'flex', gap: 10 }}>
                                                     {[
                                                       { label: 'Z1-2', real: Math.round((z1r / totalZR) * 100), prev: zPrev?.z1, color: '#10b981' },
                                                       { label: 'Z3-4', real: Math.round((z3r / totalZR) * 100), prev: zPrev?.z3, color: '#f59e0b' },
                                                       { label: 'Z5',   real: Math.round((z5r / totalZR) * 100), prev: zPrev?.z5, color: '#ef4444' },
-                                                    ].filter(z => z.real > 0 || z.prev > 0).map(z => (
-                                                      <div key={z.label} style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-                                                        <span style={{ fontFamily: T.mono, fontSize: 8, color: z.color, fontWeight: 600 }}>{z.label}</span>
-                                                        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink, fontWeight: 600 }}>{z.real}%</span>
-                                                        {z.prev != null && z.prev > 0 && (
-                                                          <span style={{ fontFamily: T.mono, fontSize: 8.5, color: T.ink3 }}>/ {z.prev}%</span>
-                                                        )}
-                                                      </div>
-                                                    ))}
+                                                    ].filter(z => z.real > 0 || (z.prev != null && z.prev > 0)).map(z => {
+                                                      const diff = z.prev != null && z.prev > 0 ? Math.abs(z.real - z.prev) : null
+                                                      const barColor = diff == null ? z.color : diff <= 5 ? '#10b981' : diff <= 15 ? '#f59e0b' : '#ef4444'
+                                                      return (
+                                                        <div key={z.label} style={{ minWidth: 48 }}>
+                                                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, marginBottom: 3 }}>
+                                                            <span style={{ fontFamily: T.mono, fontSize: 8, color: z.color, fontWeight: 600 }}>{z.label}</span>
+                                                            <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink, fontWeight: 600 }}>{z.real}%</span>
+                                                            {z.prev != null && z.prev > 0 && (
+                                                              <span style={{ fontFamily: T.mono, fontSize: 8.5, color: T.ink3 }}>/ {z.prev}%</span>
+                                                            )}
+                                                          </div>
+                                                          {/* Barra: fondo = objetivo, relleno = real */}
+                                                          <div style={{ position: 'relative', height: 4, borderRadius: 2, background: T.bg2, overflow: 'visible' }}>
+                                                            {/* Marca del objetivo */}
+                                                            {z.prev != null && z.prev > 0 && (
+                                                              <div style={{ position: 'absolute', left: `${Math.min(z.prev, 100)}%`, top: -1, width: 2, height: 6, background: T.ink3, borderRadius: 1, transform: 'translateX(-50%)', zIndex: 2 }} />
+                                                            )}
+                                                            {/* Relleno real */}
+                                                            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(z.real, 100)}%`, background: barColor, borderRadius: 2, zIndex: 1 }} />
+                                                          </div>
+                                                        </div>
+                                                      )
+                                                    })}
                                                   </div>
                                                 )}
                                               </div>
