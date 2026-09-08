@@ -967,38 +967,6 @@ export default function ClientePortal({ token }) {
               })()
               const pctBloque = semCurr ? Math.round((semCurr / (b.semanas || 1)) * 100) : 0
 
-              // Cumplimiento del bloque: sesiones pasadas completadas / total pasadas
-              const cumplBloque = (() => {
-                if (!b.fecha_inicio) return null
-                const ini = parseISO(b.fecha_inicio + 'T12:00:00')
-                const fin = addDays(ini, (b.semanas || 0) * 7)
-                const hoy = new Date()
-                // Solo sesiones con fecha dentro del bloque y en el pasado
-                const sesBl = sesiones.filter(s => {
-                  if (!s.fecha) return false
-                  const f = parseISO(s.fecha + 'T12:00:00')
-                  return f >= ini && f < fin && f < hoy
-                })
-                if (!sesBl.length) return null
-                const ok = sesBl.filter(s => ['completed', 'partial', 'realizada'].includes(s.estado_efectivo)).length
-                return { ok, total: sesBl.length, pct: Math.round((ok / sesBl.length) * 100) }
-              })()
-
-              // Cumplimiento km del bloque (resistencia)
-              const cumplKm = (() => {
-                const semsB = semanas.filter(s => s.bloque_id === b.id)
-                const hoy = new Date()
-                const pasadas = semsB.filter(s => {
-                  if (!s.fecha_inicio_semana) return false
-                  return addDays(parseISO(s.fecha_inicio_semana + 'T12:00:00'), 7) < hoy
-                })
-                const conKm = pasadas.filter(s => s.km_objetivo > 0 && s.km_real != null)
-                if (!conKm.length) return null
-                const kmObj = conKm.reduce((a, s) => a + (s.km_objetivo || 0), 0)
-                const kmReal = conKm.reduce((a, s) => a + (s.km_real || 0), 0)
-                return { kmReal, kmObj, pct: Math.round((kmReal / kmObj) * 100) }
-              })()
-
               return (
                 <div key={b.id} style={{ ...card, border: activo ? `1px solid ${col}55` : `1px solid ${T.border}`, borderLeft: activo ? `3px solid ${col}` : `1px solid ${T.border}` }}>
                   <div onClick={() => setBloquesAbiertos(prev => { const s = new Set(prev); s.has(b.id) ? s.delete(b.id) : s.add(b.id); return s })}
@@ -1008,20 +976,6 @@ export default function ClientePortal({ token }) {
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{b.nombre}</div>
                       <div style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, marginTop: 1 }}>{b.semanas} sem{b.fecha_inicio ? ` · ${format(parseISO(b.fecha_inicio + 'T12:00:00'), 'd MMM', { locale: es })}` : ''}</div>
                     </div>
-                    {/* Badge cumplimiento km o sesiones */}
-                    {(cumplKm || cumplBloque) && (() => {
-                      const c = cumplKm || cumplBloque
-                      const pct = c.pct
-                      const bg = pct >= 90 ? '#10b98120' : pct >= 70 ? '#f59e0b20' : '#ef444420'
-                      const fg = pct >= 90 ? '#10b981'  : pct >= 70 ? '#f59e0b'  : '#ef4444'
-                      const label = cumplKm ? `${c.kmReal}/${c.kmObj} km` : `${c.ok}/${c.total} ses.`
-                      return (
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: fg }}>{pct}%</div>
-                          <div style={{ fontFamily: T.mono, fontSize: 8, color: T.ink3 }}>{label}</div>
-                        </div>
-                      )
-                    })()}
                     {activo && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: col + '22', color: col, fontWeight: 600, flexShrink: 0 }}>En curso</span>}
                     <span style={{ color: T.ink3, fontSize: 11 }}>{abierto ? '▲' : '▼'}</span>
                   </div>
@@ -1063,77 +1017,30 @@ export default function ClientePortal({ token }) {
                                 const fi = addDays(parseISO(b.fecha_inicio + 'T12:00:00'), (numSem - 1) * 7)
                                 const fiStr = fi.toISOString().slice(0, 10)
                                 const semData = semanas.find(sw => sw.fecha_inicio_semana === fiStr) || null
-                                const hoy = new Date()
-                                const esHoy = hoy >= fi && hoy < addDays(fi, 7)
-                                const esPasada = addDays(fi, 7) < hoy
-                                // Sesiones de esta semana
-                                const sesSem = sesiones.filter(s2 => {
-                                  if (!s2.fecha) return false
-                                  const f = parseISO(s2.fecha + 'T12:00:00')
-                                  return f >= fi && f < addDays(fi, 7)
-                                })
-                                const sesOk = sesSem.filter(s2 => ['completed','partial','realizada'].includes(s2.estado_efectivo)).length
-                                return { numSem, fi, fiStr, semData, esHoy, esPasada, sesSem, sesOk }
+                                const esHoy = (() => { const h = new Date(); return h >= fi && h < addDays(fi, 7) })()
+                                return { numSem, fi, fiStr, semData, esHoy }
                               })
                               const CARGAS = { baja: { label: 'Baja', color: '#10b981' }, media: { label: 'Media', color: '#f59e0b' }, alta: { label: 'Alta', color: '#ef4444' }, muy_alta: { label: 'Muy alta', color: '#7c3aed' } }
                               return (
                                 <div key={s.id} style={{ borderBottom: `1px solid ${T.bg2}` }}>
                                   {/* Cabecera subbloque */}
-                                  {(() => {
-                                    // Cumplimiento agregado del subbloque (solo semanas pasadas)
-                                    const pasadas = semsDelSub.filter(w => w.esPasada)
-                                    const conKm = pasadas.filter(w => w.semData?.km_objetivo > 0 && w.semData?.km_real != null)
-                                    const cumplSub = (() => {
-                                      if (conKm.length) {
-                                        const obj = conKm.reduce((a, w) => a + w.semData.km_objetivo, 0)
-                                        const real = conKm.reduce((a, w) => a + w.semData.km_real, 0)
-                                        return { pct: Math.round((real / obj) * 100), label: `${real}/${obj}km` }
-                                      }
-                                      const conSes = pasadas.filter(w => w.sesSem.length > 0)
-                                      if (!conSes.length) return null
-                                      const ok = conSes.reduce((a, w) => a + w.sesOk, 0)
-                                      const tot = conSes.reduce((a, w) => a + w.sesSem.length, 0)
-                                      return { pct: Math.round((ok / tot) * 100), label: `${ok}/${tot} ses.` }
-                                    })()
-                                    const cSub = cumplSub ? (cumplSub.pct >= 90 ? '#10b981' : cumplSub.pct >= 70 ? '#f59e0b' : '#ef4444') : null
-                                    return (
-                                      <div onClick={toggleSub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 0', cursor: 'pointer', userSelect: 'none' }}>
-                                        <div style={{ width: 5, height: 5, borderRadius: '50%', background: esAct ? col : T.border, flexShrink: 0 }} />
-                                        <span style={{ fontSize: 12, fontWeight: esAct ? 500 : 400, color: esAct ? col : T.ink2, flex: 1 }}>{s.nombre}</span>
-                                        <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{s.semana_inicio}–{s.semana_fin}</span>
-                                        {cumplSub && (
-                                          <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 700, color: cSub }}>{cumplSub.pct}%</div>
-                                            <div style={{ fontFamily: T.mono, fontSize: 7.5, color: T.ink3 }}>{cumplSub.label}</div>
-                                          </div>
-                                        )}
-                                        {esAct && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: col + '22', color: col, fontWeight: 600 }}>aquí</span>}
-                                        <span style={{ color: T.ink3, fontSize: 10, marginLeft: 2 }}>{subAb ? '▲' : '▼'}</span>
-                                      </div>
-                                    )
-                                  })()}
+                                  <div onClick={toggleSub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 0', cursor: 'pointer', userSelect: 'none' }}>
+                                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: esAct ? col : T.border, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, fontWeight: esAct ? 500 : 400, color: esAct ? col : T.ink2, flex: 1 }}>{s.nombre}</span>
+                                    <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{s.semana_inicio}–{s.semana_fin}</span>
+                                    {esAct && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: col + '22', color: col, fontWeight: 600 }}>aquí</span>}
+                                    <span style={{ color: T.ink3, fontSize: 10, marginLeft: 2 }}>{subAb ? '▲' : '▼'}</span>
+                                  </div>
                                   {/* Semanas del subbloque */}
                                   {subAb && (
                                     <div style={{ paddingBottom: 8, paddingLeft: 12 }}>
                                       {s.objetivo && (
                                         <div style={{ fontSize: 11.5, color: T.ink2, lineHeight: 1.4, marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${T.bg2}` }}>{s.objetivo}</div>
                                       )}
-                                      {semsDelSub.map(({ numSem, fi, semData, esHoy, esPasada, sesSem, sesOk }) => {
+                                      {semsDelSub.map(({ numSem, fi, semData, esHoy }) => {
                                         const carga = semData?.carga ? CARGAS[semData.carga] : null
                                         const ff = addDays(fi, 6)
                                         const fechaStr = `${format(fi, 'd', { locale: es })}–${format(ff, 'd MMM', { locale: es })}`
-                                        // Cumplimiento de esta semana
-                                        const tieneKm = semData?.km_objetivo > 0
-                                        const cumplSem = (() => {
-                                          if (!esPasada) return null
-                                          if (tieneKm && semData?.km_real != null) {
-                                            const pct = Math.round((semData.km_real / semData.km_objetivo) * 100)
-                                            return { label: `${semData.km_real}/${semData.km_objetivo}km`, pct }
-                                          }
-                                          if (sesSem.length > 0) return { label: `${sesOk}/${sesSem.length} ses.`, pct: Math.round((sesOk / sesSem.length) * 100) }
-                                          return null
-                                        })()
-                                        const cumplColor = cumplSem ? (cumplSem.pct >= 90 ? '#10b981' : cumplSem.pct >= 70 ? '#f59e0b' : '#ef4444') : null
                                         return (
                                           <div key={numSem} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 0', borderBottom: `1px solid ${T.bg2}`, background: esHoy ? col + '0d' : 'transparent', borderRadius: esHoy ? 4 : 0, paddingLeft: esHoy ? 6 : 0 }}>
                                             <span style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 600, color: esHoy ? col : T.ink3, minWidth: 22 }}>S{numSem}</span>
@@ -1148,15 +1055,7 @@ export default function ClientePortal({ token }) {
                                                 <span style={{ fontSize: 10.5, color: T.ink3, fontStyle: 'italic' }}>—</span>
                                               )}
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                                              {carga && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color, fontWeight: 600 }}>{carga.label}</span>}
-                                              {cumplSem && (
-                                                <div style={{ textAlign: 'right' }}>
-                                                  <div style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 700, color: cumplColor }}>{cumplSem.pct}%</div>
-                                                  <div style={{ fontFamily: T.mono, fontSize: 7.5, color: T.ink3 }}>{cumplSem.label}</div>
-                                                </div>
-                                              )}
-                                            </div>
+                                            {carga && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color, fontWeight: 600, flexShrink: 0 }}>{carga.label}</span>}
                                           </div>
                                         )
                                       })}
