@@ -583,8 +583,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         }
 
         case 'semana': {
-          const bloque_id       = modalItem?.bloque?.id
-          const numero          = modalItem?.numero
+          const bloque_id       = modalItem?.bloque?.id || modalItem?.bloque_id
+          const numero          = modalItem?.numero     ?? modalItem?.numeroSemana
           const semanaExistente = modalItem?.semanaData
           const datos = {
             objetivo:     formData.objetivo || null,
@@ -599,7 +599,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             comentario:   formData.comentario   || null,
           }
           if (semanaExistente?.id) await supabase.from('semanas').update(datos).eq('id', semanaExistente.id)
-          else await supabase.from('semanas').insert({ bloque_id, numero, ...datos })
+          else await supabase.from('semanas').insert({ bloque_id, numero, planificacion_id: planificacion?.id, fecha_inicio_semana: modalItem?.fechaIni || null, ...datos })
           closeModal(); cargarPlanificacion()
           break
         }
@@ -1568,7 +1568,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       const ff        = calcFechaFinSemana(b, numLocal)
       const hoy       = new Date()
       const esActual  = hoy >= fi && hoy < ff
-      const semData   = (semanas[b.id] || []).find(s => s.numero === numLocal) || null
+      const fiStr     = format(fi, 'yyyy-MM-dd')
+      const semData   = (semanas[b.id] || []).find(s => s.fecha_inicio_semana === fiStr) || null
       return { bloque: b, bidx, numLocal, numGlobal, fi, ff, esActual, semData }
     })
   )
@@ -1973,7 +1974,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                           return (
                             <div key={`${b.id}-${numLocal}`}
                               style={{ flex: 1, textAlign: 'center', padding: '3px 1px', borderRight: '1px solid var(--border)', background: esActual ? 'var(--accent-light)' : 'transparent', cursor: 'pointer', borderRadius: esActual ? 3 : 0, minWidth: 28 }}
-                              onClick={() => openModal('semana', { bloque: b, numero: numLocal, semanaData: semData })}
+                              onClick={() => openModal('semana', { bloque: b, numero: numLocal, semanaData: semData, fechaIni: format(fi, 'yyyy-MM-dd') })}
                               onMouseEnter={e => setTooltip({ visible: true, tipo: 'semana', item: semData, bloque: b, numGlobal, numLocal, x: e.clientX, y: e.clientY })}
                               onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
                               <div style={{ fontSize: 9, fontFamily: 'var(--mono)', fontWeight: esActual ? 700 : 500, color: esActual ? 'var(--accent)' : (bidx % 2 === 0 ? 'var(--text2)' : 'var(--text3)') }}>{format(fi, 'd/M')}</div>
@@ -2421,8 +2422,9 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                       </div>
                       {allNums.map(numSem => {
                         const semKey  = `${b.id}-${numSem}`
-                        const semData = semsDelBloque.find(s => s.numero === numSem) || null
                         const fIniSem = calcFechaInicioSemana(b, numSem)
+                        const fIniSemStr = format(fIniSem, 'yyyy-MM-dd')
+                        const semData = semsDelBloque.find(s => s.fecha_inicio_semana === fIniSemStr) || null
                         const fFinSem = calcFechaFinSemana(b, numSem)
                         const fechaStr = `${format(fIniSem, 'd', { locale: es })}–${format(addDays(fIniSem, 6), 'd MMM', { locale: es })}`
                         const carga   = semData?.carga ? CARGAS[semData.carga] : CARGAS.media
@@ -2448,14 +2450,14 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                 <input
                                   value={getInlineValue('semana', semData?.id || semKey, 'objetivo', semData?.objetivo || '')}
                                   onChange={e => { e.stopPropagation(); handleInlineChange('semana', semData?.id || semKey, 'objetivo', e.target.value) }}
-                                  onBlur={async e => { e.stopPropagation(); const val = e.target.value; if (semData?.id) { await supabase.from('semanas').update({ objetivo: val || null }).eq('id', semData.id) } else { await supabase.from('semanas').insert({ bloque_id: b.id, numero: numSem, objetivo: val || null, carga: 'media' }) }; cargarPlanificacion() }}
+                                  onBlur={async e => { e.stopPropagation(); const val = e.target.value; if (semData?.id) { await supabase.from('semanas').update({ objetivo: val || null }).eq('id', semData.id) } else { await supabase.from('semanas').insert({ bloque_id: b.id, planificacion_id: planificacion?.id, fecha_inicio_semana: fIniSemStr, numero: numSem, objetivo: val || null, carga: 'media' }) }; cargarPlanificacion() }}
                                   onClick={e => e.stopPropagation()}
                                   placeholder="Añadir objetivo..."
                                   style={{ fontSize: 12, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'var(--accent-light)', outline: 'none', width: '100%' }}
                                 />
                               )}
                               <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: carga.color + '20', color: carga.color, width: 'fit-content' }}>{carga.label}</span>
-                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 6px' }} onClick={e => { e.stopPropagation(); openModal('semana', { bloque_id: b.id, semanaData: semData, numeroSemana: numSem }) }}><Pencil size={11} /></button>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 6px' }} onClick={e => { e.stopPropagation(); openModal('semana', { bloque_id: b.id, semanaData: semData, numeroSemana: numSem, fechaIni: fIniSemStr }) }}><Pencil size={11} /></button>
                             </div>
                             {semAb && sesionesSem.length > 0 && (
                               <div style={{ padding: '8px 16px 8px 24px', background: 'var(--bg2)', borderBottom: '0.5px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -2557,8 +2559,9 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                           {/* ── NIVEL 3: SEMANAS ───────────────────────── */}
                           {semsDelSub.map(numSem => {
                             const semKey  = `${b.id}-${numSem}`
-                            const semData = semsDelBloque.find(s => s.numero === numSem) || null
                             const fIniSem = calcFechaInicioSemana(b, numSem)
+                            const fIniSemStr = format(fIniSem, 'yyyy-MM-dd')
+                            const semData = semsDelBloque.find(s => s.fecha_inicio_semana === fIniSemStr) || null
                             const fFinSem = calcFechaFinSemana(b, numSem)
                             const fechaStr = `${format(fIniSem, 'd', { locale: es })}–${format(addDays(fIniSem, 6), 'd MMM', { locale: es })}`
                             const carga   = semData?.carga ? CARGAS[semData.carga] : CARGAS.media
@@ -2608,7 +2611,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
                                         if (semData?.id) {
                                           await supabase.from('semanas').update({ objetivo: val || null }).eq('id', semData.id)
                                         } else {
-                                          await supabase.from('semanas').insert({ bloque_id: b.id, numero: numSem, objetivo: val || null, carga: 'media' })
+                                          await supabase.from('semanas').insert({ bloque_id: b.id, planificacion_id: planificacion?.id, fecha_inicio_semana: fIniSemStr, numero: numSem, objetivo: val || null, carga: 'media' })
                                         }
                                         cargarPlanificacion()
                                       }}
@@ -2678,7 +2681,7 @@ function VistaLista({ bloques, subbloques, semanas, sesiones, clienteData, esSal
 
                                   <button
                                     style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
-                                    onClick={e => { e.stopPropagation(); openModal('semana', { bloque: b, numero: numSem, semanaData: semData }) }}
+                                    onClick={e => { e.stopPropagation(); openModal('semana', { bloque: b, numero: numSem, semanaData: semData, fechaIni: fIniSemStr }) }}
                                     title="Editar semana">✎</button>
                                 </div>
 
