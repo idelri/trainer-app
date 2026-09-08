@@ -1083,9 +1083,18 @@ export default function ClientePortal({ token }) {
                                             {/* Fila de datos: km + zonas */}
                                             {(kmStr || tieneZonas) && (
                                               <div style={{ marginTop: 6, marginLeft: 30, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', alignItems: 'center' }}>
-                                                {kmStr && (
-                                                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink2 }}>{kmStr}</span>
-                                                )}
+                                                {kmStr && (() => {
+                                                  const hasObj = semData?.km_objetivo > 0 && semData?.km_real != null
+                                                  const diff = hasObj ? Math.abs(semData.km_real - semData.km_objetivo) : null
+                                                  const pct  = hasObj ? semData.km_real / semData.km_objetivo : null
+                                                  const kmColor = diff == null ? T.ink2
+                                                    : pct >= 0.9 && pct <= 1.1 ? '#10b981'
+                                                    : pct >= 0.75 && pct <= 1.25 ? '#f59e0b'
+                                                    : '#ef4444'
+                                                  return (
+                                                    <span style={{ fontFamily: T.mono, fontSize: 10, color: kmColor, fontWeight: hasObj ? 600 : 400 }}>{kmStr}</span>
+                                                  )
+                                                })()}
                                                 {tieneZonas && (
                                                   <div style={{ display: 'flex', gap: 10 }}>
                                                     {[
