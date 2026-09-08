@@ -586,9 +586,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           const bloque_id       = modalItem?.bloque?.id || modalItem?.bloque_id
           const numero          = modalItem?.numero     ?? modalItem?.numeroSemana
           const semanaExistente = modalItem?.semanaData
-          console.log('[semana guardar] modalItem:', JSON.stringify(modalItem))
-          console.log('[semana guardar] semanaExistente:', semanaExistente)
-          console.log('[semana guardar] formData.objetivo:', formData.objetivo)
           const datos = {
             objetivo:     formData.objetivo || null,
             carga:        formData.carga,
@@ -603,15 +600,20 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           }
           let semErr
           if (semanaExistente?.id) {
-            const { error } = await supabase.from('semanas').update(datos).eq('id', semanaExistente.id)
+            // semana encontrada en estado local: UPDATE normal + asegurar bloque_id si falta
+            const updatePayload = semanaExistente.bloque_id ? datos : { ...datos, bloque_id }
+            const { error } = await supabase.from('semanas').update(updatePayload).eq('id', semanaExistente.id)
             semErr = error
           } else {
-            // semana no encontrada en estado local — buscar en BD por fecha antes de insertar
+            // semana no encontrada en estado local (p.ej. bloque_id null o fuera de rango)
+            // buscar en BD por fecha antes de insertar
             const fIniStr = modalItem?.fechaIni || null
             if (fIniStr && planificacion?.id) {
-              const { data: semBD } = await supabase.from('semanas').select('id').eq('planificacion_id', planificacion.id).eq('fecha_inicio_semana', fIniStr).maybeSingle()
+              const { data: semBD } = await supabase.from('semanas').select('id, bloque_id').eq('planificacion_id', planificacion.id).eq('fecha_inicio_semana', fIniStr).maybeSingle()
               if (semBD?.id) {
-                const { error } = await supabase.from('semanas').update(datos).eq('id', semBD.id)
+                // fila existe pero sin bloque_id — actualizar datos Y asignar bloque
+                const updatePayload = semBD.bloque_id ? datos : { ...datos, bloque_id }
+                const { error } = await supabase.from('semanas').update(updatePayload).eq('id', semBD.id)
                 semErr = error
               } else {
                 const { error } = await supabase.from('semanas').insert({ bloque_id, numero, planificacion_id: planificacion.id, fecha_inicio_semana: fIniStr, ...datos })
@@ -622,7 +624,6 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               semErr = error
             }
           }
-          console.log('[semana guardar] semErr:', semErr)
           if (semErr) { console.error('guardarModal semana:', semErr); alert('Error al guardar: ' + semErr.message); break }
           closeModal(); cargarPlanificacion()
           break
