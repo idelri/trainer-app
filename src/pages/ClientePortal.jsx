@@ -1041,21 +1041,70 @@ export default function ClientePortal({ token }) {
                                         const carga = semData?.carga ? CARGAS[semData.carga] : null
                                         const ff = addDays(fi, 6)
                                         const fechaStr = `${format(fi, 'd', { locale: es })}–${format(ff, 'd MMM', { locale: es })}`
+                                        const esPasada = addDays(fi, 7) < new Date()
+
+                                        // Km real vs objetivo
+                                        const tieneKm = semData?.km_objetivo > 0 || semData?.km_real > 0
+                                        const kmStr = tieneKm && esPasada
+                                          ? `${semData?.km_real ?? '—'}/${semData?.km_objetivo ?? '—'} km`
+                                          : semData?.km_objetivo > 0 && !esPasada
+                                          ? `Obj: ${semData.km_objetivo} km`
+                                          : null
+
+                                        // Zonas reales (minutos) → % real vs % previsto del subbloque
+                                        const z1r = semData?.zona1_2_real || 0
+                                        const z3r = semData?.zona3_4_real || 0
+                                        const z5r = semData?.zona5_real   || 0
+                                        const totalZR = z1r + z3r + z5r
+                                        const tieneZonas = esPasada && totalZR > 0
+                                        // % previstos del subbloque (pueden ser null si no está configurado)
+                                        const zPrev = (s.zona1_2 != null || s.zona3_4 != null || s.zona5 != null)
+                                          ? { z1: s.zona1_2 ?? 0, z3: s.zona3_4 ?? 0, z5: s.zona5 ?? 0 }
+                                          : null
+
                                         return (
-                                          <div key={numSem} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 0', borderBottom: `1px solid ${T.bg2}`, background: esHoy ? col + '0d' : 'transparent', borderRadius: esHoy ? 4 : 0, paddingLeft: esHoy ? 6 : 0 }}>
-                                            <span style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 600, color: esHoy ? col : T.ink3, minWidth: 22 }}>S{numSem}</span>
-                                            <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, minWidth: 70 }}>{fechaStr}</span>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                              {(semData?.objetivo || semData?.nota_cliente) ? (
-                                                <>
-                                                  {semData.objetivo && <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.4 }}>{semData.objetivo}</div>}
-                                                  {semData.nota_cliente && <div style={{ fontSize: 10.5, color: T.ink2, lineHeight: 1.35, marginTop: semData.objetivo ? 2 : 0, fontStyle: 'italic' }}>{semData.nota_cliente}</div>}
-                                                </>
-                                              ) : (
-                                                <span style={{ fontSize: 10.5, color: T.ink3, fontStyle: 'italic' }}>—</span>
-                                              )}
+                                          <div key={numSem} style={{ padding: '7px 0', borderBottom: `1px solid ${T.bg2}`, background: esHoy ? col + '0d' : 'transparent', borderRadius: esHoy ? 4 : 0, paddingLeft: esHoy ? 6 : 0 }}>
+                                            {/* Fila principal: semana + fechas + objetivo */}
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                              <span style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 600, color: esHoy ? col : T.ink3, minWidth: 22 }}>S{numSem}</span>
+                                              <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, minWidth: 70 }}>{fechaStr}</span>
+                                              <div style={{ flex: 1, minWidth: 0 }}>
+                                                {(semData?.objetivo || semData?.nota_cliente) ? (
+                                                  <>
+                                                    {semData.objetivo && <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.4 }}>{semData.objetivo}</div>}
+                                                    {semData.nota_cliente && <div style={{ fontSize: 10.5, color: T.ink2, lineHeight: 1.35, marginTop: semData.objetivo ? 2 : 0, fontStyle: 'italic' }}>{semData.nota_cliente}</div>}
+                                                  </>
+                                                ) : (
+                                                  <span style={{ fontSize: 10.5, color: T.ink3, fontStyle: 'italic' }}>—</span>
+                                                )}
+                                              </div>
+                                              {carga && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color, fontWeight: 600, flexShrink: 0 }}>{carga.label}</span>}
                                             </div>
-                                            {carga && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color, fontWeight: 600, flexShrink: 0 }}>{carga.label}</span>}
+                                            {/* Fila de datos: km + zonas */}
+                                            {(kmStr || tieneZonas) && (
+                                              <div style={{ marginTop: 6, marginLeft: 30, display: 'flex', flexWrap: 'wrap', gap: '4px 12px', alignItems: 'center' }}>
+                                                {kmStr && (
+                                                  <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink2 }}>{kmStr}</span>
+                                                )}
+                                                {tieneZonas && (
+                                                  <div style={{ display: 'flex', gap: 8 }}>
+                                                    {[
+                                                      { label: 'Z1-2', real: Math.round((z1r / totalZR) * 100), prev: zPrev?.z1, color: '#10b981' },
+                                                      { label: 'Z3-4', real: Math.round((z3r / totalZR) * 100), prev: zPrev?.z3, color: '#f59e0b' },
+                                                      { label: 'Z5',   real: Math.round((z5r / totalZR) * 100), prev: zPrev?.z5, color: '#ef4444' },
+                                                    ].filter(z => z.real > 0 || z.prev > 0).map(z => (
+                                                      <div key={z.label} style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                                        <span style={{ fontFamily: T.mono, fontSize: 8, color: z.color, fontWeight: 600 }}>{z.label}</span>
+                                                        <span style={{ fontFamily: T.mono, fontSize: 10, color: T.ink, fontWeight: 600 }}>{z.real}%</span>
+                                                        {z.prev != null && z.prev > 0 && (
+                                                          <span style={{ fontFamily: T.mono, fontSize: 8.5, color: T.ink3 }}>/ {z.prev}%</span>
+                                                        )}
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
                                           </div>
                                         )
                                       })}
