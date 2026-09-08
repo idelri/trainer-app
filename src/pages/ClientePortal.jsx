@@ -204,6 +204,7 @@ export default function ClientePortal({ token }) {
   const [semanaOffset, setSemanaOffset] = useState(0)
   const [calMes, setCalMes] = useState(new Date())
   const [bloquesAbiertos, setBloquesAbiertos] = useState(new Set())
+  const [subsAbiertos, setSubsAbiertos] = useState(new Set())
   const [vista, setVista] = useState(() => window.innerWidth >= 768 ? 'escritorio' : 'movil')
 
   useEffect(() => { cargar() }, [token])
@@ -1008,12 +1009,58 @@ export default function ClientePortal({ token }) {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                             {subsBl.map(s => {
                               const esAct = getSubbloqueActivo(b)?.id === s.id
+                              const subAb = subsAbiertos.has(s.id)
+                              const toggleSub = e => { e.stopPropagation(); setSubsAbiertos(prev => { const ns = new Set(prev); ns.has(s.id) ? ns.delete(s.id) : ns.add(s.id); return ns }) }
+                              const numSems = s.semana_fin - s.semana_inicio + 1
+                              const semsDelSub = Array.from({ length: numSems }, (_, i) => {
+                                const numSem = s.semana_inicio + i
+                                const fi = addDays(parseISO(b.fecha_inicio + 'T12:00:00'), (numSem - 1) * 7)
+                                const fiStr = fi.toISOString().slice(0, 10)
+                                const semData = semanas.find(sw => sw.fecha_inicio_semana === fiStr) || null
+                                const esHoy = (() => { const h = new Date(); return h >= fi && h < addDays(fi, 7) })()
+                                return { numSem, fi, fiStr, semData, esHoy }
+                              })
+                              const CARGAS = { baja: { label: 'Baja', color: '#10b981' }, media: { label: 'Media', color: '#f59e0b' }, alta: { label: 'Alta', color: '#ef4444' }, muy_alta: { label: 'Muy alta', color: '#7c3aed' } }
                               return (
-                                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 0', borderBottom: `1px solid ${T.bg2}` }}>
-                                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: esAct ? col : T.border, flexShrink: 0 }} />
-                                  <span style={{ fontSize: 12, fontWeight: esAct ? 500 : 400, color: esAct ? col : T.ink2, flex: 1 }}>{s.nombre}</span>
-                                  <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{s.semana_inicio}–{s.semana_fin}</span>
-                                  {esAct && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: col + '22', color: col, fontWeight: 600 }}>aquí</span>}
+                                <div key={s.id} style={{ borderBottom: `1px solid ${T.bg2}` }}>
+                                  {/* Cabecera subbloque */}
+                                  <div onClick={toggleSub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 0', cursor: 'pointer', userSelect: 'none' }}>
+                                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: esAct ? col : T.border, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, fontWeight: esAct ? 500 : 400, color: esAct ? col : T.ink2, flex: 1 }}>{s.nombre}</span>
+                                    <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3 }}>S{s.semana_inicio}–{s.semana_fin}</span>
+                                    {esAct && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: col + '22', color: col, fontWeight: 600 }}>aquí</span>}
+                                    <span style={{ color: T.ink3, fontSize: 10, marginLeft: 2 }}>{subAb ? '▲' : '▼'}</span>
+                                  </div>
+                                  {/* Semanas del subbloque */}
+                                  {subAb && (
+                                    <div style={{ paddingBottom: 8, paddingLeft: 12 }}>
+                                      {s.objetivo && (
+                                        <div style={{ fontSize: 11.5, color: T.ink2, lineHeight: 1.4, marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${T.bg2}` }}>{s.objetivo}</div>
+                                      )}
+                                      {semsDelSub.map(({ numSem, fi, semData, esHoy }) => {
+                                        const carga = semData?.carga ? CARGAS[semData.carga] : null
+                                        const ff = addDays(fi, 6)
+                                        const fechaStr = `${format(fi, 'd', { locale: es })}–${format(ff, 'd MMM', { locale: es })}`
+                                        return (
+                                          <div key={numSem} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '5px 0', borderBottom: `1px solid ${T.bg2}`, background: esHoy ? col + '0d' : 'transparent', borderRadius: esHoy ? 4 : 0, paddingLeft: esHoy ? 6 : 0 }}>
+                                            <span style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 600, color: esHoy ? col : T.ink3, minWidth: 22 }}>S{numSem}</span>
+                                            <span style={{ fontFamily: T.mono, fontSize: 9, color: T.ink3, minWidth: 70 }}>{fechaStr}</span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              {(semData?.objetivo || semData?.nota_cliente) ? (
+                                                <>
+                                                  {semData.objetivo && <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.4 }}>{semData.objetivo}</div>}
+                                                  {semData.nota_cliente && <div style={{ fontSize: 10.5, color: T.ink2, lineHeight: 1.35, marginTop: semData.objetivo ? 2 : 0, fontStyle: 'italic' }}>{semData.nota_cliente}</div>}
+                                                </>
+                                              ) : (
+                                                <span style={{ fontSize: 10.5, color: T.ink3, fontStyle: 'italic' }}>—</span>
+                                              )}
+                                            </div>
+                                            {carga && <span style={{ fontSize: 8.5, padding: '1px 6px', borderRadius: 8, background: carga.color + '20', color: carga.color, fontWeight: 600, flexShrink: 0 }}>{carga.label}</span>}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )
                             })}
