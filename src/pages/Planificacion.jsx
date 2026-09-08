@@ -598,8 +598,28 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
             nota_cliente: formData.nota_cliente || null,
             comentario:   formData.comentario   || null,
           }
-          if (semanaExistente?.id) await supabase.from('semanas').update(datos).eq('id', semanaExistente.id)
-          else await supabase.from('semanas').insert({ bloque_id, numero, planificacion_id: planificacion?.id, fecha_inicio_semana: modalItem?.fechaIni || null, ...datos })
+          let semErr
+          if (semanaExistente?.id) {
+            const { error } = await supabase.from('semanas').update(datos).eq('id', semanaExistente.id)
+            semErr = error
+          } else {
+            // semana no encontrada en estado local — buscar en BD por fecha antes de insertar
+            const fIniStr = modalItem?.fechaIni || null
+            if (fIniStr && planificacion?.id) {
+              const { data: semBD } = await supabase.from('semanas').select('id').eq('planificacion_id', planificacion.id).eq('fecha_inicio_semana', fIniStr).maybeSingle()
+              if (semBD?.id) {
+                const { error } = await supabase.from('semanas').update(datos).eq('id', semBD.id)
+                semErr = error
+              } else {
+                const { error } = await supabase.from('semanas').insert({ bloque_id, numero, planificacion_id: planificacion.id, fecha_inicio_semana: fIniStr, ...datos })
+                semErr = error
+              }
+            } else {
+              const { error } = await supabase.from('semanas').insert({ bloque_id, numero, planificacion_id: planificacion?.id, fecha_inicio_semana: fIniStr, ...datos })
+              semErr = error
+            }
+          }
+          if (semErr) { console.error('guardarModal semana:', semErr); alert('Error al guardar: ' + semErr.message); break }
           closeModal(); cargarPlanificacion()
           break
         }
