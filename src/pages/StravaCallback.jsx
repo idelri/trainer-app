@@ -148,6 +148,20 @@ export default function StravaCallback({ params }) {
               }}>
               Volver a mi portal
             </a>
+
+            {/* ── DEBUG TEMPORAL — eliminar tras diagnóstico ── */}
+            <div style={{
+              marginTop: 20, padding: '10px 12px', borderRadius: 8,
+              background: '#1a1916', color: '#a8e6cf',
+              fontFamily: 'monospace', fontSize: 11, textAlign: 'left', lineHeight: 1.8,
+            }}>
+              <div>DEBUG retorno OAuth</div>
+              <div>portalUrl capturada: <span style={{ color: '#fff' }}>{String(portalUrl)}</span></div>
+              <div>href real del botón: <span style={{ color: '#fff' }}>{String(portalUrl)}</span></div>
+              <div>sessionStorage actual: <span style={{ color: '#fff' }}>{String(sessionStorage.getItem('strava_oauth_return'))}</span></div>
+              <div>origin: <span style={{ color: '#fff' }}>{window.location.origin}</span></div>
+            </div>
+            {/* ── FIN DEBUG ── */}
           </>
         )}
 
