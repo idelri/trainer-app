@@ -206,6 +206,8 @@ export default function ClientePortal({ token }) {
   const [bloquesAbiertos, setBloquesAbiertos] = useState(new Set())
   const [subsAbiertos, setSubsAbiertos] = useState(new Set())
   const [vista, setVista] = useState(() => window.innerWidth >= 768 ? 'escritorio' : 'movil')
+  const [stravaConectando, setStravaConectando] = useState(false)
+  const [stravaConectado, setStravaConectado] = useState(false)
 
   useEffect(() => { cargar() }, [token])
 
@@ -272,6 +274,33 @@ export default function ClientePortal({ token }) {
     setCheckins(chks || [])
 
     setLoading(false)
+  }
+
+  async function conectarStrava() {
+    setStravaConectando(true)
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/strava-oauth-start`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ portal_token: token }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok || !data.auth_url) {
+        alert(data.message || 'Error al iniciar conexión con Strava.')
+        setStravaConectando(false)
+        return
+      }
+      // Guardar URL de retorno antes de salir de la página
+      sessionStorage.setItem('strava_oauth_return', window.location.pathname)
+      // Redirigir a Strava para autorización
+      window.location.href = data.auth_url
+    } catch {
+      alert('Error de red al contactar con el servidor.')
+      setStravaConectando(false)
+    }
   }
 
   function esBloqueActivo(b) {
@@ -1103,7 +1132,7 @@ export default function ClientePortal({ token }) {
                                                       { label: 'Z5',   real: Math.round((z5r / totalZR) * 100), prev: zPrev?.z5, color: '#ef4444' },
                                                     ].filter(z => z.real > 0 || (z.prev != null && z.prev > 0)).map(z => {
                                                       const diff = z.prev != null && z.prev > 0 ? Math.abs(z.real - z.prev) : null
-                                                      const barColor = diff == null ? z.color : diff <= 5 ? '#10b981' : diff <= 15 ? '#f59e0b' : '#ef4444'
+                                                      const barColor = diff == null ? z.color : diff <= 10 ? '#10b981' : diff <= 20 ? '#f59e0b' : '#ef4444'
                                                       return (
                                                         <div key={z.label} style={{ minWidth: 48 }}>
                                                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, marginBottom: 3 }}>
@@ -1195,6 +1224,51 @@ export default function ClientePortal({ token }) {
         {tab === 'semana'     && portalConfig.mostrar_semana     && <TabSemana />}
         {tab === 'calendario' && portalConfig.mostrar_calendario && <TabCalendario />}
         {tab === 'plan'       && portalConfig.mostrar_plan       && <TabPlan />}
+      </div>
+
+      {/* ── Conexión Strava ────────────────────────────────────────────── */}
+      <div style={{
+        maxWidth: isDesktop ? 1100 : 520, margin: '32px auto 48px',
+        padding: isDesktop ? '0 24px' : '0 16px',
+      }}>
+        <div style={{
+          background: T.surface, border: `1px solid ${T.border}`,
+          borderRadius: 12, padding: '16px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🏃</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Strava</div>
+              <div style={{ fontSize: 11, color: T.ink3 }}>
+                {stravaConectado ? '✓ Conectado' : 'Conecta tu cuenta para sincronizar actividades'}
+              </div>
+            </div>
+          </div>
+          {!stravaConectado && (
+            <button
+              onClick={conectarStrava}
+              disabled={stravaConectando}
+              style={{
+                background: stravaConectando ? T.bg2 : '#FC4C02',
+                color: stravaConectando ? T.ink3 : '#fff',
+                border: 'none', borderRadius: 8,
+                padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                cursor: stravaConectando ? 'default' : 'pointer',
+                flexShrink: 0, whiteSpace: 'nowrap',
+              }}
+            >
+              {stravaConectando ? 'Redirigiendo…' : 'Conectar con Strava'}
+            </button>
+          )}
+          {stravaConectado && (
+            <span style={{
+              background: T.greenL, color: T.green,
+              borderRadius: 20, padding: '4px 12px',
+              fontSize: 11, fontWeight: 600,
+            }}>✓ Conectado</span>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -18,6 +18,7 @@ import PackPublico from './pages/PackPublico'
 import ClientePortal from './pages/ClientePortal'
 import CuestionarioInicial from './pages/CuestionarioInicial'
 import RestablecerContrasena from './pages/RestablecerContrasena'
+import StravaCallback from './pages/StravaCallback'
 import './index.css'
 
 const NAV = [
@@ -43,6 +44,7 @@ export default function App() {
   const [publicClienteToken, setPublicClienteToken] = useState(null)
   const [publicCuestionarioToken, setPublicCuestionarioToken] = useState(null)
   const [publicCheckinPortalToken, setPublicCheckinPortalToken] = useState(null)
+  const [stravaCallbackParams, setStravaCallbackParams] = useState(null)
   useEffect(() => {
     const path = window.location.pathname
     if (path.startsWith('/restablecer-contrasena')) {
@@ -80,6 +82,18 @@ export default function App() {
       return
     }
 
+    // Callback de OAuth Strava — llega tras autorizar en strava.com
+    if (path === '/strava/callback') {
+      const sp = new URLSearchParams(window.location.search)
+      setStravaCallbackParams({
+        code:  sp.get('code'),
+        state: sp.get('state'),
+        error: sp.get('error'),
+      })
+      setAuthLoading(false)
+      return
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setAuthLoading(false)
@@ -96,6 +110,7 @@ export default function App() {
 
  // Vista pública
   if (window.location.pathname.startsWith('/restablecer-contrasena')) return <RestablecerContrasena />
+  if (stravaCallbackParams) return <StravaCallback params={stravaCallbackParams} />
  if (publicSesionToken) return <SesionPublica token={publicSesionToken} />
    if (publicCheckinPortalToken) return <CheckinPortal />
   if (publicPackToken) return <PackPublico token={publicPackToken} />
