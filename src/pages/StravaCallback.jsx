@@ -36,8 +36,24 @@ export default function StravaCallback({ params }) {
   const [atletaNombre, setAtletaNombre] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
-  // URL de retorno guardada en sessionStorage antes de redirigir a Strava
-  const portalUrl = sessionStorage.getItem('strava_oauth_return') || '/'
+  // URL de retorno: se captura UNA SOLA VEZ al montar el componente.
+  // No puede ser un const en el cuerpo del componente porque React re-evalúa
+  // el cuerpo en cada render — y removeItem se llama antes del re-render de 'ok'.
+  // useState con función inicializadora garantiza que solo se lee sessionStorage
+  // en el primer render, y el valor queda estable para toda la vida del componente.
+  const [portalUrl] = useState(() => {
+    const raw = sessionStorage.getItem('strava_oauth_return') || ''
+    try {
+      const url = new URL(raw)
+      // Solo URLs internas: origin exacto + pathname que empieza por /cliente/
+      if (url.origin === 'https://idelri.com' && url.pathname.startsWith('/cliente/')) {
+        return raw
+      }
+    } catch {
+      // raw no es una URL válida — ignorar
+    }
+    return '/'
+  })
 
   useEffect(() => {
     async function procesarCallback() {
