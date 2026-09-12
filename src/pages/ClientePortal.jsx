@@ -208,6 +208,8 @@ export default function ClientePortal({ token }) {
   const [vista, setVista] = useState(() => window.innerWidth >= 768 ? 'escritorio' : 'movil')
   const [stravaConectando, setStravaConectando] = useState(false)
   const [stravaConectado, setStravaConectado] = useState(false)
+  const [stravaDesconectando, setStravaDesconectando] = useState(false)
+  const [stravaConfirmDesc, setStravaConfirmDesc] = useState(false) // modal confirmación
 
   useEffect(() => { cargar() }, [token])
 
@@ -311,6 +313,32 @@ export default function ClientePortal({ token }) {
       alert('Error de red al contactar con el servidor.')
       setStravaConectando(false)
     }
+  }
+
+  async function desconectarStrava() {
+    setStravaConfirmDesc(false)
+    setStravaDesconectando(true)
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/strava-desconectar`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ portal_token: token }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        alert(data.message || 'Error al desconectar Strava.')
+        setStravaDesconectando(false)
+        return
+      }
+      // Desconexión confirmada — actualizar estado local
+      setStravaConectado(false)
+    } catch {
+      alert('Error de red al desconectar Strava.')
+    }
+    setStravaDesconectando(false)
   }
 
   function esBloqueActivo(b) {
@@ -1244,39 +1272,100 @@ export default function ClientePortal({ token }) {
         <div style={{
           background: T.surface, border: `1px solid ${T.border}`,
           borderRadius: 12, padding: '16px 20px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🏃</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Strava</div>
-              <div style={{ fontSize: 11, color: stravaConectado ? T.green : T.ink3 }}>
-                {stravaConectado ? '✓ Strava conectado' : 'Conecta tu cuenta para sincronizar actividades'}
+          {/* Fila principal */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🏃</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Strava</div>
+                <div style={{ fontSize: 11, color: stravaConectado ? T.green : T.ink3 }}>
+                  {stravaConectado ? '✓ Strava conectado' : 'Conecta tu cuenta para sincronizar actividades'}
+                </div>
               </div>
             </div>
+            {!stravaConectado && (
+              <button
+                onClick={conectarStrava}
+                disabled={stravaConectando}
+                style={{
+                  background: stravaConectando ? T.bg2 : '#FC4C02',
+                  color: stravaConectando ? T.ink3 : '#fff',
+                  border: 'none', borderRadius: 8,
+                  padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                  cursor: stravaConectando ? 'default' : 'pointer',
+                  flexShrink: 0, whiteSpace: 'nowrap',
+                }}
+              >
+                {stravaConectando ? 'Redirigiendo…' : 'Conectar con Strava'}
+              </button>
+            )}
+            {stravaConectado && (
+              <span style={{
+                background: T.greenL, color: T.green,
+                borderRadius: 20, padding: '4px 12px',
+                fontSize: 11, fontWeight: 600, flexShrink: 0,
+              }}>✓ Conectado</span>
+            )}
           </div>
-          {!stravaConectado && (
-            <button
-              onClick={conectarStrava}
-              disabled={stravaConectando}
-              style={{
-                background: stravaConectando ? T.bg2 : '#FC4C02',
-                color: stravaConectando ? T.ink3 : '#fff',
-                border: 'none', borderRadius: 8,
-                padding: '8px 16px', fontSize: 12, fontWeight: 600,
-                cursor: stravaConectando ? 'default' : 'pointer',
-                flexShrink: 0, whiteSpace: 'nowrap',
-              }}
-            >
-              {stravaConectando ? 'Redirigiendo…' : 'Conectar con Strava'}
-            </button>
+
+          {/* Acción discreta de desconexión — solo visible si conectado */}
+          {stravaConectado && !stravaConfirmDesc && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}` }}>
+              <button
+                onClick={() => setStravaConfirmDesc(true)}
+                disabled={stravaDesconectando}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  fontSize: 11, color: T.ink3, cursor: 'pointer',
+                  textDecoration: 'underline', textDecorationStyle: 'dotted',
+                }}
+              >
+                {stravaDesconectando ? 'Desconectando…' : 'Desconectar Strava'}
+              </button>
+            </div>
           )}
-          {stravaConectado && (
-            <span style={{
-              background: T.greenL, color: T.green,
-              borderRadius: 20, padding: '4px 12px',
-              fontSize: 11, fontWeight: 600,
-            }}>✓ Conectado</span>
+
+          {/* Modal de confirmación inline */}
+          {stravaConectado && stravaConfirmDesc && (
+            <div style={{
+              marginTop: 12, padding: '12px 14px',
+              background: T.bg, border: `1px solid ${T.border2}`,
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                ¿Desconectar Strava?
+              </div>
+              <div style={{ fontSize: 11, color: T.ink2, marginBottom: 12, lineHeight: 1.5 }}>
+                IdelRi dejará de recibir nuevas actividades de esta cuenta de Strava.
+                Los datos de actividades que ya se hayan importado se conservarán.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setStravaConfirmDesc(false)}
+                  style={{
+                    background: T.surface, border: `1px solid ${T.border}`,
+                    borderRadius: 6, padding: '6px 14px',
+                    fontSize: 11, fontWeight: 600, color: T.ink, cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={desconectarStrava}
+                  disabled={stravaDesconectando}
+                  style={{
+                    background: '#A32D2D', border: 'none',
+                    borderRadius: 6, padding: '6px 14px',
+                    fontSize: 11, fontWeight: 600, color: '#fff',
+                    cursor: stravaDesconectando ? 'default' : 'pointer',
+                    opacity: stravaDesconectando ? 0.7 : 1,
+                  }}
+                >
+                  {stravaDesconectando ? 'Desconectando…' : 'Desconectar'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
