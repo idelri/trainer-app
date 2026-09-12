@@ -273,6 +273,10 @@ export default function ClientePortal({ token }) {
     const { data: chks } = await supabase.rpc('get_checkins_por_token_cliente', { p_token: token })
     setCheckins(chks || [])
 
+    // Estado de conexión Strava — RPC SECURITY DEFINER, nunca expone tokens
+    const { data: stravaData } = await supabase.rpc('get_strava_estado_conexion', { p_token: token })
+    setStravaConectado(stravaData?.conectado === true)
+
     setLoading(false)
   }
 
@@ -288,6 +292,12 @@ export default function ClientePortal({ token }) {
         }
       )
       const data = await res.json()
+      // Si ya existe conexión activa, actualizar estado local en lugar de mostrar error
+      if (res.status === 409 && data.error === 'already_connected') {
+        setStravaConectado(true)
+        setStravaConectando(false)
+        return
+      }
       if (!res.ok || !data.auth_url) {
         alert(data.message || 'Error al iniciar conexión con Strava.')
         setStravaConectando(false)
@@ -1240,8 +1250,8 @@ export default function ClientePortal({ token }) {
             <span style={{ fontSize: 20 }}>🏃</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Strava</div>
-              <div style={{ fontSize: 11, color: T.ink3 }}>
-                {stravaConectado ? '✓ Conectado' : 'Conecta tu cuenta para sincronizar actividades'}
+              <div style={{ fontSize: 11, color: stravaConectado ? T.green : T.ink3 }}>
+                {stravaConectado ? '✓ Strava conectado' : 'Conecta tu cuenta para sincronizar actividades'}
               </div>
             </div>
           </div>
