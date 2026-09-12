@@ -293,8 +293,8 @@ export default function ClientePortal({ token }) {
         setStravaConectando(false)
         return
       }
-      // Guardar URL de retorno antes de salir de la página
-      sessionStorage.setItem('strava_oauth_return', window.location.pathname)
+      // Guardar URL completa de retorno antes de salir de la página
+      sessionStorage.setItem('strava_oauth_return', window.location.href)
       // Redirigir a Strava para autorización
       window.location.href = data.auth_url
     } catch {
