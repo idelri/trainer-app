@@ -131,16 +131,36 @@ export function ModalFormEpisodio({
           detalle:     form.detalle.trim() || reporteVinculado.detalle || null,
         }).eq('id', reporteVinculado.id)
       } else {
-        // Crear primer reporte manual
-        await supabase.from('molestia_reportes').insert({
-          cliente_id:   clienteId,
-          episodio_id:  ep.id,
-          fecha:        form.fecha_inicio || HOY(),
-          intensidad:   intensidad != null && !isNaN(intensidad) ? intensidad : null,
-          detalle:      form.detalle.trim() || null,
-          origen,
-          estado:       'vinculado',
-        })
+        // Comprobar si ya existe un reporte de sesión (feedback) para la misma fecha
+        // para no crear un duplicado manual cuando el episodio coincide con un feedback
+        const fechaEpisodio = form.fecha_inicio || HOY()
+        const { data: repExistente } = await supabase
+          .from('molestia_reportes')
+          .select('id')
+          .eq('cliente_id', clienteId)
+          .eq('fecha', fechaEpisodio)
+          .not('sesion_feedback_id', 'is', null)
+          .is('episodio_id', null)
+          .maybeSingle()
+
+        if (repExistente) {
+          // Ya hay un reporte de feedback para ese día: vincularlo al episodio
+          await supabase.from('molestia_reportes').update({
+            episodio_id: ep.id,
+            estado:      'vinculado',
+          }).eq('id', repExistente.id)
+        } else {
+          // Crear primer reporte manual
+          await supabase.from('molestia_reportes').insert({
+            cliente_id:   clienteId,
+            episodio_id:  ep.id,
+            fecha:        fechaEpisodio,
+            intensidad:   intensidad != null && !isNaN(intensidad) ? intensidad : null,
+            detalle:      form.detalle.trim() || null,
+            origen,
+            estado:       'vinculado',
+          })
+        }
       }
 
       // Cuestionario → reporte adicional con datos del cuestionario
