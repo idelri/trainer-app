@@ -109,6 +109,16 @@ export async function marcarRevisado(clienteId, sesionFeedbackId, categorias) {
   const { error } = await supabase.from('feedback_alertas_revisadas')
     .upsert(rows, { onConflict: 'sesion_feedback_id,categoria', ignoreDuplicates: true })
   if (error) console.error('[marcarRevisado] upsert error:', error)
+
+  // Si hay molestias pendientes, cerrarlas como descartadas para que el motor
+  // no las fuerce de vuelta a pendiente. El motor fuerza isPendiente=true mientras
+  // existan molestia_reportes con estado='pendiente' para este feedback.
+  if (categoriasUnicas.includes('molestia')) {
+    await supabase.from('molestia_reportes')
+      .update({ estado: 'descartado' })
+      .eq('sesion_feedback_id', sesionFeedbackId)
+      .eq('estado', 'pendiente')
+  }
 }
 
 /**

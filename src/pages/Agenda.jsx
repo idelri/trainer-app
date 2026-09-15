@@ -361,11 +361,9 @@ export default function Agenda({ setPage, setSesionesContext }) {
 
   async function handleRevisarFeed(item, clienteId) {
     if (!item.categoriasPendientes.length) return
-    console.log('[handleRevisarFeed] item.id:', item.id, 'sesionFeedbackId:', item.sesionFeedbackId, 'categoriasPendientes:', item.categoriasPendientes, 'clienteId:', clienteId)
     setFeedSavingId(item.id)
     await marcarRevisado(clienteId, item.sesionFeedbackId, item.categoriasPendientes)
     await cargarSeguimientoFeed()
-    console.log('[handleRevisarFeed] recargado, seguimientoDatos.revisadas:', seguimientoDatos?.revisadas?.length)
     setFeedSavingId(null)
   }
 

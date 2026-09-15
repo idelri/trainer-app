@@ -165,12 +165,9 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
 
   async function handleRevisar(item) {
     if (!item.categoriasPendientes.length) return
-    console.log('[handleRevisar] item.id:', item.id, 'sesionFeedbackId:', item.sesionFeedbackId, 'categoriasPendientes:', item.categoriasPendientes)
     setSaving(item.id)
     await marcarRevisado(clienteId, item.sesionFeedbackId, item.categoriasPendientes)
-    const resultado = await cargarSeguimientoCliente(clienteId)
-    console.log('[handleRevisar] revisadas tras guardar:', resultado.revisadas)
-    setDatos(resultado)
+    await cargar()
     setSaving(null)
   }
 
