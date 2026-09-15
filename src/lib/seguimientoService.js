@@ -97,13 +97,18 @@ export async function cargarSeguimientoGlobal(clientes) {
  */
 export async function marcarRevisado(clienteId, sesionFeedbackId, categorias) {
   if (!categorias?.length) return
-  const rows = categorias.map(cat => ({
+  // Deduplicar: pueden llegar varias entradas de la misma categoría (p.ej. múltiples
+  // molestias en un mismo feedback). PostgreSQL falla si el batch tiene filas que
+  // colisionan entre sí, aunque haya ignoreDuplicates — hay que deduplicar antes.
+  const categoriasUnicas = [...new Set(categorias)]
+  const rows = categoriasUnicas.map(cat => ({
     cliente_id:         clienteId,
     sesion_feedback_id: sesionFeedbackId,
     categoria:          cat,
   }))
-  await supabase.from('feedback_alertas_revisadas')
+  const { error } = await supabase.from('feedback_alertas_revisadas')
     .upsert(rows, { onConflict: 'sesion_feedback_id,categoria', ignoreDuplicates: true })
+  if (error) console.error('[marcarRevisado] upsert error:', error)
 }
 
 /**
