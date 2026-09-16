@@ -115,8 +115,15 @@ export function ModalFormEpisodio({
       } : {}),
     }
 
-    const { data: ep } = await supabase
+    const { data: ep, error: epError } = await supabase
       .from('molestia_episodios').insert(episodioData).select().single()
+
+    if (epError) {
+      console.error('[ModalMolestia] error al crear episodio:', epError, 'payload:', episodioData)
+      alert('Error al guardar el episodio: ' + epError.message)
+      setSaving(false)
+      return
+    }
 
     if (ep) {
       const intensidad = form.intensidad !== '' ? parseInt(form.intensidad, 10) : null
