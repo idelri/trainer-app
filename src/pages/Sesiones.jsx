@@ -307,8 +307,10 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
 
   const sesionPorDia = {}
   sesiones.filter(s => s.fecha).forEach(s => {
-    if (!sesionPorDia[s.fecha]) sesionPorDia[s.fecha] = []
-    sesionPorDia[s.fecha].push({ ...s, _tipo: 'sesion' })
+    // Si la sesión tiene completada_el, mostrarla en ese día; si no, en su fecha planificada
+    const diaCalendario = s.completada_el || s.fecha
+    if (!sesionPorDia[diaCalendario]) sesionPorDia[diaCalendario] = []
+    sesionPorDia[diaCalendario].push({ ...s, _tipo: 'sesion' })
   })
   ;(notas || []).forEach(n => {
     if (!sesionPorDia[n.fecha]) sesionPorDia[n.fecha] = []
@@ -1449,9 +1451,14 @@ async function guardarSesion() {
             if (clienteDestino === clienteSeleccionado) cargarSesiones()
           }}
           onMoverItem={async (item, nuevaFecha) => {
-          const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : item._tipo === 'nota' ? 'sesion_notas' : null
+            const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : item._tipo === 'nota' ? 'sesion_notas' : null
             if (!tabla) return
-            await supabase.from(tabla).update({ fecha: nuevaFecha }).eq('id', item.id)
+            // Si la sesión tiene completada_el, mover también ese campo para que el
+            // calendario la siga mostrando en el día arrastrado (override de la entrenadora)
+            const payload = item._tipo === 'sesion' && item.completada_el
+              ? { fecha: nuevaFecha, completada_el: nuevaFecha }
+              : { fecha: nuevaFecha }
+            await supabase.from(tabla).update(payload).eq('id', item.id)
             cargarSesiones()
           }}
           onAbrirSesion={setSesionAbierta}
