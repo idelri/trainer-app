@@ -97,7 +97,11 @@ export function ModalFormEpisodio({
   async function guardar() {
     if (!form.zona.trim()) return alert('La zona es obligatoria.')
     setSaving(true)
-    const origen = origenOverride || (reporteVinculado ? reporteVinculado.origen : 'entrenadora')
+    // origen para el episodio: solo acepta 'entrenadora'|'sesion_feedback'|'cuestionario_inicial'
+    // Los reportes de sesión tienen origen='feedback_sesion' en el frontend, que no es válido
+    // para molestia_episodios → normalizar a 'entrenadora' (la entrenadora abre el episodio)
+    const rawOrigen = origenOverride || (reporteVinculado ? reporteVinculado.origen : 'entrenadora')
+    const origen = rawOrigen === 'feedback_sesion' ? 'entrenadora' : rawOrigen
 
     const episodioData = {
       cliente_id:    clienteId,
