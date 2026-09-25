@@ -1121,7 +1121,17 @@ async function guardarSesion() {
     setSaving(true)
     const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [], modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
     if (modalSesion?.id) {
-      const datosConFecha = { ...datos, completada_el: formCompletadaEl || null }
+      // Si la sesión tenía completada_el y el trainer cambió fecha sin tocar completada_el
+      // explícitamente → sincronizar completada_el a la nueva fecha (su cambio manda)
+      let completadaElFinal = formCompletadaEl || null
+      if (
+        modalSesion.completada_el &&
+        formCompletadaEl === modalSesion.completada_el &&
+        formSesion.fecha !== modalSesion.fecha
+      ) {
+        completadaElFinal = formSesion.fecha || null
+      }
+      const datosConFecha = { ...datos, completada_el: completadaElFinal }
       await supabase.from('sesiones').update(datosConFecha).eq('id', modalSesion.id)
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datosConFecha } : s))
       setSesionAbierta(s => s ? { ...s, ...datosConFecha } : s)
