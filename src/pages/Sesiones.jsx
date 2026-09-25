@@ -492,7 +492,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         if (isDragTarget && dragOver.pos === 'before') els.push(<div key={`lb-${item.id}`} style={lineStyle} />)
                         els.push(
                           <div key={item.id}
-                            draggable
+                            draggable={true}
                             onDragStart={() => { console.log('[dragStart]', item.id, item.titulo); const dw = { itemId: item.id, fecha: key }; dragWithinRef.current = dw; setDragWithin(dw); setArrastrando(item) }}
                             onDragEnd={() => { console.log('[dragEnd]', item.id); dragWithinRef.current = null; setArrastrando(null); setDragWithin(null); setDragOver(null) }}
                             onDragOver={e => {
@@ -520,7 +520,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
                             onMouseEnter={e => fb && mostrarFeedbackTooltip(e, item, fb)}
                             onMouseLeave={ocultarFeedbackTooltip}
-                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: sesColor ? sesColor.bg : 'var(--accent-light)', color: sesColor ? sesColor.fg : 'var(--accent)', border: sesColor ? `1px solid ${sesColor.border}` : undefined, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1 }}>
+                            style={{ fontSize: 10, fontWeight: 500, padding: '2px 5px', borderRadius: 5, background: sesColor ? sesColor.bg : 'var(--accent-light)', color: sesColor ? sesColor.fg : 'var(--accent)', border: sesColor ? `1px solid ${sesColor.border}` : undefined, cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', opacity: dragWithin?.itemId === item.id ? 0.4 : 1, userSelect: 'none' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>💪 {item.titulo}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                               {fb && <span title="Tiene feedback" style={{ width: 6, height: 6, borderRadius: '50%', background: '#eab308', flexShrink: 0, display: 'inline-block' }} />}
