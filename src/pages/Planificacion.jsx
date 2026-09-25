@@ -1817,7 +1817,10 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                     return
                   }
                   const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : 'sesion_notas'
-                  await supabase.from(tabla).update({ fecha: fechaDestino }).eq('id', item.id)
+                  const payload = item._tipo === 'sesion'
+                    ? { fecha: fechaDestino, completada_el: fechaDestino, fecha_editada_por_entrenadora: true }
+                    : { fecha: fechaDestino }
+                  await supabase.from(tabla).update(payload).eq('id', item.id)
                   cargarPlanificacion()
                 }}
                 clipboard={clipboardSesion}
