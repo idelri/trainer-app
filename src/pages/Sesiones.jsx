@@ -411,7 +411,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                   return (
                     <div key={i}
                       onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); console.log('[drop día]', key, 'arrastrando:', arrastrando?.id); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
+                    onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
                       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
                       style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorLinea ? `2px solid ${colorLinea}` : '2px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1124,17 +1124,16 @@ async function guardarSesion() {
     setSaving(true)
     const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [], modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
     if (modalSesion?.id) {
-      // Si la sesión tenía completada_el y el trainer cambió fecha sin tocar completada_el
-      // explícitamente → sincronizar completada_el a la nueva fecha (su cambio manda)
-      let completadaElFinal = formCompletadaEl || null
-      if (
-        modalSesion.completada_el &&
-        formCompletadaEl === modalSesion.completada_el &&
-        formSesion.fecha !== modalSesion.fecha
-      ) {
-        completadaElFinal = formSesion.fecha || null
+      const fechaCambio = formSesion.fecha !== modalSesion.fecha
+      // Si la entrenadora cambia la fecha, sincronizar completada_el y marcar el flag
+      const completadaElFinal = fechaCambio
+        ? (formSesion.fecha || null)
+        : (formCompletadaEl || null)
+      const datosConFecha = {
+        ...datos,
+        completada_el: completadaElFinal,
+        ...(fechaCambio ? { fecha_editada_por_entrenadora: true } : {}),
       }
-      const datosConFecha = { ...datos, completada_el: completadaElFinal }
       await supabase.from('sesiones').update(datosConFecha).eq('id', modalSesion.id)
       setSesiones(ss => ss.map(s => s.id === modalSesion.id ? { ...s, ...datosConFecha } : s))
       setSesionAbierta(s => s ? { ...s, ...datosConFecha } : s)
@@ -1464,17 +1463,12 @@ async function guardarSesion() {
             if (clienteDestino === clienteSeleccionado) cargarSesiones()
           }}
           onMoverItem={async (item, nuevaFecha) => {
-            console.log('[onMoverItem] item:', item?.id, 'tipo:', item?._tipo, 'completada_el:', item?.completada_el, 'nuevaFecha:', nuevaFecha)
             const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : item._tipo === 'nota' ? 'sesion_notas' : null
             if (!tabla) return
-            // Si la sesión tiene completada_el, mover también ese campo para que el
-            // calendario la siga mostrando en el día arrastrado (override de la entrenadora)
-            const payload = item._tipo === 'sesion' && item.completada_el
-              ? { fecha: nuevaFecha, completada_el: nuevaFecha }
+            const payload = item._tipo === 'sesion'
+              ? { fecha: nuevaFecha, completada_el: nuevaFecha, fecha_editada_por_entrenadora: true }
               : { fecha: nuevaFecha }
-            console.log('[onMoverItem] payload:', payload)
-            const { error } = await supabase.from(tabla).update(payload).eq('id', item.id)
-            console.log('[onMoverItem] error:', error)
+            await supabase.from(tabla).update(payload).eq('id', item.id)
             cargarSesiones()
           }}
           onAbrirSesion={setSesionAbierta}
