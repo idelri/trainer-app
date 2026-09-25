@@ -505,13 +505,16 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                               }
                             }}
                             onDrop={e => {
-                              e.preventDefault(); e.stopPropagation()
+                              e.preventDefault()
                               const dw = dragWithinRef.current
                               if (dw && dw.fecha === key && dw.itemId !== item.id) {
+                                // Reordenar dentro del mismo día: parar propagación
+                                e.stopPropagation()
                                 reordenarEnDia(key, dw.itemId, item.id, dragOver?.pos || 'after')
                                 dragWithinRef.current = null
                                 setDragWithin(null); setDragOver(null); setArrastrando(null)
                               }
+                              // Si es distinto día, dejar que el evento suba al contenedor del día
                             }}
                             onClick={() => onAbrirSesion(item)}
                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key, item }) }}
