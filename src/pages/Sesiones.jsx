@@ -411,7 +411,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                   return (
                     <div key={i}
                       onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
+                    onDrop={e => { e.preventDefault(); console.log('[drop día]', key, 'arrastrando:', arrastrando?.id); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
                       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
                       style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorLinea ? `2px solid ${colorLinea}` : '2px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1464,6 +1464,7 @@ async function guardarSesion() {
             if (clienteDestino === clienteSeleccionado) cargarSesiones()
           }}
           onMoverItem={async (item, nuevaFecha) => {
+            console.log('[onMoverItem] item:', item?.id, 'tipo:', item?._tipo, 'completada_el:', item?.completada_el, 'nuevaFecha:', nuevaFecha)
             const tabla = item._tipo === 'sesion' ? 'sesiones' : item._tipo === 'competicion' ? 'competiciones' : item._tipo === 'control' ? 'controles' : item._tipo === 'nota' ? 'sesion_notas' : null
             if (!tabla) return
             // Si la sesión tiene completada_el, mover también ese campo para que el
@@ -1471,7 +1472,9 @@ async function guardarSesion() {
             const payload = item._tipo === 'sesion' && item.completada_el
               ? { fecha: nuevaFecha, completada_el: nuevaFecha }
               : { fecha: nuevaFecha }
-            await supabase.from(tabla).update(payload).eq('id', item.id)
+            console.log('[onMoverItem] payload:', payload)
+            const { error } = await supabase.from(tabla).update(payload).eq('id', item.id)
+            console.log('[onMoverItem] error:', error)
             cargarSesiones()
           }}
           onAbrirSesion={setSesionAbierta}
