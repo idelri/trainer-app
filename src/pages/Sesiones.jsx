@@ -411,7 +411,7 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                   return (
                     <div key={i}
                       onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
+                    onDrop={e => { e.preventDefault(); console.log('[drop]', key, 'arrastrando:', arrastrando?.id ?? 'NULL'); if (arrastrando) { onMoverItem(arrastrando, key); setArrastrando(null) } }}
                       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setMenu({ x: e.clientX, y: e.clientY, fecha: key }) }}
                       style={{ background: 'var(--bg)', minHeight: vista === 'mes' ? 80 : 140, padding: '4px', boxSizing: 'border-box', borderTop: colorLinea ? `2px solid ${colorLinea}` : '2px solid transparent', display: 'flex', flexDirection: 'column', gap: 3, opacity: esMesActual ? 1 : 0.35 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -493,8 +493,8 @@ function Calendario({ sesiones, notas, competiciones, controles, bloquesPlan, su
                         els.push(
                           <div key={item.id}
                             draggable
-                            onDragStart={() => { const dw = { itemId: item.id, fecha: key }; dragWithinRef.current = dw; setDragWithin(dw); setArrastrando(item) }}
-                            onDragEnd={() => { dragWithinRef.current = null; setArrastrando(null); setDragWithin(null); setDragOver(null) }}
+                            onDragStart={() => { console.log('[dragStart]', item.id, item.titulo); const dw = { itemId: item.id, fecha: key }; dragWithinRef.current = dw; setDragWithin(dw); setArrastrando(item) }}
+                            onDragEnd={() => { console.log('[dragEnd]', item.id); dragWithinRef.current = null; setArrastrando(null); setDragWithin(null); setDragOver(null) }}
                             onDragOver={e => {
                               e.preventDefault()
                               const dw = dragWithinRef.current
