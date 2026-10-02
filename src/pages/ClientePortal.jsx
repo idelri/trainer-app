@@ -475,6 +475,9 @@ export default function ClientePortal({ token }) {
 
   const isDesktop = vista === 'escritorio'
   const card = { background: T.surface, borderRadius: 12, border: `1px solid ${T.border}`, overflow: 'hidden' }
+
+  // Sesiones con comentario nuevo (no visto aún)
+  const sesionesConComentarioNuevo = sesiones.filter(s => s.comentario_entrenadora && !s.comentario_visto_at)
   const DIAS_SEM = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
   // Fecha visual de una sesión: fecha real (completada_el) para completadas/parciales; fecha planificada para el resto
@@ -833,6 +836,9 @@ export default function ClientePortal({ token }) {
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                               <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bd.bg, color: bd.color, whiteSpace: 'nowrap' }}>{bd.label}</span>
                               {bf && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 500, background: bf.bg, color: bf.color, whiteSpace: 'nowrap' }}>{bf.label}</span>}
+                              {item.comentario_entrenadora && !item.comentario_visto_at && (
+                                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600, background: '#f5f3ff', color: '#7c3aed', whiteSpace: 'nowrap' }}>💬 Nuevo mensaje</span>
+                              )}
                             </div>
                           </div>
                         )
@@ -1257,6 +1263,24 @@ export default function ClientePortal({ token }) {
           </div>
         </div>
       </div>
+
+      {/* BANNER — comentarios nuevos de la entrenadora */}
+      {sesionesConComentarioNuevo.length > 0 && (
+        <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '12px 24px 0' : '10px 12px 0' }}>
+          {sesionesConComentarioNuevo.map(s => (
+            <div key={s.id}
+              onClick={() => s.token_publico && (window.location.href = `/sesion/${s.token_publico}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f5f3ff', border: `1.5px solid #7c3aed`, borderRadius: 12, padding: '12px 16px', cursor: s.token_publico ? 'pointer' : 'default', marginBottom: 8 }}>
+              <span style={{ fontSize: 22, flexShrink: 0 }}>💬</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#4c1d95' }}>Tu entrenadora te ha dejado un mensaje</div>
+                <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed', flexShrink: 0 }}>Ver →</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '0 24px' : '0' }}>
         {tab === 'semana'     && portalConfig.mostrar_semana     && <TabSemana />}
