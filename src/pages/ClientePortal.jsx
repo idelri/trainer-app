@@ -1275,21 +1275,12 @@ export default function ClientePortal({ token }) {
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#4c1d95' }}>Tu entrenadora te ha dejado un mensaje</div>
                 <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignItems: 'flex-end' }}>
-                {s.token_publico && (
-                  <button onClick={() => { window.location.href = `/sesion/${s.token_publico}` }}
-                    style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#7c3aed', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    Ver →
-                  </button>
-                )}
-                <button onClick={async () => {
-                  if (s.token_publico) await supabase.rpc('marcar_comentario_visto', { p_token: s.token_publico })
-                  setSesiones(prev => prev.map(x => x.id === s.id ? { ...x, comentario_visto_at: new Date().toISOString() } : x))
-                }}
-                  style={{ fontSize: 11, fontWeight: 500, color: '#7c3aed', background: 'transparent', border: '1px solid #c4b5fd', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  Marcar leído
+              {s.token_publico && (
+                <button onClick={() => { window.location.href = `/sesion/${s.token_publico}` }}
+                  style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#7c3aed', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Ver →
                 </button>
-              </div>
+              )}
             </div>
           ))}
         </div>

@@ -169,6 +169,7 @@ export default function SesionPublica({ token }) {
   const [guardandoSesion, setGuardandoSesion] = useState(false)
   const [sesionFijaGuardada, setSesionFijaGuardada] = useState(false)
   const [clonToken, setClonToken] = useState(null)
+  const [comentarioVisto, setComentarioVisto] = useState(false)
 
   useEffect(() => { cargar() }, [token])
 
@@ -186,10 +187,7 @@ export default function SesionPublica({ token }) {
     const s = sesArr?.[0] ?? null
     if (!s) { setError(true); setLoading(false); return }
     setSesion(s)
-    // Marcar comentario de entrenadora como visto si existe y no fue visto aún
-    if (s?.comentario_entrenadora && !s?.comentario_visto_at) {
-      supabase.rpc('marcar_comentario_visto', { p_token: token })
-    }
+    setComentarioVisto(!!s?.comentario_visto_at)
     setCliente(cliArr?.[0] ?? null)
     setFases(fssArr || [])
     // Build combined list for rendering
@@ -354,10 +352,22 @@ export default function SesionPublica({ token }) {
         {/* COMENTARIO DE LA ENTRENADORA */}
         {sesion.comentario_entrenadora && (
           <div style={{ marginTop: 14, background: T.accent + '12', border: `2px solid ${T.accent}55`, borderRadius: 14, padding: '16px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.accent, marginBottom: 8 }}>
-              💬 Mensaje de tu entrenadora
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.accent }}>
+                💬 Mensaje de tu entrenadora
+              </div>
+              {comentarioVisto && <span style={{ fontSize: 10, color: T.accent, opacity: 0.7 }}>👁 Leído</span>}
             </div>
             <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: T.ink, whiteSpace: 'pre-wrap' }}>{sesion.comentario_entrenadora}</p>
+            {!comentarioVisto && (
+              <button onClick={async () => {
+                await supabase.rpc('marcar_comentario_visto', { p_token: token })
+                setComentarioVisto(true)
+              }}
+                style={{ marginTop: 14, fontSize: 12, fontWeight: 600, color: T.accent, background: 'transparent', border: `1.5px solid ${T.accent}66`, borderRadius: 8, padding: '6px 16px', cursor: 'pointer', display: 'block' }}>
+                Marcar como leído
+              </button>
+            )}
           </div>
         )}
 
