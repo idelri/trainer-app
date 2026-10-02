@@ -189,6 +189,12 @@ export default function SesionPublica({ token }) {
     setSesion(s)
     setComentarioVisto(!!s?.comentario_visto_at)
     setCliente(cliArr?.[0] ?? null)
+    // Scroll automático al comentario si viene con el ancla #comentario
+    if (s?.comentario_entrenadora && window.location.hash === '#comentario') {
+      setTimeout(() => {
+        document.getElementById('comentario')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 300)
+    }
     setFases(fssArr || [])
     // Build combined list for rendering
     const gruposMap = {}
