@@ -5,6 +5,7 @@ import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, deriv
 import { FUNCIONES_SESION, GRUPOS_CAPACIDAD, objetivosAgrupados, filtrarObjetivosCompatibles } from '../lib/metodologia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
+import ModalComentarioEntrenadora from '../components/ModalComentarioEntrenadora'
 import { es } from 'date-fns/locale'
 import { Plus, X, Trash2, Copy, Check, Play, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -639,6 +640,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [dirty, setDirty] = useState(false)
   const [avisoSinGuardar, setAvisoSinGuardar] = useState(false)
   const [modalSesion, setModalSesion] = useState(null)
+  const [modalComentario, setModalComentario] = useState(null) // { sesionId, sesionTitulo, clienteEmail, inicial }
   const [formSesion, setFormSesion] = useState(EMPTY_SESION)
   const [formCompletadaEl, setFormCompletadaEl] = useState('')
   const [saving, setSaving] = useState(false)
@@ -1377,6 +1379,12 @@ async function guardarSesion() {
               {guardandoEnBib ? '⏳' : '📚'} {guardandoEnBib ? 'Guardando...' : 'Guardar en biblioteca'}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
+            <button className="btn btn-ghost btn-sm" title="Enviar mensaje al cliente sobre esta sesión" onClick={() => {
+              const cli = clientes.find(c => c.id === clienteSeleccionado)
+              setModalComentario({ sesionId: sesionAbierta.id, sesionTitulo: sesionAbierta.titulo, clienteEmail: cli?.email || null, inicial: sesionAbierta.comentario_entrenadora || null })
+            }}>
+              {sesionAbierta.comentario_entrenadora ? '💬 Editar mensaje' : '💬 Mensaje al cliente'}
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
               if (dirty) { setAvisoSinGuardar(true) }
               else { volverAlCalendario() }
@@ -2619,6 +2627,16 @@ async function guardarSesion() {
             {modalSesion === 'nueva' && (
               <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{(formSesion.tipo_editor || 'fuerza') === 'carrera' ? 'Se crearán 3 fases de ejemplo (calentamiento, trabajo, vuelta a la calma).' : 'Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar.'}</p>
             )}
+            {modalSesion !== 'nueva' && (
+              <div style={{ marginBottom: 8 }}>
+                <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+                  const cli = clientes.find(c => c.id === clienteSeleccionado)
+                  setModalComentario({ sesionId: modalSesion.id, sesionTitulo: modalSesion.titulo, clienteEmail: cli?.email || null, inicial: modalSesion.comentario_entrenadora || null })
+                }}>
+                  💬 {modalSesion.comentario_entrenadora ? 'Editar mensaje al cliente' : 'Enviar mensaje al cliente'}
+                </button>
+              </div>
+            )}
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalSesion(null)}>Cancelar</button>
               <button className="btn btn-primary" onClick={guardarSesion} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</button>
@@ -2626,6 +2644,20 @@ async function guardarSesion() {
           </div>
         </div>
      )}
+
+      {/* Modal comentario entrenadora */}
+      {modalComentario && (
+        <ModalComentarioEntrenadora
+          {...modalComentario}
+          onGuardado={() => {
+            cargarSesiones()
+            if (modalSesion && modalSesion !== 'nueva') {
+              setSesiones(ss => ss.map(s => s.id === modalComentario.sesionId ? { ...s, comentario_entrenadora: modalComentario.inicial } : s))
+            }
+          }}
+          onClose={() => setModalComentario(null)}
+        />
+      )}
 
       {/* Modal competición desde calendario */}
       {modalCompCal && (

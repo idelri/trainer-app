@@ -186,6 +186,10 @@ export default function SesionPublica({ token }) {
     const s = sesArr?.[0] ?? null
     if (!s) { setError(true); setLoading(false); return }
     setSesion(s)
+    // Marcar comentario de entrenadora como visto si existe y no fue visto aún
+    if (s?.comentario_entrenadora && !s?.comentario_visto_at) {
+      supabase.rpc('marcar_comentario_visto', { p_token: token })
+    }
     setCliente(cliArr?.[0] ?? null)
     setFases(fssArr || [])
     // Build combined list for rendering
@@ -344,6 +348,16 @@ export default function SesionPublica({ token }) {
                 Realizar de nuevo
               </button>
             )}
+          </div>
+        )}
+
+        {/* COMENTARIO DE LA ENTRENADORA */}
+        {sesion.comentario_entrenadora && (
+          <div style={{ marginTop: 14, background: T.accent + '12', border: `2px solid ${T.accent}55`, borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.accent, marginBottom: 8 }}>
+              💬 Mensaje de tu entrenadora
+            </div>
+            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: T.ink, whiteSpace: 'pre-wrap' }}>{sesion.comentario_entrenadora}</p>
           </div>
         )}
 

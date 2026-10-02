@@ -13,6 +13,7 @@ import { calcularSeguimiento, CAT, CAT_LABEL } from '../lib/seguimientoMotor'
 import { cargarSeguimientoCliente, marcarRevisado, crearNota, SEMANAS_DISPLAY } from '../lib/seguimientoService'
 import { supabase } from '../lib/supabase'
 import { ModalFormEpisodio, ModalVincular } from './ModalMolestia'
+import ModalComentarioEntrenadora from './ModalComentarioEntrenadora'
 
 const HOY = () => new Date().toISOString().slice(0, 10)
 
@@ -81,7 +82,7 @@ function FiltroChips({ filtro, setFiltro, filtroExtra, setFiltroExtra, extrasDis
   )
 }
 
-export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
+export default function TabSeguimientoCliente({ clienteId, clienteEmail, onNavSalud }) {
   const [datos,   setDatos]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(null)
@@ -100,6 +101,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
   // modalMolestia: null | { tipo: 'abrir'|'vincular', reporte: {...} }
   const [modalMolestia,  setModalMolestia]  = useState(null)
   const [episodiosCache, setEpisodiosCache] = useState([])
+  const [modalComentario, setModalComentario] = useState(null)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -284,6 +286,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
                 saving={saving === item.id}
                 onNavSalud={onNavSalud}
                 onAccionMolestia={handleAccionMolestia}
+                onMensaje={item.sesionId ? () => setModalComentario({ sesionId: item.sesionId, sesionTitulo: item.sesionTitulo, clienteEmail, inicial: item.comentarioEntrenadora || null }) : undefined}
               />
             ))}
           </div>
@@ -361,6 +364,15 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
           onClose={() => setModalMolestia(null)}
         />
       )}
+
+      {/* Modal comentario entrenadora */}
+      {modalComentario && (
+        <ModalComentarioEntrenadora
+          {...modalComentario}
+          onGuardado={cargar}
+          onClose={() => setModalComentario(null)}
+        />
+      )}
     </div>
   )
 }
@@ -369,7 +381,7 @@ export default function TabSeguimientoCliente({ clienteId, onNavSalud }) {
 // SUBCOMPONENTES
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud, onAccionMolestia }) {
+function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud, onAccionMolestia, onMensaje }) {
   const fechaLabel = item.fecha ? format(parseISO(item.fecha), 'd MMM', { locale: es }) : '—'
   const badge = item.status ? STATUS_BADGE[item.status] : null
   const nAspectos = item.aspectos.length
@@ -413,13 +425,18 @@ function ItemCard({ item, expandido, onToggle, onRevisar, saving, onNavSalud, on
           )
         })()}
 
-        <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onToggle}>
             {expandido ? 'Ocultar ↑' : 'Ver detalle ↓'}
           </button>
           <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }} onClick={onRevisar} disabled={saving}>
             {saving ? 'Revisando…' : 'Marcar revisado'}
           </button>
+          {onMensaje && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={onMensaje} title="Enviar mensaje al cliente sobre esta sesión">
+              💬 Responder
+            </button>
+          )}
         </div>
       </div>
     </div>

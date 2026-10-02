@@ -328,7 +328,7 @@ export default function ClienteFicha({ clienteId, onVolver, setPage, setClienteP
         />
       )}
       {tab === 'planificacion' && <TabPlanificacion planes={planes} hoy={hoy} irAPlanificacion={irAPlanificacion} />}
-      {tab === 'seguimiento'   && <TabSeguimientoCliente clienteId={clienteId} onNavSalud={() => cambiarTab('informacion')} />}
+      {tab === 'seguimiento'   && <TabSeguimientoCliente clienteId={clienteId} clienteEmail={cliente?.email || null} onNavSalud={() => cambiarTab('informacion')} />}
       {tab === 'evaluaciones'  && <TabEvaluaciones controles={controles} clienteId={clienteId} onRecargar={recargarControles} />}
       {tab === 'informacion' && (
         <PerfilEditor
