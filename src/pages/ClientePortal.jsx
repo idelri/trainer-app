@@ -1269,14 +1269,27 @@ export default function ClientePortal({ token }) {
         <div style={{ maxWidth: isDesktop ? 1100 : 520, margin: '0 auto', padding: isDesktop ? '12px 24px 0' : '10px 12px 0' }}>
           {sesionesConComentarioNuevo.map(s => (
             <div key={s.id}
-              onClick={() => s.token_publico && (window.location.href = `/sesion/${s.token_publico}`)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f5f3ff', border: `1.5px solid #7c3aed`, borderRadius: 12, padding: '12px 16px', cursor: s.token_publico ? 'pointer' : 'default', marginBottom: 8 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f5f3ff', border: `1.5px solid #7c3aed`, borderRadius: 12, padding: '12px 16px', marginBottom: 8 }}>
               <span style={{ fontSize: 22, flexShrink: 0 }}>💬</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#4c1d95' }}>Tu entrenadora te ha dejado un mensaje</div>
                 <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed', flexShrink: 0 }}>Ver →</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignItems: 'flex-end' }}>
+                {s.token_publico && (
+                  <button onClick={() => { window.location.href = `/sesion/${s.token_publico}` }}
+                    style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#7c3aed', border: 'none', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Ver →
+                  </button>
+                )}
+                <button onClick={async () => {
+                  if (s.token_publico) await supabase.rpc('marcar_comentario_visto', { p_token: s.token_publico })
+                  setSesiones(prev => prev.map(x => x.id === s.id ? { ...x, comentario_visto_at: new Date().toISOString() } : x))
+                }}
+                  style={{ fontSize: 11, fontWeight: 500, color: '#7c3aed', background: 'transparent', border: '1px solid #c4b5fd', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Marcar leído
+                </button>
+              </div>
             </div>
           ))}
         </div>
