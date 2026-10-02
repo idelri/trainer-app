@@ -1276,7 +1276,7 @@ export default function ClientePortal({ token }) {
                 <div style={{ fontSize: 12, color: '#6d28d9', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</div>
               </div>
               {s.token_publico && (
-                <button onClick={() => { window.location.href = `/sesion/${s.token_publico}` }}
+                <button onClick={() => { window.location.href = `/sesion/${s.token_publico}#comentario` }}
                   style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#7c3aed', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   Ver →
                 </button>
