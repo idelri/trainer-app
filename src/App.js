@@ -6,7 +6,6 @@ import { useGenerarPagosMensuales } from './hooks/useGenerarPagosMensuales'
 import Dashboard from './pages/Dashboard'
 import Clientes from './pages/Clientes'
 import ClienteFicha from './pages/ClienteFicha'
-import Pagos from './pages/Pagos'
 import Planificacion from './pages/Planificacion'
 import Sesiones from './pages/Sesiones'
 import Biblioteca from './pages/Biblioteca'
@@ -26,7 +25,6 @@ const NAV = [
   { id: 'clientes',      label: 'Clientes',    icon: UsersIcon },
   { id: 'planificacion', label: 'Planificación', icon: CalendarIcon },
   { id: 'biblioteca',    label: 'Biblioteca',  icon: BookIcon },
-  { id: 'pagos',         label: 'Pagos',       icon: EuroIcon },
   { id: 'dashboard',     label: 'Dashboard',   icon: HomeIcon },
 ]
 
@@ -164,7 +162,6 @@ export default function App() {
         {page === 'dashboard'      && <Dashboard setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'clientes' && !clienteFichaId && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} onAbrirFicha={setClienteFichaId} />}
         {page === 'clientes' && clienteFichaId && <ClienteFicha clienteId={clienteFichaId} onVolver={() => setClienteFichaId(null)} setPage={setPage} setClientePlanificacion={setClientePlanificacion} />}
-        {page === 'pagos'          && <Pagos setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} recargarPlan={recargarPlan} />}
         {page === 'sesiones'       && <Sesiones clienteInicial={sesionesContext.clienteId} sesionInicialId={sesionesContext.sesionId} fechaNuevaSesion={sesionesContext.fechaNueva} esPlantilla={sesionesContext.esPlantilla} setPage={setPage} setClientePlanificacion={setClientePlanificacion} setRecargarPlan={setRecargarPlan} />}
         {page === 'biblioteca'     && <Biblioteca setPage={setPage} setSesionesContext={setSesionesContext} />}
