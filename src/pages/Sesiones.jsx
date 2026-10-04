@@ -656,6 +656,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [formCompletadaEl, setFormCompletadaEl] = useState('')
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
+  const [ejExpandido, setEjExpandido] = useState(null)
   const [vistaPrevia, setVistaPrevia] = useState(false)
   const [menuVariableAbierto, setMenuVariableAbierto] = useState(null)
   const [menuVariablePos, setMenuVariablePos] = useState({ x: 0, y: 0 })
@@ -1989,11 +1990,39 @@ async function guardarSesion() {
               function renderEjerciciosBloque(b, ejs, { toggleVariable, actualizarEjercicio, eliminarEjercicio, abrirCrearEjercicio, abrirBiblioteca, draggingEj, setDraggingEj, setEjercicios, ejercicios, menuVariableAbierto, setMenuVariableAbierto, menuVariablePos, setMenuVariablePos, mediaPreviewTimeout, setMediaPreview, VARS_MENU }) {
                 const metodo = b.metodo || 'individual'
 
-                function ejCard(e, eIdx, extraStyle) {
+                function formatVarsCompacto(ej) {
+                  const p = []
+                  if (ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}`)
+                  else if (ej.series) p.push(`${ej.series} series`)
+                  if (ej.peso) p.push(`${ej.peso}kg`)
+                  if (ej.peso_der || ej.peso_izq) p.push(`${ej.peso_der || '?'}/${ej.peso_izq || '?'}kg`)
+                  if (ej.rpe) p.push(`RIR ${ej.rpe}`)
+                  if (ej.duracion) p.push(`${ej.duracion}s`)
+                  if (ej.descanso) p.push(`⏱${ej.descanso}`)
+                  if (ej.distancia) p.push(`${ej.distancia}m`)
+                  if (ej.altura) p.push(`${ej.altura}cm`)
+                  return p.join(' · ')
+                }
+
+                function ejCard(e, eIdx) {
+                  const expandido = ejExpandido === e.id
                   const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-                  const thumb = e.media_tipo === 'youtube' && ytid ? `https://img.youtube.com/vi/${ytid}/hqdefault.jpg` : (e.media_tipo !== 'youtube' ? e.media_url : null)
                   const activas = e.variables_activas || []
                   const menuKey = `${b.id}-${e.id}`
+                  const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                  const label = `${letras[idx] || (idx+1)}${eIdx + 1}`
+                  const varsText = formatVarsCompacto(e)
+
+                  const mediaMini = e.media_url ? (
+                    e.media_tipo === 'video'
+                      ? <video src={e.media_url} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} autoPlay muted loop playsInline />
+                      : e.media_tipo === 'youtube'
+                        ? <div style={{ width: 60, height: 60, borderRadius: 6, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: 20, color: '#ff0000' }}>▶</span>
+                          </div>
+                        : <img src={e.media_url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                  ) : null
+
                   return (
                     <div key={e.id}
                       draggable
@@ -2023,224 +2052,237 @@ async function guardarSesion() {
                         if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                         setDraggingEj(null)
                       }}
-                      style={{ padding: '10px', background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', cursor: 'grab', display: 'flex', gap: 8, alignItems: 'stretch', minHeight: thumb ? 160 : 'auto', ...extraStyle }}>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>{idx + 1}.{eIdx + 1}.</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                      onMouseEnter={() => setEjExpandido(e.id)}
+                      onMouseLeave={() => setEjExpandido(null)}
+                      style={{
+                        borderRadius: 8,
+                        border: '0.5px solid var(--border)',
+                        background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        zIndex: expandido ? 2 : 'auto',
+                        boxShadow: expandido ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'box-shadow 0.15s',
+                      }}>
+
+                      {/* ── FILA COMPACTA (siempre visible) ── */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', height: 36, overflow: 'hidden' }}>
+                        <span style={{ fontSize: 12, opacity: 0.3, cursor: 'grab', flexShrink: 0, userSelect: 'none' }}>⠿</span>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, flexShrink: 0 }}>{label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>
+                          {e.nombre || <span style={{ color: 'var(--text3)', fontWeight: 400 }}>Sin nombre</span>}
+                        </span>
+                        {varsText && (
+                          <span style={{ fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{varsText}</span>
+                        )}
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--danger)', flexShrink: 0, opacity: expandido ? 1 : 0, transition: 'opacity 0.1s', pointerEvents: expandido ? 'auto' : 'none' }}
+                          onClick={ev => { ev.stopPropagation(); eliminarEjercicio(b.id, e.id) }}>
+                          <X size={12} />
+                        </button>
+                      </div>
+
+                      {/* ── ZONA EXPANDIDA (solo al hover) ── */}
+                      {expandido && (
+                        <div style={{ borderTop: '0.5px solid var(--border)', padding: '8px 10px 10px' }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            {/* Columna izquierda: inputs */}
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {/* Nombre editable */}
                               <InlineInput value={e.nombre} placeholder="Nombre del ejercicio" fontSize={13} style={{ fontWeight: 600 }}
                                 onSave={v => actualizarEjercicio(b.id, e.id, 'nombre', v)} />
-                            </div>
-                          </div>
-                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => eliminarEjercicio(b.id, e.id)}><X size={12} /></button>
-                        </div>
-                        <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
-                            <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
-                            <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
-                            <button onClick={() => actualizarEjercicio(b.id, e.id, 'reps_por_lado', !e.reps_por_lado)} title={e.reps_por_lado ? 'Unilateral (reps/lado) — clic para cambiar a bilateral' : 'Bilateral — clic para marcar como reps/lado'}
-                              style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, border: `1px solid ${e.reps_por_lado ? 'var(--accent)' : 'var(--border)'}`, background: e.reps_por_lado ? 'var(--accent)' : 'transparent', color: e.reps_por_lado ? '#fff' : 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
-                              /lado
-                            </button>
-                          </div>
-                        </div>
-                        {activas.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
-                            {activas.includes('RIR') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>RIR</span>
-                                <div style={{ display: 'flex', gap: 3 }}>
-                                  {[['4+','#16a34a','#dcfce7','4+ reps en reserva'],['2-3','#ca8a04','#fef9c3','2-3 reps en reserva'],['1-0','#dc2626','#fee2e2','0-1 reps en reserva']].map(([val, color, bg, tip]) => (
-                                    <button key={val} title={tip} onClick={() => actualizarEjercicio(b.id, e.id, 'rpe', e.rpe === val ? '' : val)}
-                                      style={{ padding: '2px 6px', borderRadius: 8, border: `1.5px solid ${e.rpe === val ? color : 'var(--border)'}`, background: e.rpe === val ? bg : 'var(--bg)', color: e.rpe === val ? color : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
-                                      {val}
-                                    </button>
-                                  ))}
+
+                              {/* Series + Reps */}
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
+                                  <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
                                 </div>
-                                <button onClick={() => toggleVariable(e, 'RIR')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Peso') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Peso</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-                                  <InlineInput value={e.peso} placeholder="80" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso', v)} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
+                                  <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
+                                  <button onClick={() => actualizarEjercicio(b.id, e.id, 'reps_por_lado', !e.reps_por_lado)}
+                                    style={{ fontSize: 10, padding: '2px 7px', borderRadius: 5, border: `1px solid ${e.reps_por_lado ? 'var(--accent)' : 'var(--border)'}`, background: e.reps_por_lado ? 'var(--accent)' : 'transparent', color: e.reps_por_lado ? '#fff' : 'var(--text3)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                                    /lado
+                                  </button>
                                 </div>
-                                <button onClick={() => toggleVariable(e, 'Peso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                               </div>
-                            )}
-                            {activas.includes('Peso/lado') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Peso/lado</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
-                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>D</span>
-                                  <InlineInput value={e.peso_der} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_der', v)} style={{ width: 36 }} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>I</span>
-                                  <InlineInput value={e.peso_izq} placeholder="15" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_izq', v)} style={{ width: 36 }} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+
+                              {/* Variables activas */}
+                              {activas.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {activas.includes('RIR') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>RIR</span>
+                                      <div style={{ display: 'flex', gap: 3 }}>
+                                        {[['4+','#16a34a','#dcfce7'],['2-3','#ca8a04','#fef9c3'],['1-0','#dc2626','#fee2e2']].map(([val, color, bg]) => (
+                                          <button key={val} onClick={() => actualizarEjercicio(b.id, e.id, 'rpe', e.rpe === val ? '' : val)}
+                                            style={{ padding: '2px 6px', borderRadius: 8, border: `1.5px solid ${e.rpe === val ? color : 'var(--border)'}`, background: e.rpe === val ? bg : 'var(--bg)', color: e.rpe === val ? color : 'var(--text3)', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                                            {val}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <button onClick={() => toggleVariable(e, 'RIR')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Peso') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Peso</span>
+                                      <InlineInput value={e.peso} placeholder="80" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso', v)} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+                                      <button onClick={() => toggleVariable(e, 'Peso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Peso/lado') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Peso/lado</span>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>D</span>
+                                      <InlineInput value={e.peso_der} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_der', v)} style={{ width: 36 }} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600 }}>I</span>
+                                      <InlineInput value={e.peso_izq} placeholder="15" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'peso_izq', v)} style={{ width: 36 }} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>kg</span>
+                                      <button onClick={() => toggleVariable(e, 'Peso/lado')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Duración') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Duración</span>
+                                      <InlineInput value={e.duracion} placeholder="45" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'duracion', v)} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>s</span>
+                                      <button onClick={() => toggleVariable(e, 'Duración')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Distancia') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Distancia</span>
+                                      <InlineInput value={e.distancia} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>m</span>
+                                      <button onClick={() => toggleVariable(e, 'Distancia')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Altura') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Altura</span>
+                                      <InlineInput value={e.altura} placeholder="40" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>cm</span>
+                                      <button onClick={() => toggleVariable(e, 'Altura')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Descanso') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Descanso</span>
+                                      <div style={{ flex: 1 }}><InlineInput value={e.descanso} placeholder="30 s · 60 s · 2 min" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'descanso', v)} /></div>
+                                      <button onClick={() => toggleVariable(e, 'Descanso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Forma de ejecución') && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56, paddingTop: 2 }}>Ejecución</span>
+                                      <div style={{ flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                        <select className="form-select" style={{ fontSize: 11, padding: '2px 6px', width: 'auto' }}
+                                          value={e.ejecucion_tipo || ''} onChange={ev => actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', ev.target.value)}>
+                                          <option value="">Seleccionar...</option>
+                                          {['Explosiva','Controlada','Control excéntrico','Con pausa','Técnica prioritaria','Máxima estabilidad','Rango completo','Personalizado'].map(op => (
+                                            <option key={op} value={op}>{op}</option>
+                                          ))}
+                                        </select>
+                                        <div style={{ flex: 1, minWidth: 80 }}>
+                                          <InlineInput value={e.ejecucion_texto} placeholder="Texto libre..." fontSize={11}
+                                            onSave={v => actualizarEjercicio(b.id, e.id, 'ejecucion_texto', v)} />
+                                        </div>
+                                      </div>
+                                      <button onClick={() => toggleVariable(e, 'Forma de ejecución')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
+                                  {activas.includes('Indicaciones') && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56, paddingTop: 2 }}>Notas</span>
+                                      <div style={{ flex: 1 }}>
+                                        <InlineInput value={e.notas} placeholder="Indicaciones para el ejercicio..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }}
+                                          onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
+                                      </div>
+                                      <button onClick={() => toggleVariable(e, 'Indicaciones')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                    </div>
+                                  )}
                                 </div>
-                                <button onClick={() => toggleVariable(e, 'Peso/lado')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Duración') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Duración</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-                                  <InlineInput value={e.duracion} placeholder="45" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'duracion', v)} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>s</span>
-                                </div>
-                                <button onClick={() => toggleVariable(e, 'Duración')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Distancia') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Distancia</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-                                  <InlineInput value={e.distancia} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>m</span>
-                                </div>
-                                <button onClick={() => toggleVariable(e, 'Distancia')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Altura') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Altura</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-                                  <InlineInput value={e.altura} placeholder="40" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} />
-                                  <span style={{ fontSize: 10, color: 'var(--text3)' }}>cm</span>
-                                </div>
-                                <button onClick={() => toggleVariable(e, 'Altura')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Descanso') && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60 }}>Descanso</span>
-                                <div style={{ flex: 1 }}><InlineInput value={e.descanso} placeholder="30 s · 60 s · 2 min" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'descanso', v)} /></div>
-                                <button onClick={() => toggleVariable(e, 'Descanso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                              </div>
-                            )}
-                            {activas.includes('Forma de ejecución') && (
-                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60, paddingTop: 2 }}>Ejecución</span>
-                                <div style={{ flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                  <select className="form-select" style={{ fontSize: 11, padding: '2px 6px', width: 'auto' }}
-                                    value={e.ejecucion_tipo || ''} onChange={ev => actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', ev.target.value)}>
-                                    <option value="">Seleccionar...</option>
-                                    {['Explosiva','Controlada','Control excéntrico','Con pausa','Técnica prioritaria','Máxima estabilidad','Rango completo','Personalizado'].map(op => (
-                                      <option key={op} value={op}>{op}</option>
+                              )}
+
+                              {/* + Variable */}
+                              <div style={{ display: 'inline-block' }}>
+                                <button onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setMenuVariablePos({ x: r.left, y: r.bottom + 4 }); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
+                                  style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
+                                  ＋ Variable
+                                </button>
+                                {menuVariableAbierto === menuKey && (
+                                  <div data-var-menu="1"
+                                    style={{ position: 'fixed', top: menuVariablePos.y, left: menuVariablePos.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, overflow: 'hidden' }}>
+                                    {VARS_MENU.map(({ grupo, items }) => (
+                                      <div key={grupo}>
+                                        <div style={{ padding: '5px 10px 2px', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>{grupo}</div>
+                                        {items.map(item => {
+                                          const isActive = activas.includes(item)
+                                          return (
+                                            <button key={item} onClick={() => { toggleVariable(e, item); setMenuVariableAbierto(null) }}
+                                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: isActive ? 'var(--accent)' : 'var(--text)' }}
+                                              onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg2)'}
+                                              onMouseLeave={ev => ev.currentTarget.style.background = 'none'}>
+                                              <span style={{ width: 14, flexShrink: 0 }}>{isActive ? '✓' : ''}</span>
+                                              {item}
+                                            </button>
+                                          )
+                                        })}
+                                      </div>
                                     ))}
-                                  </select>
-                                  <div style={{ flex: 1, minWidth: 80 }}>
-                                    <InlineInput value={e.ejecucion_texto} placeholder="Texto libre..." fontSize={11}
-                                      onSave={v => actualizarEjercicio(b.id, e.id, 'ejecucion_texto', v)} />
                                   </div>
-                                </div>
-                                <button onClick={() => toggleVariable(e, 'Forma de ejecución')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                )}
                               </div>
-                            )}
-                            {activas.includes('Indicaciones') && (
-                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                                <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 60, paddingTop: 2 }}>Notas</span>
+
+                              {/* Media url */}
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <select className="form-select" style={{ fontSize: 11, padding: '3px 6px', width: 'auto' }} value={e.media_tipo} onChange={ev => actualizarEjercicio(b.id, e.id, 'media_tipo', ev.target.value)}>
+                                  <option value="youtube">YouTube</option>
+                                  <option value="imagen">Imagen</option>
+                                  <option value="video">Vídeo</option>
+                                  <option value="gif">GIF</option>
+                                </select>
                                 <div style={{ flex: 1 }}>
-                                  <InlineInput value={e.notas} placeholder="Indicaciones para el ejercicio..." textarea fontSize={11.5} style={{ color: 'var(--text2)' }}
-                                    onSave={v => actualizarEjercicio(b.id, e.id, 'notas', v)} />
+                                  <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
+                                    onSave={async v => {
+                                      await actualizarEjercicio(b.id, e.id, 'media_url', v)
+                                      if (e.media_tipo === 'youtube' && v && !e.nombre) {
+                                        const titulo = await ytTitulo(v)
+                                        if (titulo) await actualizarEjercicio(b.id, e.id, 'nombre', titulo)
+                                      }
+                                    }} />
                                 </div>
-                                <button onClick={() => toggleVariable(e, 'Indicaciones')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                {e.media_tipo !== 'youtube' && (
+                                  <label style={{ cursor: 'pointer', flexShrink: 0 }} title="Subir archivo desde tu ordenador">
+                                    <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
+                                      onChange={async ev => {
+                                        const file = ev.target.files?.[0]
+                                        if (!file) return
+                                        const ext = file.name.split('.').pop()
+                                        const path = `ejercicios/${e.id}_${Date.now()}.${ext}`
+                                        const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
+                                        if (error) { alert('Error al subir: ' + error.message); return }
+                                        const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
+                                        await actualizarEjercicio(b.id, e.id, 'media_url', publicUrl)
+                                        ev.target.value = ''
+                                      }} />
+                                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>📁 Subir</span>
+                                  </label>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        )}
-                        <div style={{ display: 'inline-block', marginTop: 6 }}>
-                          <button onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setMenuVariablePos({ x: r.left, y: r.bottom + 4 }); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
-                            style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
-                            ＋ Variable
-                          </button>
-                          {menuVariableAbierto === menuKey && (
-                            <div data-var-menu="1"
-                              style={{ position: 'fixed', top: menuVariablePos.y, left: menuVariablePos.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 200, minWidth: 180, overflow: 'hidden' }}>
-                              {VARS_MENU.map(({ grupo, items }) => (
-                                <div key={grupo}>
-                                  <div style={{ padding: '5px 10px 2px', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>{grupo}</div>
-                                  {items.map(item => {
-                                    const isActive = activas.includes(item)
-                                    return (
-                                      <button key={item} onClick={() => { toggleVariable(e, item); setMenuVariableAbierto(null) }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: isActive ? 'var(--accent)' : 'var(--text)' }}
-                                        onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg2)'}
-                                        onMouseLeave={ev => ev.currentTarget.style.background = 'none'}>
-                                        <span style={{ width: 14, flexShrink: 0 }}>{isActive ? '✓' : ''}</span>
-                                        {item}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              ))}
+                              {e.media_tipo !== 'youtube' && (
+                                <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
+                                  onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                          <select className="form-select" style={{ fontSize: 11, padding: '3px 6px', width: 'auto' }} value={e.media_tipo} onChange={ev => actualizarEjercicio(b.id, e.id, 'media_tipo', ev.target.value)}>
-                            <option value="youtube">YouTube</option>
-                            <option value="imagen">Imagen</option>
-                            <option value="video">Vídeo</option>
-                            <option value="gif">GIF</option>
-                          </select>
-                          <div style={{ flex: 1 }}>
-                            <InlineInput value={e.media_url} placeholder={e.media_tipo === 'youtube' ? 'Enlace de YouTube...' : 'URL de la media...'} fontSize={11}
-                              onSave={async v => {
-                                await actualizarEjercicio(b.id, e.id, 'media_url', v)
-                                if (e.media_tipo === 'youtube' && v && !e.nombre) {
-                                  const titulo = await ytTitulo(v)
-                                  if (titulo) await actualizarEjercicio(b.id, e.id, 'nombre', titulo)
-                                }
-                              }} />
-                          </div>
-                          {e.media_tipo !== 'youtube' && (
-                            <label style={{ cursor: 'pointer', flexShrink: 0 }} title="Subir archivo desde tu ordenador">
-                              <input type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }}
-                                onChange={async ev => {
-                                  const file = ev.target.files?.[0]
-                                  if (!file) return
-                                  const ext = file.name.split('.').pop()
-                                  const path = `ejercicios/${e.id}_${Date.now()}.${ext}`
-                                  const { error } = await supabase.storage.from('media-ejercicios').upload(path, file, { upsert: true })
-                                  if (error) { alert('Error al subir: ' + error.message); return }
-                                  const { data: { publicUrl } } = supabase.storage.from('media-ejercicios').getPublicUrl(path)
-                                  await actualizarEjercicio(b.id, e.id, 'media_url', publicUrl)
-                                  ev.target.value = ''
-                                }} />
-                              <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg2)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>📁 Subir</span>
-                            </label>
-                          )}
-                        </div>
-                        {e.media_tipo !== 'youtube' && (
-                          <div style={{ marginTop: 4 }}>
-                            <InlineInput value={e.video_url} placeholder="Enlace 'Ver vídeo' (opcional)..." fontSize={11}
-                              onSave={v => actualizarEjercicio(b.id, e.id, 'video_url', v)} />
-                          </div>
-                        )}
-                      </div>
-                      {thumb && (
-                        <div
-                          style={{ width: '45%', flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', cursor: 'pointer', margin: '2px 0' }}
-                          onMouseEnter={ev => {
-                            clearTimeout(mediaPreviewTimeout.current)
-                            const rect = ev.currentTarget.getBoundingClientRect()
-                            setMediaPreview({ tipo: e.media_tipo, ytid, url: e.media_url, x: rect.right + 8, y: rect.top })
-                          }}
-                          onMouseLeave={() => {
-                            mediaPreviewTimeout.current = setTimeout(() => setMediaPreview(null), 300)
-                          }}
-                        >
-                          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.28)', pointerEvents: 'none' }}>
-                            <span style={{ fontSize: 26, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.6))' }}>{e.media_tipo === 'youtube' || e.media_tipo === 'video' ? '▶' : '🔍'}</span>
+
+                            {/* Miniatura de media */}
+                            {mediaMini}
                           </div>
                         </div>
                       )}
