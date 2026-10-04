@@ -1992,10 +1992,11 @@ async function guardarSesion() {
 
                 function formatVarsCompacto(ej) {
                   const p = []
+                  console.log('[ejCard compacto]', ej.nombre, { series: ej.series, reps: ej.reps, peso: ej.peso, rpe: ej.rpe, duracion: ej.duracion, descanso: ej.descanso })
                   if (ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}`)
                   else if (ej.series) p.push(`${ej.series} series`)
                   if (ej.peso) p.push(`${ej.peso}kg`)
-                  if (ej.peso_der || ej.peso_izq) p.push(`${ej.peso_der || '?'}/${ej.peso_izq || '?'}kg`)
+                  if (ej.peso_der || ej.peso_izq) p.push(`${ej.peso_der || '?'}/${ej.peso_izq || '?'}kg/lado`)
                   if (ej.rpe) p.push(`RIR ${ej.rpe}`)
                   if (ej.duracion) p.push(`${ej.duracion}s`)
                   if (ej.descanso) p.push(`⏱${ej.descanso}`)
@@ -2006,20 +2007,23 @@ async function guardarSesion() {
 
                 function ejCard(e, eIdx) {
                   const expandido = ejExpandido === e.id
-                  const ytid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+                  const getYtId = (url) => url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&\n?#]+)/)?.[1]
+                  const ytEmbedId = e.media_tipo === 'youtube' ? (getYtId(e.video_url) || getYtId(e.media_url)) : null
                   const activas = e.variables_activas || []
                   const menuKey = `${b.id}-${e.id}`
                   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                   const label = `${letras[idx] || (idx+1)}${eIdx + 1}`
                   const varsText = formatVarsCompacto(e)
 
-                  const mediaMini = e.media_url ? (
+                  const mediaMini = e.media_url || e.media_tipo === 'youtube' ? (
                     e.media_tipo === 'video'
                       ? <video src={e.media_url} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} autoPlay muted loop playsInline />
                       : e.media_tipo === 'youtube'
-                        ? <div style={{ width: 60, height: 60, borderRadius: 6, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 20, color: '#ff0000' }}>▶</span>
-                          </div>
+                        ? expandido && ytEmbedId
+                          ? <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1&mute=1&controls=1`} style={{ width: 160, height: 90, borderRadius: 6, border: 'none', flexShrink: 0 }} allow="autoplay" allowFullScreen title="yt" />
+                          : <div style={{ width: 60, height: 60, borderRadius: 6, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: 20, color: '#ff0000' }}>▶</span>
+                            </div>
                         : <img src={e.media_url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                   ) : null
 
