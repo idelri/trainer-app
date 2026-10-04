@@ -2077,7 +2077,7 @@ async function guardarSesion() {
           })()}
 
           {/* ── EDITOR FUERZA ── */}
-          {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {bloques.map((b, idx) => {
               function renderEjerciciosBloque(b, ejs, { toggleVariable, actualizarEjercicio, eliminarEjercicio, abrirCrearEjercicio, abrirBiblioteca, draggingEj, setDraggingEj, setEjercicios, ejercicios, menuVariableAbierto, setMenuVariableAbierto, menuVariablePos, setMenuVariablePos, mediaPreviewTimeout, setMediaPreview, VARS_MENU }) {
                 const metodo = b.metodo || 'individual'
@@ -2109,7 +2109,7 @@ async function guardarSesion() {
                   const activas = e.variables_activas || []
                   const menuKey = `${b.id}-${e.id}`
                   const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                  const label = `${letras[idx] || (idx+1)}${eIdx + 1}`
+                  const label = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
                   const varsText = formatVarsCompacto(e)
 
                   const mediaMini = e.media_url || e.media_tipo === 'youtube' ? (
@@ -2157,7 +2157,7 @@ async function guardarSesion() {
                       onMouseEnter={ev => { if (!expandido) ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)' }}
                       onMouseLeave={ev => { if (!expandido) ev.currentTarget.style.background = expandido ? 'var(--surface2, #f8f9fa)' : 'transparent' }}
                       style={{
-                        borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                        borderBottom: isLast ? 'none' : '0.5px solid var(--border)',
                         borderLeft: accentColor ? `2px solid ${accentColor}` : 'none',
                         background: expandido ? 'var(--surface2, #f8f9fa)' : 'transparent',
                         cursor: 'pointer',
@@ -2167,7 +2167,7 @@ async function guardarSesion() {
                       }}>
 
                       {/* ── FILA COMPACTA ── */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px', height: 34 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', height: 32 }}>
                         <span style={{ fontSize: 11, color: 'var(--text4)', cursor: 'grab', flexShrink: 0, userSelect: 'none', lineHeight: 1 }}>⠿</span>
                         {prefixLabel && <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{prefixLabel}</span>}
                         <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, color: accentColor, background: mC(accentColor || '#888', 0.12), padding: '1px 5px', borderRadius: 3, flexShrink: 0, letterSpacing: '.03em' }}>{label}</span>
@@ -2389,19 +2389,19 @@ async function guardarSesion() {
 
                 const varsDefMetodo = VARS_DEFAULT_METODO[b.metodo || 'individual'] || VARS_DEFAULT_METODO.individual
                 const addButtons = (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', borderTop: '0.5px solid var(--border)' }}>
                     <button onClick={() => abrirCrearEjercicio(b.id, varsDefMetodo)}
                       onMouseEnter={ev => ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)'}
                       onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 10px', border: 'none', background: 'transparent', color: 'var(--text3)', fontSize: 11, fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer' }}>
+                      style={{ flex: 1, padding: '6px 0', border: 'none', borderRight: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text3)', fontSize: 11, fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer' }}>
                       + ejercicio
                     </button>
                     <button onClick={() => abrirBiblioteca(b.id, varsDefMetodo)}
                       onMouseEnter={ev => ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)'}
                       onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                       title="Añadir desde biblioteca"
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', fontSize: 11, cursor: 'pointer' }}>
-                      📚
+                      style={{ flex: 1, padding: '6px 0', border: 'none', background: 'transparent', color: 'var(--text3)', fontSize: 11, cursor: 'pointer' }}>
+                      📚 biblioteca
                     </button>
                   </div>
                 )
@@ -2442,7 +2442,7 @@ async function guardarSesion() {
                 }
 
                 const footerStd = (labelMetodo, mc) => (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
                     <span>⏱ Descanso entre {labelMetodo}</span>
                     <input type="number" defaultValue={b.descanso_seg || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
                       style={{ width: 44, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
@@ -2467,9 +2467,9 @@ async function guardarSesion() {
                             {ejCard(e, eIdx, c, true)}
                             {eIdx < ejs.length - 1 && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: mC(c, 0.05) }}>
-                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <div style={{ flex: 1, height: 0.5, background: mC(c, 0.20) }} />
                                 <span style={{ fontSize: 12, color: c, opacity: .6 }}>⇅</span>
-                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <div style={{ flex: 1, height: 0.5, background: mC(c, 0.20) }} />
                               </div>
                             )}
                           </div>
@@ -2492,9 +2492,9 @@ async function guardarSesion() {
                             {ejCard(e, eIdx, c, true)}
                             {eIdx < ejs.length - 1 && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: mC(c, 0.05) }}>
-                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <div style={{ flex: 1, height: 0.5, background: mC(c, 0.20) }} />
                                 <span style={{ fontSize: 12, color: c, opacity: .6 }}>↓</span>
-                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <div style={{ flex: 1, height: 0.5, background: mC(c, 0.20) }} />
                               </div>
                             )}
                           </div>
@@ -2595,14 +2595,14 @@ async function guardarSesion() {
                     <div style={W}>
                       <div style={BOX}>
                         {/* header compacto sin fondo de color */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderBottom: '0.5px solid var(--border)' }}>
                           <span style={{ fontSize: 11, color: c }}>⏱</span>
                           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>EMOM</span>
                           <InlineInput value={b.duracion_min != null ? String(b.duracion_min) : ''} placeholder="20" fontSize={11} type="number" onSave={saveDuracion} style={{ width: 32, color: c, fontFamily: "'JetBrains Mono', monospace" }} />
                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>min · cada minuto en punto</span>
                         </div>
                         {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1, `MIN ${eIdx + 1}`))}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
                           <span>⏱ Duración:</span>
                           <input type="number" defaultValue={b.duracion_min || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ duracion_min: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: v } : bl)) }}
                             style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
@@ -2625,14 +2625,14 @@ async function guardarSesion() {
                     <div style={W}>
                       <div style={BOX}>
                         {/* header compacto sin fondo de color */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderBottom: '0.5px solid var(--border)' }}>
                           <span style={{ fontSize: 11, color: c }}>⏱</span>
                           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>AMRAP</span>
                           <InlineInput value={b.duracion_min != null ? String(b.duracion_min) : ''} placeholder="15" fontSize={11} type="number" onSave={saveDuracion} style={{ width: 32, color: c, fontFamily: "'JetBrains Mono', monospace" }} />
                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>min · máximas rondas posibles</span>
                         </div>
                         {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
                           <span>⏱ Duración:</span>
                           <input type="number" defaultValue={b.duracion_min || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ duracion_min: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: v } : bl)) }}
                             style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
@@ -2693,12 +2693,14 @@ async function guardarSesion() {
                   const nombreMetodo = (METODOS_SESION.find(m => m.id === (b.metodo || 'individual'))?.nombre || b.metodo || 'Individual').toUpperCase()
                   return (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '0.5px solid var(--border)' }}>
                         <span style={{ color: 'var(--text4)', cursor: 'grab', fontSize: 13, userSelect: 'none', flexShrink: 0 }}>⠿</span>
-                        <span
+                        <div
                           title="Cambiar color del bloque"
                           onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setColorPickerBloque(colorPickerBloque?.bloqueId === b.id ? null : { bloqueId: b.id, x: r.left, y: r.bottom + 6 }) }}
-                          style={{ width: 10, height: 10, borderRadius: '50%', background: bc, flexShrink: 0, display: 'inline-block', cursor: 'pointer', border: '1.5px solid rgba(0,0,0,0.12)', boxSizing: 'border-box' }} />
+                          style={{ width: 22, height: 22, borderRadius: '50%', background: `${bc}22`, border: `1.5px solid ${bc}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: bc, filter: 'brightness(0.7)' }}>
+                          {idx + 1}
+                        </div>
                         <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${bc}18`, color: bc, border: `1px solid ${bc}33`, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.05em' }}>
                           {nombreMetodo}
                         </span>
@@ -2711,7 +2713,7 @@ async function guardarSesion() {
                         <button className="btn btn-ghost btn-sm" title="Copiar bloque" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', opacity: .5 }}>📋</button>
                         <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', opacity: .5 }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', padding: '0 12px 6px 20px', lineHeight: 1.4, cursor: 'text', fontFamily: "'Inter', system-ui, sans-serif", background: 'var(--surface2, #f8f9fa)', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', fontStyle: 'italic', padding: '0 10px 5px 18px', lineHeight: 1.4, cursor: 'text', fontFamily: "'Inter', system-ui, sans-serif", background: 'var(--surface2, #f8f9fa)', borderBottom: '0.5px solid var(--border)' }}>
                         {editandoDescripcion === b.id ? (
                           <textarea
                             autoFocus
