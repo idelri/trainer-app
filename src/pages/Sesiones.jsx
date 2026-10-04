@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import ReactDOM from 'react-dom'
 import { supabase } from '../lib/supabase'
 import { clonarSesion } from '../lib/clonarSesion'
 import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId, colorDePatronId, patronesRecomendadosActivos } from '../lib/taxonomia'
@@ -162,6 +163,20 @@ const METODOS_SESION = [
   { id: 'emom',       icono: '⏱',  nombre: 'EMOM',              desc: 'Al inicio de cada minuto completa el trabajo. El tiempo restante es tu descanso.' },
   { id: 'amrap',      icono: '🔁', nombre: 'AMRAP',             desc: 'Máximo trabajo en el tiempo fijo. Anota las rondas completadas.' },
 ]
+const DESCRIPCIONES_METODO = Object.fromEntries(METODOS_SESION.map(m => [m.id, m.desc]))
+const METODO_COLOR = { individual: '#4a6fa5', superserie: '#3a8a6e', triserie: '#3a8a6e', circuito: '#4a6fa5', complejo: '#c07a3a', contrast: '#6b5b9e', cluster: '#c07a3a', emom: '#b04a4a', amrap: '#3a8a7e' }
+const COLORES_BLOQUE = ['#4a6fa5','#3a8a6e','#c07a3a','#6b5b9e','#b04a4a','#3a8a7e','#7a6a3a','#4a8a8a','#8a4a6a','#6a7a4a']
+const VARS_DEFAULT_METODO = {
+  individual:  ['Peso', 'RIR'],
+  superserie:  ['Peso', 'RIR'],
+  triserie:    ['Peso', 'RIR'],
+  circuito:    ['Peso', 'Duración'],
+  complejo:    ['Peso'],
+  contrast:    ['Peso', 'RIR'],
+  cluster:     ['Peso', 'RIR', 'Descanso'],
+  emom:        ['Duración'],
+  amrap:       ['Duración'],
+}
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', tipo_sesion_detalle: null, modalidad: 'autonoma', lugar: '', lista: false, publicada: true }
 function ytId(url) {
   if (!url) return null
@@ -657,6 +672,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [ejExpandido, setEjExpandido] = useState(null)
+  const [editandoDescripcion, setEditandoDescripcion] = useState(null)
+  const [colorPickerBloque, setColorPickerBloque] = useState(null) // { bloqueId, x, y }
   const [vistaPrevia, setVistaPrevia] = useState(false)
   const [menuVariableAbierto, setMenuVariableAbierto] = useState(null)
   const [menuVariablePos, setMenuVariablePos] = useState({ x: 0, y: 0 })
@@ -704,6 +721,16 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
   }, [menuVariableAbierto])
+
+  useEffect(() => {
+    if (!colorPickerBloque) return
+    function handler(ev) {
+      if (ev.target.closest('[data-color-picker]')) return
+      setColorPickerBloque(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [colorPickerBloque])
 
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('id, nombre').eq('estado', 'activo').order('nombre')
@@ -829,7 +856,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
       media_tipo: libEj.media_tipo || 'youtube',
       media_url: libEj.media_url || '',
       video_url: libEj.video_url || '',
-      orden: lista.length, variables_activas: [],
+      orden: lista.length, variables_activas: VARS_DEFAULT_METODO[bloques.find(b => b.id === bloqueId)?.metodo || 'individual'] || VARS_DEFAULT_METODO.individual,
       biblioteca_id: libEj.id || null,
     }).select().single()
     if (e) { setEjercicios(ej => ({ ...ej, [bloqueId]: [...(ej[bloqueId] || []), e] })); setDirty(true) }
@@ -1298,6 +1325,8 @@ async function guardarSesion() {
     }
 
     const orden = (ejercicios[bloqueId] || []).length
+    const bloqueActual = bloques.find(b => b.id === bloqueId)
+    const varsDefault = VARS_DEFAULT_METODO[bloqueActual?.metodo || 'individual'] || VARS_DEFAULT_METODO.individual
     const { data: ejRow, error: ejError } = await supabase
       .from('sesion_ejercicios')
       .insert({
@@ -1305,6 +1334,7 @@ async function guardarSesion() {
         nombre: formCrearEj.nombre.trim(),
         biblioteca_id: bib.id,
         orden,
+        variables_activas: varsDefault,
         ...(formCrearEj.media_tipo ? { media_tipo: formCrearEj.media_tipo } : {}),
         ...(formCrearEj.media_url ? { media_url: formCrearEj.media_url } : {}),
         ...(formCrearEj.video_url ? { video_url: formCrearEj.video_url } : {}),
@@ -1382,11 +1412,34 @@ async function guardarSesion() {
   }
 
   return (
+    <>
     <div>
       <div className="page-header">
-        <div>
-          <h2 className="page-title">Sesiones</h2>
-          {sesionAbierta && <p className="page-subtitle">{sesionAbierta.titulo}</p>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+          {!sesionAbierta && <h2 className="page-title">Sesiones</h2>}
+          {sesionAbierta && (
+            <>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 220 }}>{sesionAbierta.titulo}</span>
+              {sesionAbierta.fecha && (
+                <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                  {new Date(sesionAbierta.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              )}
+              {sesionAbierta.tipo_sesion && (
+                <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 99, background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                  {sesionAbierta.tipo_sesion === 'programada' ? 'Programada' : sesionAbierta.tipo_sesion === 'flexible' ? 'Flexible' : 'Opcional'}
+                </span>
+              )}
+              {sesionAbierta.tipo_sesion_detalle && (
+                <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 99, background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text2)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                  {sesionAbierta.tipo_sesion_detalle}
+                </span>
+              )}
+              {sesionAbierta.duracion_min && (
+                <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{sesionAbierta.duracion_min} min</span>
+              )}
+            </>
+          )}
         </div>
         {clienteSeleccionado && !sesionAbierta && (
           <div className="flex gap-2">
@@ -1394,28 +1447,53 @@ async function guardarSesion() {
             <button className="btn btn-primary" onClick={abrirNuevaSesion}><Plus size={13} /> Nueva sesión</button>
           </div>
         )}
-        {sesionAbierta && (
-          <div className="flex gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={() => setVistaPrevia(v => !v)}>{vistaPrevia ? '✏️ Editor' : '👁 Vista cliente'}</button>
-            <button className="btn btn-ghost btn-sm" style={{ color: panelBiblioteca ? 'var(--accent)' : undefined }} onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } if (!panelBiblioteca && bloquesBiblioteca === null) cargarBloquesBiblioteca(); setPanelBiblioteca(v => !v) }}>📚 Biblioteca</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>📋 Duplicar</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => guardarEnBiblioteca(sesionAbierta)} disabled={guardandoEnBib} title="Guardar una copia en la biblioteca de sesiones">
-              {guardandoEnBib ? '⏳' : '📚'} {guardandoEnBib ? 'Guardando...' : 'Guardar en biblioteca'}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => abrirEditarSesion(sesionAbierta)}>Editar sesión</button>
-            <button className="btn btn-ghost btn-sm" title="Enviar mensaje al cliente sobre esta sesión" onClick={() => {
-              const cli = clientes.find(c => c.id === clienteSeleccionado)
-              setModalComentario({ sesionId: sesionAbierta.id, sesionTitulo: sesionAbierta.titulo, clienteEmail: cli?.email || null, inicial: sesionAbierta.comentario_entrenadora || null })
-            }}>
-              {sesionAbierta.comentario_entrenadora ? '💬 Editar mensaje' : '💬 Mensaje al cliente'}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => {
-              if (dirty) { setAvisoSinGuardar(true) }
-              else { volverAlCalendario() }
-            }}>← Volver</button>
-            <button className="btn btn-primary btn-sm" style={{ minWidth: 90, background: guardadoOk ? '#16a34a' : undefined, borderColor: guardadoOk ? '#16a34a' : undefined }} onClick={() => { setDirty(false); setAvisoSinGuardar(false); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 2500) }}>{guardadoOk ? '✓ Guardado' : 'Guardar'}</button>
-          </div>
-        )}
+        {sesionAbierta && (() => {
+          const btnIcon = { width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontSize: 14, color: 'var(--text2)' }
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button title="Biblioteca" style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={async () => { if (!biblioteca) { const { data } = await supabase.from('ejercicios_biblioteca').select('*').order('nombre'); setBiblioteca(data || []) } if (!panelBiblioteca && bloquesBiblioteca === null) cargarBloquesBiblioteca(); setPanelBiblioteca(v => !v) }}>
+                📚
+              </button>
+              <button title="Guardar en biblioteca" style={{ ...btnIcon, opacity: guardandoEnBib ? 0.5 : 1 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => guardarEnBiblioteca(sesionAbierta)} disabled={guardandoEnBib}>
+                {guardandoEnBib ? '⏳' : '🧱'}
+              </button>
+              <button title="Duplicar sesión" style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => { setModalDuplicar(sesionAbierta); setFechaDuplicar(format(new Date(), 'yyyy-MM-dd')) }}>
+                📋
+              </button>
+              <button title="Editar sesión" style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => abrirEditarSesion(sesionAbierta)}>
+                ✎
+              </button>
+              <button title={sesionAbierta.comentario_entrenadora ? 'Editar mensaje' : 'Mensaje al cliente'} style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => { const cli = clientes.find(c => c.id === clienteSeleccionado); setModalComentario({ sesionId: sesionAbierta.id, sesionTitulo: sesionAbierta.titulo, clienteEmail: cli?.email || null, inicial: sesionAbierta.comentario_entrenadora || null }) }}>
+                ✉
+              </button>
+              <button title="Compartir sesión" style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => { if (sesionAbierta.token_publico) { navigator.clipboard.writeText(`${window.location.origin}/sesion/${sesionAbierta.token_publico}`).catch(() => {}) } }}>
+                🔗
+              </button>
+              <button title="Volver" style={btnIcon}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => { if (dirty) { setAvisoSinGuardar(true) } else { volverAlCalendario() } }}>
+                ←
+              </button>
+              <button title="Guardar"
+                style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: guardadoOk ? '#16a34a' : 'var(--accent, #2d6a4f)', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                onClick={() => { setDirty(false); setAvisoSinGuardar(false); setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 2500) }}>
+                {guardadoOk ? '✓ Guardado' : 'Guardar'}
+              </button>
+            </div>
+          )
+        })()}
         {avisoSinGuardar && (
           <div style={{ margin: '8px 0 0', padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#713f12' }}>
             <span>⚠️ Tienes cambios sin guardar. Pulsa <strong>Guardar</strong> para confirmarlos.</span>
@@ -1552,33 +1630,47 @@ async function guardarSesion() {
 
       {sesionAbierta && (
         <div style={{ paddingRight: panelBiblioteca ? 306 : 0, transition: 'padding-right 0.2s' }}>
-        {sesionAbierta.objetivo && (
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>📋 Notas para el cliente</div>
-            <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{sesionAbierta.objetivo}</div>
-          </div>
-        )}
 
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>🎒 Material necesario</div>
-            <InlineInput
-              value={sesionAbierta.material}
-              placeholder="Ej: Esterilla, discos y mancuernas, goma (resistencia baja)..."
-              textarea
-              fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, material: v } : s)); setDirty(true) }}
-            />
-          </div>
-
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>✏️ Indicaciones generales</div>
-            <InlineInput
-              value={sesionAbierta.indicaciones}
-              placeholder="Ej: Realiza los ejercicios del bloque en orden, las series que toquen y pasa al siguiente..."
-              textarea
-              fontSize={13}
-              onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, indicaciones: v } : s)); setDirty(true) }}
-            />
+          {/* ── CAJA 2: Indicaciones + Material ── */}
+          <div style={{ background: 'var(--surface, #fff)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ padding: '8px 12px', borderRight: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Indicaciones</div>
+                <InlineInput
+                  value={sesionAbierta.indicaciones}
+                  placeholder="Indicaciones generales..."
+                  textarea
+                  fontSize={11}
+                  onSave={async v => { await supabase.from('sesiones').update({ indicaciones: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, indicaciones: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, indicaciones: v } : s)); setDirty(true) }}
+                />
+              </div>
+              <div style={{ padding: '8px 12px' }}>
+                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Material necesario</div>
+                <InlineInput
+                  value={sesionAbierta.material}
+                  placeholder="Material necesario..."
+                  textarea
+                  fontSize={11}
+                  onSave={async v => { await supabase.from('sesiones').update({ material: v || null }).eq('id', sesionAbierta.id); setSesionAbierta(s => ({ ...s, material: v })); setSesiones(ss => ss.map(s => s.id === sesionAbierta.id ? { ...s, material: v } : s)); setDirty(true) }}
+                />
+              </div>
+            </div>
+            {(sesionAbierta.objetivo || sesionAbierta.notas_entrenador) && (
+              <div style={{ display: 'grid', gridTemplateColumns: sesionAbierta.objetivo && sesionAbierta.notas_entrenador ? '1fr 1fr' : '1fr', borderTop: '1px solid var(--border)' }}>
+                {sesionAbierta.objetivo && (
+                  <div style={{ padding: '8px 12px', borderRight: sesionAbierta.notas_entrenador ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Nota al cliente</div>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, fontStyle: 'italic' }}>{sesionAbierta.objetivo}</div>
+                  </div>
+                )}
+                {sesionAbierta.notas_entrenador && (
+                  <div style={{ padding: '8px 12px' }}>
+                    <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Notas internas</div>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, fontStyle: 'italic' }}>{sesionAbierta.notas_entrenador}</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ── EDITOR CARRERA ── */}
@@ -1985,27 +2077,32 @@ async function guardarSesion() {
           })()}
 
           {/* ── EDITOR FUERZA ── */}
-          {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {sesionAbierta.tipo_editor !== 'carrera' && !vistaPrevia && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {bloques.map((b, idx) => {
               function renderEjerciciosBloque(b, ejs, { toggleVariable, actualizarEjercicio, eliminarEjercicio, abrirCrearEjercicio, abrirBiblioteca, draggingEj, setDraggingEj, setEjercicios, ejercicios, menuVariableAbierto, setMenuVariableAbierto, menuVariablePos, setMenuVariablePos, mediaPreviewTimeout, setMediaPreview, VARS_MENU }) {
                 const metodo = b.metodo || 'individual'
 
+                const EJECUCION_LABEL = { maxima: 'Máx vel', medio: 'Ritmo med', excentrico: 'Foco exc' }
                 function formatVarsCompacto(ej) {
                   const p = []
-                  console.log('[ejCard compacto]', ej.nombre, { series: ej.series, reps: ej.reps, peso: ej.peso, rpe: ej.rpe, duracion: ej.duracion, descanso: ej.descanso })
-                  if (ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}`)
+                  if (ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}${ej.reps_por_lado ? ' c/lado' : ''}`)
                   else if (ej.series) p.push(`${ej.series} series`)
+                  else if (ej.reps) p.push(`${ej.reps}${ej.reps_por_lado ? ' c/lado' : ''}`)
+                  if (ej.num_mini && ej.reps_mini) p.push(`${ej.num_mini}×${ej.reps_mini} mini`)
+                  if (ej.microdescanso_seg) p.push(`⏸${ej.microdescanso_seg}s`)
+                  if (ej.duracion) p.push(`${ej.duracion}s${ej.reps_por_lado ? ' c/lado' : ''}`)
                   if (ej.peso) p.push(`${ej.peso}kg`)
-                  if (ej.peso_der || ej.peso_izq) p.push(`${ej.peso_der || '?'}/${ej.peso_izq || '?'}kg/lado`)
+                  if (ej.peso_der || ej.peso_izq) p.push(`${ej.peso_der || '?'}/${ej.peso_izq || '?'}kg c/lado`)
                   if (ej.rpe) p.push(`RIR ${ej.rpe}`)
-                  if (ej.duracion) p.push(`${ej.duracion}s`)
-                  if (ej.descanso) p.push(`⏱${ej.descanso}`)
                   if (ej.distancia) p.push(`${ej.distancia}m`)
                   if (ej.altura) p.push(`${ej.altura}cm`)
+                  if (ej.descanso) p.push(`⏱${ej.descanso}`)
+                  const ejLabel = ej.ejecucion_tipo === 'libre' ? (ej.ejecucion_texto ? ej.ejecucion_texto.slice(0, 15) : null) : EJECUCION_LABEL[ej.ejecucion_tipo]
+                  if (ejLabel) p.push(ejLabel)
                   return p.join(' · ')
                 }
 
-                function ejCard(e, eIdx) {
+                function ejCard(e, eIdx, accentColor, isLast = false, prefixLabel = null) {
                   const expandido = ejExpandido === e.id
                   const getYtId = (url) => url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&\n?#]+)/)?.[1]
                   const ytEmbedId = e.media_tipo === 'youtube' ? (getYtId(e.video_url) || getYtId(e.media_url)) : null
@@ -2017,14 +2114,14 @@ async function guardarSesion() {
 
                   const mediaMini = e.media_url || e.media_tipo === 'youtube' ? (
                     e.media_tipo === 'video'
-                      ? <video src={e.media_url} style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} autoPlay muted loop playsInline />
+                      ? <video src={e.media_url} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} autoPlay muted loop playsInline />
                       : e.media_tipo === 'youtube'
                         ? expandido && ytEmbedId
-                          ? <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1&mute=1&controls=1`} style={{ width: 160, height: 90, borderRadius: 6, border: 'none', flexShrink: 0 }} allow="autoplay" allowFullScreen title="yt" />
-                          : <div style={{ width: 60, height: 60, borderRadius: 6, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <span style={{ fontSize: 20, color: '#ff0000' }}>▶</span>
+                          ? <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1&mute=1&controls=1`} style={{ width: 160, height: 90, borderRadius: 4, border: 'none', flexShrink: 0 }} allow="autoplay" allowFullScreen title="yt" />
+                          : <div style={{ width: 56, height: 56, borderRadius: 4, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: 18, color: '#ff0000' }}>▶</span>
                             </div>
-                        : <img src={e.media_url} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                        : <img src={e.media_url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
                   ) : null
 
                   return (
@@ -2056,45 +2153,44 @@ async function guardarSesion() {
                         if (bloqueOrigen !== bloqueDestino) await Promise.all(destinoFinal.map(x => supabase.from('sesion_ejercicios').update({ orden: x.orden }).eq('id', x.id)))
                         setDraggingEj(null)
                       }}
-                      onMouseEnter={() => setEjExpandido(e.id)}
-                      onMouseLeave={() => setEjExpandido(null)}
+                      onClick={() => setEjExpandido(ejExpandido === e.id ? null : e.id)}
+                      onMouseEnter={ev => { if (!expandido) ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)' }}
+                      onMouseLeave={ev => { if (!expandido) ev.currentTarget.style.background = expandido ? 'var(--surface2, #f8f9fa)' : 'transparent' }}
                       style={{
-                        borderRadius: 8,
-                        border: '0.5px solid var(--border)',
-                        background: draggingEj?.e?.id === e.id ? 'var(--bg2)' : 'var(--bg)',
+                        borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                        borderLeft: accentColor ? `2px solid ${accentColor}` : 'none',
+                        background: expandido ? 'var(--surface2, #f8f9fa)' : 'transparent',
                         cursor: 'pointer',
-                        overflow: 'hidden',
+                        transition: 'background 0.1s',
+                        fontFamily: "'Inter', system-ui, sans-serif",
                         position: 'relative',
-                        zIndex: expandido ? 2 : 'auto',
-                        boxShadow: expandido ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                        transition: 'box-shadow 0.15s',
                       }}>
 
-                      {/* ── FILA COMPACTA (siempre visible) ── */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', height: 36, overflow: 'hidden' }}>
-                        <span style={{ fontSize: 12, opacity: 0.3, cursor: 'grab', flexShrink: 0, userSelect: 'none' }}>⠿</span>
-                        <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)', fontWeight: 600, flexShrink: 0 }}>{label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>
+                      {/* ── FILA COMPACTA ── */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px', height: 34 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text4)', cursor: 'grab', flexShrink: 0, userSelect: 'none', lineHeight: 1 }}>⠿</span>
+                        {prefixLabel && <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{prefixLabel}</span>}
+                        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, color: accentColor, background: mC(accentColor || '#888', 0.12), padding: '1px 5px', borderRadius: 3, flexShrink: 0, letterSpacing: '.03em' }}>{label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>
                           {e.nombre || <span style={{ color: 'var(--text3)', fontWeight: 400 }}>Sin nombre</span>}
                         </span>
                         {varsText && (
-                          <span style={{ fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{varsText}</span>
+                          <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: 'var(--text3)', background: 'var(--surface2, #f8f9fa)', padding: '1px 6px', borderRadius: 3, border: '1px solid var(--border)', flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>{varsText}</span>
                         )}
                         <button
                           className="btn btn-ghost btn-sm"
-                          style={{ color: 'var(--danger)', flexShrink: 0, opacity: expandido ? 1 : 0, transition: 'opacity 0.1s', pointerEvents: expandido ? 'auto' : 'none' }}
+                          style={{ color: 'var(--danger)', flexShrink: 0, opacity: expandido ? .7 : 0, transition: 'opacity 0.1s', pointerEvents: expandido ? 'auto' : 'none' }}
                           onClick={ev => { ev.stopPropagation(); eliminarEjercicio(b.id, e.id) }}>
                           <X size={12} />
                         </button>
                       </div>
 
-                      {/* ── ZONA EXPANDIDA (solo al hover) ── */}
+                      {/* ── ZONA EXPANDIDA ── */}
                       {expandido && (
-                        <div style={{ borderTop: '0.5px solid var(--border)', padding: '8px 10px 10px' }}>
-                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                            {/* Columna izquierda: inputs */}
-                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              {/* Nombre editable */}
+                        <div onClick={ev => ev.stopPropagation()} style={{ borderTop: '1px solid var(--border)', padding: '10px 12px 12px' }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {/* Nombre */}
                               <InlineInput value={e.nombre} placeholder="Nombre del ejercicio" fontSize={13} style={{ fontWeight: 600 }}
                                 onSave={v => actualizarEjercicio(b.id, e.id, 'nombre', v)} />
 
@@ -2116,7 +2212,7 @@ async function guardarSesion() {
 
                               {/* Variables activas */}
                               {activas.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 0 }}>
                                   {activas.includes('RIR') && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>RIR</span>
@@ -2158,22 +2254,6 @@ async function guardarSesion() {
                                       <button onClick={() => toggleVariable(e, 'Duración')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                                     </div>
                                   )}
-                                  {activas.includes('Distancia') && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Distancia</span>
-                                      <InlineInput value={e.distancia} placeholder="20" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'distancia', v)} />
-                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>m</span>
-                                      <button onClick={() => toggleVariable(e, 'Distancia')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                                    </div>
-                                  )}
-                                  {activas.includes('Altura') && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Altura</span>
-                                      <InlineInput value={e.altura} placeholder="40" fontSize={11} type="number" onSave={v => actualizarEjercicio(b.id, e.id, 'altura', v)} />
-                                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>cm</span>
-                                      <button onClick={() => toggleVariable(e, 'Altura')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
-                                    </div>
-                                  )}
                                   {activas.includes('Descanso') && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                       <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56 }}>Descanso</span>
@@ -2181,23 +2261,36 @@ async function guardarSesion() {
                                       <button onClick={() => toggleVariable(e, 'Descanso')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
                                     </div>
                                   )}
-                                  {activas.includes('Forma de ejecución') && (
+                                  {activas.includes('Velocidad') && (
                                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56, paddingTop: 2 }}>Ejecución</span>
-                                      <div style={{ flex: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                        <select className="form-select" style={{ fontSize: 11, padding: '2px 6px', width: 'auto' }}
-                                          value={e.ejecucion_tipo || ''} onChange={ev => actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', ev.target.value)}>
-                                          <option value="">Seleccionar...</option>
-                                          {['Explosiva','Controlada','Control excéntrico','Con pausa','Técnica prioritaria','Máxima estabilidad','Rango completo','Personalizado'].map(op => (
-                                            <option key={op} value={op}>{op}</option>
-                                          ))}
-                                        </select>
-                                        <div style={{ flex: 1, minWidth: 80 }}>
-                                          <InlineInput value={e.ejecucion_texto} placeholder="Texto libre..." fontSize={11}
-                                            onSave={v => actualizarEjercicio(b.id, e.id, 'ejecucion_texto', v)} />
+                                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 56, paddingTop: 4 }}>Velocidad</span>
+                                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                          {[
+                                            { value: 'maxima', label: 'Máxima vel.', desc: 'Impulso lo más rápido posible, vuelta controlada' },
+                                            { value: 'medio', label: 'Ritmo medio', desc: 'Mismo ritmo en subida y bajada' },
+                                            { value: 'excentrico', label: 'Foco exc.', desc: 'Vuelta lenta y controlada' },
+                                            { value: 'libre', label: 'Libre', desc: null },
+                                          ].map(op => {
+                                            const activo = e.ejecucion_tipo === op.value
+                                            return (
+                                              <button key={op.value} title={op.desc || ''}
+                                                onClick={() => {
+                                                  if (activo) { actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', ''); actualizarEjercicio(b.id, e.id, 'ejecucion_texto', '') }
+                                                  else { actualizarEjercicio(b.id, e.id, 'ejecucion_tipo', op.value); if (op.value !== 'libre') actualizarEjercicio(b.id, e.id, 'ejecucion_texto', '') }
+                                                }}
+                                                style={{ padding: '2px 8px', borderRadius: 20, border: `1px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, background: activo ? 'var(--accent)' : 'transparent', color: activo ? '#fff' : 'var(--text3)', fontSize: 10, cursor: 'pointer', fontWeight: activo ? 600 : 400 }}>
+                                                {op.label}
+                                              </button>
+                                            )
+                                          })}
                                         </div>
+                                        {e.ejecucion_tipo === 'libre' && (
+                                          <InlineInput value={e.ejecucion_texto} placeholder="Describe la ejecución..." fontSize={11}
+                                            onSave={v => actualizarEjercicio(b.id, e.id, 'ejecucion_texto', v)} />
+                                        )}
                                       </div>
-                                      <button onClick={() => toggleVariable(e, 'Forma de ejecución')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px' }}>×</button>
+                                      <button onClick={() => toggleVariable(e, 'Velocidad')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 11, padding: '0 2px', marginTop: 2 }}>×</button>
                                     </div>
                                   )}
                                   {activas.includes('Indicaciones') && (
@@ -2216,7 +2309,7 @@ async function guardarSesion() {
                               {/* + Variable */}
                               <div style={{ display: 'inline-block' }}>
                                 <button onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setMenuVariablePos({ x: r.left, y: r.bottom + 4 }); setMenuVariableAbierto(menuVariableAbierto === menuKey ? null : menuKey) }}
-                                  style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
+                                  style={{ fontSize: 10, color: 'var(--text3)', background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
                                   ＋ Variable
                                 </button>
                                 {menuVariableAbierto === menuKey && (
@@ -2294,149 +2387,280 @@ async function guardarSesion() {
                   )
                 }
 
+                const varsDefMetodo = VARS_DEFAULT_METODO[b.metodo || 'individual'] || VARS_DEFAULT_METODO.individual
                 const addButtons = (
-                  <div style={{ display: 'flex', gap: 6, gridColumn: '1 / -1' }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => abrirCrearEjercicio(b.id, b.variables_default || [])}>
-                      <Plus size={12} /> Ejercicio
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid var(--border)' }}>
+                    <button onClick={() => abrirCrearEjercicio(b.id, varsDefMetodo)}
+                      onMouseEnter={ev => ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)'}
+                      onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 10px', border: 'none', background: 'transparent', color: 'var(--text3)', fontSize: 11, fontFamily: "'Inter', system-ui, sans-serif", cursor: 'pointer' }}>
+                      + ejercicio
                     </button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => abrirBiblioteca(b.id, b.variables_default || [])} style={{ color: 'var(--accent)' }}>
-                      📚 Desde biblioteca
+                    <button onClick={() => abrirBiblioteca(b.id, varsDefMetodo)}
+                      onMouseEnter={ev => ev.currentTarget.style.background = 'var(--surface2, #f8f9fa)'}
+                      onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                      title="Añadir desde biblioteca"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', fontSize: 11, cursor: 'pointer' }}>
+                      📚
                     </button>
                   </div>
                 )
 
-                const descansoFooter = b.descanso_seg != null || metodo !== 'individual' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0 2px', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Descanso entre series</span>
-                    <InlineInput value={b.descanso_seg != null ? String(b.descanso_seg) : ''} placeholder="—" fontSize={11} type="number"
-                      onSave={async v => {
-                        const val = v === '' ? null : parseInt(v)
-                        await supabase.from('sesion_bloques').update({ descanso_seg: val }).eq('id', b.id)
-                        setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: val } : bl))
-                      }} />
-                    <span style={{ fontSize: 10, color: 'var(--text3)' }}>s</span>
-                  </div>
-                ) : null
-
-                if (metodo === 'individual') {
-                  return (
-                    <div style={{ padding: '0 16px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      {ejs.map((e, eIdx) => ejCard(e, eIdx))}
-                      {addButtons}
-                    </div>
-                  )
+                const saveDescanso = async v => {
+                  const val = v === '' ? null : parseInt(v)
+                  await supabase.from('sesion_bloques').update({ descanso_seg: val }).eq('id', b.id)
+                  setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: val } : bl))
+                }
+                const saveVueltas = async v => {
+                  const val = v === '' ? null : parseInt(v)
+                  await supabase.from('sesion_bloques').update({ vueltas: val }).eq('id', b.id)
+                  setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: val } : bl))
+                }
+                const saveDuracion = async v => {
+                  const val = v === '' ? null : parseInt(v)
+                  await supabase.from('sesion_bloques').update({ duracion_min: val }).eq('id', b.id)
+                  setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: val } : bl))
                 }
 
-                if (metodo === 'circuito') {
+                const W = {}
+                const mC = (hex, alpha) => {
+                  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), bl = parseInt(hex.slice(5,7),16)
+                  return `rgba(${r},${g},${bl},${alpha})`
+                }
+
+                // ── INDIVIDUAL ──
+                if (metodo === 'individual') {
+                  const c = b.color || METODO_COLOR.individual
                   return (
-                    <div style={{ padding: '0 16px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>🔄 Vueltas</span>
-                        <div style={{ width: 44 }}>
-                          <InlineInput value={b.vueltas != null ? String(b.vueltas) : ''} placeholder="—" fontSize={12} type="number"
-                            onSave={async v => {
-                              const val = v === '' ? null : parseInt(v)
-                              await supabase.from('sesion_bloques').update({ vueltas: val }).eq('id', b.id)
-                              setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: val } : bl))
-                            }} />
-                        </div>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        {ejs.map((e, eIdx) => ejCard(e, eIdx))}
+                    <div style={W}>
+                      <div style={{ border: 'none', borderRadius: 0, overflow: 'visible', background: 'transparent' }}>
+                        {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
                         {addButtons}
                       </div>
-                      {descansoFooter}
                     </div>
                   )
                 }
 
-                const isVertical = ['superserie','triserie','complejo','contrast','cluster','emom','amrap'].includes(metodo)
-                if (isVertical) {
-                  const separadores = {
-                    superserie: { icono: '⇅', label: 'Superserie' },
-                    triserie:   { icono: '↓',  label: 'Triserie' },
-                    complejo:   { icono: '🔗', label: 'sin soltar el implemento' },
-                    contrast:   { icono: '↯',  label: 'Contrast' },
-                    cluster:    { icono: '⏸',  label: 'Microdescanso' },
-                    emom:       { icono: '⏱',  label: null },
-                    amrap:      { icono: '🔁', label: null },
-                  }
-                  const sep = separadores[metodo] || { icono: '↓', label: null }
-                  const badgesPorPosicion = { contrast: ['Pesado','Explosivo','Velocidad'] }
-                  const headerLabel = (metodo === 'emom' || metodo === 'amrap') ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>{metodo === 'emom' ? '⏱ Duración' : '🔁 Duración'}</span>
-                      <div style={{ width: 44 }}>
-                        <InlineInput value={b.duracion_min != null ? String(b.duracion_min) : ''} placeholder="—" fontSize={12} type="number"
-                          onSave={async v => {
-                            const val = v === '' ? null : parseInt(v)
-                            await supabase.from('sesion_bloques').update({ duracion_min: val }).eq('id', b.id)
-                            setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: val } : bl))
-                          }} />
-                      </div>
-                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>min</span>
-                    </div>
-                  ) : metodo === 'complejo' ? (
-                    <div style={{ marginBottom: 6, fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', paddingLeft: 2 }}>🔗 Sin soltar el implemento entre ejercicios</div>
-                  ) : null
+                const footerStd = (labelMetodo, mc) => (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                    <span>⏱ Descanso entre {labelMetodo}</span>
+                    <input type="number" defaultValue={b.descanso_seg || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
+                      style={{ width: 44, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                    <span>s</span>
+                    <span style={{ flex: 1 }} />
+                    <input type="number" defaultValue={b.vueltas || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
+                      style={{ width: 36, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                    <span>series</span>
+                  </div>
+                )
 
+                const BOX = {}
+
+                // ── SUPERSERIE ──
+                if (metodo === 'superserie') {
+                  const c = b.color || METODO_COLOR.superserie
                   return (
-                    <div style={{ padding: '0 16px 14px' }}>
-                      {headerLabel}
-                      {ejs.map((e, eIdx) => {
-                        const badge = badgesPorPosicion[metodo]?.[eIdx]
-                        return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {ejs.map((e, eIdx) => (
                           <div key={e.id}>
-                            {badge && (
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 4, marginBottom: 3 }}>{badge}</div>
-                            )}
-                            {metodo === 'emom' && (
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 4, marginBottom: 3 }}>MIN {eIdx + 1}</div>
-                            )}
-                            {ejCard(e, eIdx)}
+                            {ejCard(e, eIdx, c, true)}
                             {eIdx < ejs.length - 1 && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 4px', color: 'var(--text3)', fontSize: 11 }}>
-                                <span>{sep.icono}</span>
-                                {sep.label && <span style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sep.label}</span>}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: mC(c, 0.05) }}>
+                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <span style={{ fontSize: 12, color: c, opacity: .6 }}>⇅</span>
+                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
                               </div>
                             )}
                           </div>
-                        )
-                      })}
-                      {metodo === 'amrap' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0 2px', borderTop: '1px solid var(--border)', marginTop: 4 }}>
-                          <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Rondas completadas</span>
-                          <InlineInput value={b.vueltas != null ? String(b.vueltas) : ''} placeholder="—" fontSize={11} type="number"
-                            onSave={async v => {
-                              const val = v === '' ? null : parseInt(v)
-                              await supabase.from('sesion_bloques').update({ vueltas: val }).eq('id', b.id)
-                              setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: val } : bl))
-                            }} />
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirCrearEjercicio(b.id, b.variables_default || [])}>
-                          <Plus size={12} /> Ejercicio
-                        </button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirBiblioteca(b.id, b.variables_default || [])} style={{ color: 'var(--accent)' }}>
-                          📚 Desde biblioteca
-                        </button>
+                        ))}
+                        {footerStd('superseries', c)}
+                        {addButtons}
                       </div>
-                      {descansoFooter}
                     </div>
                   )
                 }
 
+                // ── TRISERIE ──
+                if (metodo === 'triserie') {
+                  const c = b.color || METODO_COLOR.triserie
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {ejs.map((e, eIdx) => (
+                          <div key={e.id}>
+                            {ejCard(e, eIdx, c, true)}
+                            {eIdx < ejs.length - 1 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', background: mC(c, 0.05) }}>
+                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                                <span style={{ fontSize: 12, color: c, opacity: .6 }}>↓</span>
+                                <div style={{ flex: 1, height: 1, background: mC(c, 0.20) }} />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {footerStd('triseries', c)}
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── CIRCUITO ──
+                if (metodo === 'circuito') {
+                  const c = b.color || METODO_COLOR.circuito
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
+                        {footerStd('vueltas', c)}
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── COMPLEJO ──
+                if (metodo === 'complejo') {
+                  const c = b.color || METODO_COLOR.complejo
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                          {ejs.map((e, eIdx) => (
+                            <div key={e.id} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                              <div style={{ flex: 1, minWidth: 0, borderRight: eIdx < ejs.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                                {ejCard(e, eIdx, c, true)}
+                              </div>
+                              {eIdx < ejs.length - 1 && (
+                                <span style={{ fontSize: 11, color: c, opacity: .6, padding: '0 4px', flexShrink: 0 }}>→</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {footerStd('series', c)}
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── CONTRAST TRAINING ──
+                if (metodo === 'contrast') {
+                  const c = b.color || METODO_COLOR.contrast
+                  const badges = [
+                    { label: '💪 Carga pesada', bg: mC(c, 0.07), color: c },
+                    { label: '⚡ Explosivo', bg: 'rgba(196,122,46,.07)', color: '#c47a2e' },
+                    { label: '🔥 Velocidad', bg: 'rgba(192,122,58,.07)', color: '#c07a3a' },
+                  ]
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(ejs.length, 2)}, 1fr)` }}>
+                          {ejs.map((e, eIdx) => {
+                            const bg = badges[eIdx]
+                            return (
+                              <div key={e.id} style={{ borderRight: eIdx < ejs.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                                {bg && <div style={{ padding: '5px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', background: bg.bg, color: bg.color, borderBottom: '1px solid var(--border)' }}>{bg.label}</div>}
+                                {ejCard(e, eIdx, bg?.color || c, true)}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {footerStd('pares', c)}
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── CLUSTER ──
+                if (metodo === 'cluster') {
+                  const c = b.color || METODO_COLOR.cluster
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
+                        {footerStd('series', c)}
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── EMOM ──
+                if (metodo === 'emom') {
+                  const c = b.color || METODO_COLOR.emom
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {/* header compacto sin fondo de color */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{ fontSize: 11, color: c }}>⏱</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>EMOM</span>
+                          <InlineInput value={b.duracion_min != null ? String(b.duracion_min) : ''} placeholder="20" fontSize={11} type="number" onSave={saveDuracion} style={{ width: 32, color: c, fontFamily: "'JetBrains Mono', monospace" }} />
+                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>min · cada minuto en punto</span>
+                        </div>
+                        {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1, `MIN ${eIdx + 1}`))}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                          <span>⏱ Duración:</span>
+                          <input type="number" defaultValue={b.duracion_min || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ duracion_min: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: v } : bl)) }}
+                            style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                          <span>min</span>
+                          <span style={{ flex: 1 }} />
+                          <span>Rondas:</span>
+                          <input type="number" defaultValue={b.nota || ''} onBlur={ev => { const v = ev.target.value; supabase.from('sesion_bloques').update({ nota: v || null }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, nota: v || null } : bl)) }}
+                            style={{ width: 36, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                        </div>
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // ── AMRAP ──
+                if (metodo === 'amrap') {
+                  const c = b.color || METODO_COLOR.amrap
+                  return (
+                    <div style={W}>
+                      <div style={BOX}>
+                        {/* header compacto sin fondo de color */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{ fontSize: 11, color: c }}>⏱</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', fontFamily: "'JetBrains Mono', monospace" }}>AMRAP</span>
+                          <InlineInput value={b.duracion_min != null ? String(b.duracion_min) : ''} placeholder="15" fontSize={11} type="number" onSave={saveDuracion} style={{ width: 32, color: c, fontFamily: "'JetBrains Mono', monospace" }} />
+                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>min · máximas rondas posibles</span>
+                        </div>
+                        {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
+                          <span>⏱ Duración:</span>
+                          <input type="number" defaultValue={b.duracion_min || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ duracion_min: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: v } : bl)) }}
+                            style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                          <span>min</span>
+                          <span style={{ flex: 1 }} />
+                          <span>Rondas:</span>
+                          <input type="number" defaultValue={b.nota || ''} onBlur={ev => { const v = ev.target.value; supabase.from('sesion_bloques').update({ nota: v || null }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, nota: v || null } : bl)) }}
+                            style={{ width: 36, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                        </div>
+                        {addButtons}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // fallback
                 return (
-                  <div style={{ padding: '0 16px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {ejs.map((e, eIdx) => ejCard(e, eIdx))}
-                    {addButtons}
+                  <div style={W}>
+                    <div style={BOX}>
+                      {ejs.map((e, eIdx) => ejCard(e, eIdx, b.color || METODO_COLOR.individual, eIdx === ejs.length - 1))}
+                      {addButtons}
+                    </div>
                   </div>
                 )
               }
               const VARS_MENU = [
-                { grupo: 'Carga', items: ['Peso','Peso/lado','Duración','RIR','Distancia','Altura'] },
-                { grupo: 'Ejecución', items: ['Descanso','Forma de ejecución'] },
+                { grupo: 'Carga', items: ['Peso', 'Peso/lado', 'Duración'] },
+                { grupo: 'Ejecución', items: ['Velocidad', 'RIR', 'Descanso'] },
                 { grupo: 'Notas', items: ['Indicaciones'] },
               ]
               async function toggleVariable(ej, varName) {
@@ -2452,7 +2676,7 @@ async function guardarSesion() {
               <div key={b.id} className="card" draggable
                 onDragStart={e => { setDraggingBloqueId(b.id); e.dataTransfer.effectAllowed = 'move' }}
                 onDragEnd={() => { setDraggingBloqueId(null); setDragOverBloqueId(null) }}
-                style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${b.color || COLORES[0]}`, opacity: draggingBloqueId === b.id ? 0.45 : 1, outline: dragOverBloqueId === b.id ? `2px solid ${b.color || 'var(--accent)'}` : 'none', outlineOffset: 2, transition: 'opacity 0.15s' }}
+                style={{ padding: 0, overflow: 'hidden', opacity: draggingBloqueId === b.id ? 0.45 : 1, outline: dragOverBloqueId === b.id ? `2px solid ${METODO_COLOR[b.metodo || 'individual']}` : 'none', outlineOffset: 2, transition: 'opacity 0.15s' }}
                 onDragOver={e => { e.preventDefault(); if (libDragActive) { e.dataTransfer.dropEffect = 'copy'; setDragOverBloqueId(b.id) } else if (draggingBloqueId && draggingBloqueId !== b.id) { e.dataTransfer.dropEffect = 'move'; setDragOverBloqueId(b.id) } }}
                 onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverBloqueId(null) }}
                 onDrop={e => {
@@ -2463,45 +2687,53 @@ async function guardarSesion() {
                     reordenarBloques(draggingBloqueId, b.id)
                   }
                 }}>
-                <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color: 'var(--text3)', cursor: 'grab', fontSize: 14, userSelect: 'none', flexShrink: 0 }}>⠿</span>
-                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    {COLORES.map(c => (
-                      <div key={c} onClick={() => cambiarColorBloque(b.id, c)}
-                        style={{ width: 16, height: 16, borderRadius: '50%', background: c, cursor: 'pointer', border: b.color === c ? '2px solid var(--text)' : '2px solid transparent' }} />
-                    ))}
-                  </div>
-                  <div style={{ flex: 1, fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <InlineInput value={b.nombre} placeholder={`Bloque ${idx + 1}`} fontSize={14}
-                      style={{ fontWeight: 600 }}
-                      onSave={v => actualizarBloque(b.id, 'nombre', v)} />
-                    <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: '#f1efe8', color: '#52514e', fontWeight: 500, textTransform: 'capitalize', flexShrink: 0 }}>
-                      {b.metodo || 'individual'}
-                    </span>
-                  </div>
-                  <button className="btn btn-ghost btn-sm" title="Guardar en biblioteca de bloques" onClick={() => guardarBloqueEnBiblioteca(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>🧱</button>
-                  <button className="btn btn-ghost btn-sm" title="Copiar bloque a otra sesión" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>📋</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
-                </div>
-                <div style={{ padding: '0 16px 8px', fontSize: 12.5, color: 'var(--text2)' }}>
-                  <InlineInput value={b.nota} placeholder="Nota del bloque (opcional)..." textarea fontSize={12.5}
-                    onSave={v => actualizarBloque(b.id, 'nota', v)} />
-                </div>
-                <div style={{ padding: '0 16px 10px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 2 }}>Variables por defecto:</span>
-                  {TODAS_VARS.map(v => {
-                    const activa = varsDefault.includes(v)
-                    return (
-                      <button key={v} onClick={async () => {
-                        const next = activa ? varsDefault.filter(x => x !== v) : [...varsDefault, v]
-                        await actualizarBloque(b.id, 'variables_default', next)
-                        setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, variables_default: next } : bl))
-                      }} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1.5px solid ${activa ? b.color || COLORES[0] : 'var(--border)'}`, background: activa ? (b.color || COLORES[0]) + '22' : 'transparent', color: activa ? b.color || COLORES[0] : 'var(--text3)', cursor: 'pointer', fontWeight: activa ? 600 : 400 }}>
-                        {v}
-                      </button>
-                    )
-                  })}
-                </div>
+                {(() => {
+                  const mc = METODO_COLOR[b.metodo || 'individual']
+                  const bc = b.color || mc
+                  const nombreMetodo = (METODOS_SESION.find(m => m.id === (b.metodo || 'individual'))?.nombre || b.metodo || 'Individual').toUpperCase()
+                  return (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ color: 'var(--text4)', cursor: 'grab', fontSize: 13, userSelect: 'none', flexShrink: 0 }}>⠿</span>
+                        <span
+                          title="Cambiar color del bloque"
+                          onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setColorPickerBloque(colorPickerBloque?.bloqueId === b.id ? null : { bloqueId: b.id, x: r.left, y: r.bottom + 6 }) }}
+                          style={{ width: 10, height: 10, borderRadius: '50%', background: bc, flexShrink: 0, display: 'inline-block', cursor: 'pointer', border: '1.5px solid rgba(0,0,0,0.12)', boxSizing: 'border-box' }} />
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${bc}18`, color: bc, border: `1px solid ${bc}33`, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.05em' }}>
+                          {nombreMetodo}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <InlineInput value={b.nombre} placeholder={`Bloque ${idx + 1}`} fontSize={13}
+                            style={{ fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif" }}
+                            onSave={v => actualizarBloque(b.id, 'nombre', v)} />
+                        </div>
+                        <button className="btn btn-ghost btn-sm" title="Guardar en biblioteca" onClick={() => guardarBloqueEnBiblioteca(b)} style={{ color: 'var(--text3)', opacity: .5 }}>🧱</button>
+                        <button className="btn btn-ghost btn-sm" title="Copiar bloque" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', opacity: .5 }}>📋</button>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', opacity: .5 }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text3)', fontStyle: 'italic', padding: '0 12px 6px 20px', lineHeight: 1.4, cursor: 'text', fontFamily: "'Inter', system-ui, sans-serif", background: 'var(--surface2, #f8f9fa)', borderBottom: '1px solid var(--border)' }}>
+                        {editandoDescripcion === b.id ? (
+                          <textarea
+                            autoFocus
+                            defaultValue={b.descripcion_metodo || DESCRIPCIONES_METODO[b.metodo || 'individual']}
+                            onBlur={async ev => {
+                              const texto = ev.target.value.trim()
+                              await supabase.from('sesion_bloques').update({ descripcion_metodo: texto || null }).eq('id', b.id)
+                              setBloques(bs => bs.map(x => x.id === b.id ? { ...x, descripcion_metodo: texto || null } : x))
+                              setEditandoDescripcion(null)
+                            }}
+                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 10, fontStyle: 'italic', color: 'var(--text3)', resize: 'none', outline: 'none', fontFamily: 'inherit', lineHeight: 1.4, padding: '4px 0 4px' }}
+                            rows={2}
+                          />
+                        ) : (
+                          <span style={{ display: 'block', padding: '4px 0' }} onClick={() => setEditandoDescripcion(b.id)}>
+                            {b.descripcion_metodo || DESCRIPCIONES_METODO[b.metodo || 'individual']}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )
+                })()}
                 {renderEjerciciosBloque(b, ejercicios[b.id] || [], { toggleVariable, actualizarEjercicio, eliminarEjercicio, abrirCrearEjercicio, abrirBiblioteca, draggingEj, setDraggingEj, setEjercicios, ejercicios, menuVariableAbierto, setMenuVariableAbierto, menuVariablePos, setMenuVariablePos, mediaPreviewTimeout, setMediaPreview, VARS_MENU })}
               </div>
               )
@@ -2539,7 +2771,7 @@ async function guardarSesion() {
 
           {/* ── VISTA PREVIA CLIENTE (modo lectura) ── */}
           {sesionAbierta.tipo_editor !== 'carrera' && vistaPrevia && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 10, padding: '10px 14px', fontSize: 12.5, color: '#856404' }}>
                 👁 Vista previa — así verá el cliente la sesión
               </div>
@@ -3484,5 +3716,16 @@ async function guardarSesion() {
         </div>
       )}
     </div>
+    {colorPickerBloque && ReactDOM.createPortal(
+      <div data-color-picker="1"
+        style={{ position: 'fixed', top: colorPickerBloque.y, left: colorPickerBloque.x, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.14)', zIndex: 300, padding: 10, display: 'flex', flexWrap: 'wrap', gap: 6, width: 128 }}>
+        {COLORES_BLOQUE.map(c => (
+          <button key={c} onClick={async () => { await supabase.from('sesion_bloques').update({ color: c }).eq('id', colorPickerBloque.bloqueId); setBloques(bs => bs.map(b => b.id === colorPickerBloque.bloqueId ? { ...b, color: c } : b)); setColorPickerBloque(null) }}
+            style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: bloques.find(b => b.id === colorPickerBloque.bloqueId)?.color === c ? '2px solid var(--text)' : '2px solid transparent', cursor: 'pointer', padding: 0, boxSizing: 'border-box' }} />
+        ))}
+      </div>,
+      document.body
+    )}
+    </>
   )
 }
