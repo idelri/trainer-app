@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { clonarSesion } from '../lib/clonarSesion'
 import { SECCIONES_CLASIFICACION, CAMPOS_CLASIFICACION, PATRON_MOVIMIENTO, derivarComplejos, COMPLEJOS, estadoGrupo, toggleGrupo, toggleEstructura, labelDeId, colorDeId, idsHojaDeEstructura, labelDePatronId, colorDePatronId, patronesRecomendadosActivos } from '../lib/taxonomia'
-import { FUNCIONES_SESION, GRUPOS_CAPACIDAD, objetivosAgrupados, filtrarObjetivosCompatibles } from '../lib/metodologia'
 import { format, parseISO } from 'date-fns'
 import EmojiPicker from '../components/EmojiPicker'
 import ModalComentarioEntrenadora from '../components/ModalComentarioEntrenadora'
@@ -152,7 +151,7 @@ const BORG_RPE = {
   9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
   10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
 }
-const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', funcion_sesion: null, capacidades: [], objetivos_sesion: [], modalidad: 'autonoma', lugar: '', lista: false, publicada: true }
+const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', tipo_sesion_detalle: null, modalidad: 'autonoma', lugar: '', lista: false, publicada: true }
 function ytId(url) {
   if (!url) return null
   const m = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
@@ -1093,7 +1092,7 @@ const [modalDuplicar, setModalDuplicar] = useState(null)
   }
 
   function abrirEditarSesion(s) {
-    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', funcion_sesion: s.funcion_sesion || null, capacidades: s.capacidades || [], objetivos_sesion: s.objetivos_sesion || [], modalidad: s.modalidad || 'autonoma', lugar: s.lugar || '', lista: s.lista || false, publicada: s.publicada !== false })
+    setFormSesion({ titulo: s.titulo, fecha: s.fecha || '', sinFecha: !s.fecha, objetivo: s.objetivo || '', notas_entrenador: s.notas_entrenador || '', duracion_min: s.duracion_min || '', tipo_sesion: s.tipo_sesion || 'programada', estado: s.estado || 'pendiente', tipo_editor: s.tipo_editor || 'fuerza', con_feedback: s.con_feedback !== false, icono: s.icono || '', tipo_sesion_detalle: s.tipo_sesion_detalle || null, modalidad: s.modalidad || 'autonoma', lugar: s.lugar || '', lista: s.lista || false, publicada: s.publicada !== false })
     setFormCompletadaEl(s.completada_el || '')
     setModalSesion(s)
   }
@@ -1124,7 +1123,7 @@ async function guardarSesion() {
     if (!formSesion.titulo) return
     if (!formSesion.sinFecha && !formSesion.fecha) return
     setSaving(true)
-    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, funcion_sesion: formSesion.funcion_sesion || null, capacidades: formSesion.capacidades || [], objetivos_sesion: formSesion.objetivos_sesion || [], modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
+    const datos = { titulo: formSesion.titulo, fecha: formSesion.sinFecha ? null : formSesion.fecha, objetivo: formSesion.objetivo || null, notas_entrenador: formSesion.notas_entrenador || null, duracion_min: formSesion.duracion_min ? parseInt(formSesion.duracion_min) : null, tipo_sesion: formSesion.tipo_sesion || 'programada', estado: formSesion.estado || 'pendiente', tipo_editor: formSesion.tipo_editor || 'fuerza', con_feedback: formSesion.con_feedback !== false, icono: formSesion.icono || null, tipo_sesion_detalle: formSesion.tipo_sesion_detalle || null, modalidad: formSesion.modalidad || 'autonoma', lugar: formSesion.lugar || null, lista: formSesion.lista || false, publicada: formSesion.publicada !== false }
     if (modalSesion?.id) {
       const fechaCambio = formSesion.fecha !== modalSesion.fecha
       // Si la entrenadora cambia la fecha, sincronizar completada_el y marcar el flag
@@ -2405,85 +2404,37 @@ async function guardarSesion() {
               <span className="modal-title">{modalSesion === 'nueva' ? 'Nueva sesión' : 'Editar sesión'}</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalSesion(null)}><X size={14} /></button>
             </div>
-            {/* ① Función de sesión */}
             <div className="form-group">
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>①</span>
-                Función de sesión
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {FUNCIONES_SESION.map(f => {
-                  const active = formSesion.funcion_sesion === f.id
-                  return (
-                    <button key={f.id} type="button"
-                      onClick={() => setFormSesion(s => ({ ...s, funcion_sesion: active ? null : f.id }))}
-                      style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
-                      {f.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* ② Capacidades */}
-            <div className="form-group">
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>②</span>
-                Capacidades
-              </label>
-              {GRUPOS_CAPACIDAD.map(grupo => (
-                <div key={grupo.grupo} style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{grupo.grupo}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {grupo.items.map(cap => {
-                      const active = (formSesion.capacidades || []).includes(cap.id)
-                      return (
-                        <button key={cap.id} type="button"
-                          onClick={() => setFormSesion(s => {
-                            const caps = s.capacidades || []
-                            const next = active ? caps.filter(c => c !== cap.id) : [...caps, cap.id]
-                            return { ...s, capacidades: next, objetivos_sesion: filtrarObjetivosCompatibles(s.objetivos_sesion || [], next) }
-                          })}
-                          style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
-                          {cap.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* ③ Objetivos (solo visible si hay capacidades seleccionadas) */}
-            {(formSesion.capacidades || []).length > 0 && (
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>③</span>
-                  Objetivos
-                </label>
-                {objetivosAgrupados(formSesion.capacidades || []).map(({ capacidadId, capacidadLabel, objetivos }) => (
-                  <div key={capacidadId} style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{capacidadLabel}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {objetivos.map(obj => {
-                        const active = (formSesion.objetivos_sesion || []).includes(obj.id)
-                        return (
-                          <button key={obj.id} type="button"
-                            onClick={() => setFormSesion(s => {
-                              const objs = s.objetivos_sesion || []
-                              const next = active ? objs.filter(o => o !== obj.id) : [...objs, obj.id]
-                              return { ...s, objetivos_sesion: next }
-                            })}
-                            style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', color: active ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer' }}>
-                            {obj.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+              <label className="form-label">Tipo de sesión</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['optimizadora', 'coadyuvante'].map(tipo => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => setFormSesion(f => ({ ...f, tipo_sesion_detalle: tipo }))}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 'var(--radius)',
+                      border: formSesion.tipo_sesion_detalle === tipo
+                        ? '1.5px solid var(--accent)'
+                        : '1px solid var(--border)',
+                      background: formSesion.tipo_sesion_detalle === tipo
+                        ? 'var(--accent-light)'
+                        : 'transparent',
+                      color: formSesion.tipo_sesion_detalle === tipo
+                        ? 'var(--accent)'
+                        : 'var(--text2)',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: formSesion.tipo_sesion_detalle === tipo ? 500 : 400,
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                  </button>
                 ))}
               </div>
-            )}
+            </div>
 
             {/* Estructura */}
             <div className="form-group">

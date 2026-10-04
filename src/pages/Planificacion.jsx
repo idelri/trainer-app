@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { clonarSesion } from '../lib/clonarSesion'
-import { format, addWeeks, addDays, parseISO, differenceInWeeks } from 'date-fns'
+import { format, addWeeks, addDays, parseISO, differenceInWeeks, differenceInDays, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay, isSameMonth, getISOWeek, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers, Pencil, Lock } from 'lucide-react'
 import CalendarioSesiones from '../components/CalendarioSesiones'
 import Seguimiento from './Seguimiento'
 import PortalClienteModal from '../components/PortalClienteModal'
+import { Chart, registerables } from 'chart.js'
+Chart.register(...registerables)
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,189 @@ const COLORES = [
 ]
 const ENFOQUES = ['Movilidad', 'Estabilidad y control', 'Fuerza base', 'Potencia y velocidad', 'Especificidad deportiva']
 
+// ─── HELPERS DE VARIABLES ──────────────────────────────────────────────────
+
+const VARS_TIMELINE = (esResistencia) => [
+  { key: 'carga_interna', label: 'RPE×min' },
+  { key: 'rpe',           label: 'RPE' },
+  { key: 'duracion',      label: 'Duración' },
+  ...(esResistencia ? [{ key: 'fc_zonas', label: 'FC Zonas' }] : []),
+]
+
+function calcValorVar(varKey, col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques) {
+  const colFin = col.fechaFin || col.fecha
+  const sesDia = sesiones.filter(s => {
+    if (!s.fecha) return false
+    const f = parseISO(s.fecha)
+    if (tlAgrup === 'dia') return isSameDay(f, col.fecha)
+    return f >= col.fecha && f <= colFin
+  })
+  const fbsDia = sesDia.map(s => feedbacks.find(f => f.sesion_id === s.id)).filter(Boolean)
+  if (varKey === 'rpe') {
+    const vals = fbsDia.map(f => f.data?.rpe?.value).filter(v => v != null)
+    return { real: vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null, obj: null }
+  }
+  if (varKey === 'duracion') {
+    const realSum = fbsDia.reduce((s,f) => s+(f.data?.duration?.minutes||0),0) || null
+    const sesDuracion = sesDia.filter(ses => ses.duracion_min != null && ses.duracion_min > 0)
+    const planned = sesDuracion.length ? sesDuracion.reduce((s,ses) => s+ses.duracion_min, 0) : null
+    return { real: realSum || planned || null, obj: null }
+  }
+  if (varKey === 'carga_interna') {
+    const real = fbsDia.reduce((s,f) => {
+      const rpe = f.data?.rpe?.value; const dur = f.data?.duration?.minutes
+      return rpe!=null&&dur ? s+rpe*dur : s
+    }, 0) || null
+    return { real: real||null, obj: null }
+  }
+  if (varKey === 'fc_zonas') {
+    const sem = todasLasSemanas.find(s => s.fi<=colFin && s.ff>col.fecha)
+    const sd  = sem?.semData
+    const real = sd ? sd.zona1_2_real||sd.zona3_4_real||sd.zona5_real ? (sd.zona1_2_real+sd.zona3_4_real+sd.zona5_real)||null : null : null
+    const blq  = sem ? bloques.find(b => b.id===sem.bloque.id) : null
+    const subMatch = blq ? (subbloques[blq.id]||[]).find(sub => sem.numLocal>=sub.semana_inicio&&sem.numLocal<=sub.semana_fin) : null
+    const obj  = subMatch ? (subMatch.zona1_2+subMatch.zona3_4+subMatch.zona5)||null : null
+    return { real, obj }
+  }
+  return { real: null, obj: null }
+}
+
+function tickFmt(varKey) {
+  if (varKey === 'rpe') return v => v
+  if (varKey === 'duracion') return v => v + 'min'
+  if (varKey === 'fc_zonas') return v => v + '%'
+  return v => v
+}
+
+function tickSfx(varKey) {
+  if (varKey === 'duracion') return 'min'
+  if (varKey === 'fc_zonas') return '%'
+  return ''
+}
+
+// Devuelve 5 ticks de arriba (max) a abajo (0) para mostrar en Zona C
+function calcTicksForVar(varKey, columnas, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques) {
+  if (varKey === 'rpe')     return ['10', '8', '6', '4', '2', '0']
+  if (varKey === 'fc_zonas') return ['100%', '75%', '50%', '25%', '0%']
+  const vals = columnas.map(col => {
+    const { real } = calcValorVar(varKey, col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques)
+    return typeof real === 'number' ? real : 0
+  })
+  const maxVal = Math.max(0, ...vals)
+  if (maxVal === 0) return ['0', '0', '0', '0', '0']
+  const niceCeil = v => {
+    if (v <= 10) return Math.ceil(v)
+    const mag = Math.pow(10, Math.floor(Math.log10(v)))
+    return Math.ceil(v / mag) * mag
+  }
+  const top = niceCeil(maxVal)
+  const sfx = tickSfx(varKey)
+  return [top, Math.round(top * 0.75), Math.round(top * 0.5), Math.round(top * 0.25), 0].map(v => v + sfx)
+}
+
+function GraficaTimeline({ varPrincipal, varSecundaria, columnas, totalW, colW: colWProp, chartH, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques }) {
+  const canvasRef  = useRef(null)
+  const chartRef   = useRef(null)
+
+  const dataPrin    = columnas.map(col => { const { real } = calcValorVar(varPrincipal,  col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques); return typeof real === 'number' ? real : null })
+  const dataObjPrin = columnas.map(col => { const { obj }  = calcValorVar(varPrincipal,  col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques); return typeof obj  === 'number' ? obj  : null })
+  const dataSec     = varSecundaria ? columnas.map(col => { const { real } = calcValorVar(varSecundaria, col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques); return typeof real === 'number' ? real : null }) : []
+  const dataObjSec  = varSecundaria ? columnas.map(col => { const { obj }  = calcValorVar(varSecundaria, col, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques); return typeof obj  === 'number' ? obj  : null }) : []
+  const hayObjPrin  = dataObjPrin.some(v => v !== null)
+  const hayObjSec   = dataObjSec.some(v => v !== null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const existing = Chart.getChart(canvas)
+    if (existing) existing.destroy()
+
+    const labels = columnas.map((_, i) => i)
+
+    const colW = colWProp || (tlAgrup === 'dia' ? 52 : tlAgrup === 'semana' ? 80 : 120)
+    const barW = Math.max(4, colW - 14)
+
+    const datasets = [
+      { type: 'bar',  label: VARS_TIMELINE(true).find(v=>v.key===varPrincipal)?.label  || varPrincipal,  data: dataPrin,   backgroundColor: '#3b82f6cc', borderRadius: 2, yAxisID: 'y1', barThickness: barW, categoryPercentage: 0.5, barPercentage: 0.8, _isObj: false, _tipo: 'bar' },
+      ...(hayObjPrin  ? [{ type: 'line', label: 'Obj ' + (VARS_TIMELINE(true).find(v=>v.key===varPrincipal)?.label ||''), data: dataObjPrin, borderColor: '#3b82f680', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false, yAxisID: 'y1', _isObj: true, _tipo: 'line-obj' }] : []),
+      ...(varSecundaria ? [{ type: 'line', label: VARS_TIMELINE(true).find(v=>v.key===varSecundaria)?.label || varSecundaria, data: dataSec, borderColor: '#f97316', pointBackgroundColor: '#f97316', pointRadius: 5, pointHoverRadius: 7, showLine: false, fill: false, yAxisID: 'y2', _isObj: false, _tipo: 'line' }] : []),
+      ...(varSecundaria && hayObjSec ? [{ type: 'line', label: 'Obj ' + (VARS_TIMELINE(true).find(v=>v.key===varSecundaria)?.label||''), data: dataObjSec, borderColor: '#f9731640', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false, yAxisID: 'y2', _isObj: true, _tipo: 'line-obj' }] : []),
+    ]
+
+    chartRef.current = new Chart(canvas, {
+      data: { labels, datasets },
+      options: {
+        responsive: false,
+        animation: {
+          onComplete: () => {
+            const c = chartRef.current
+            if (!c) return
+            const ctx2d = canvasRef.current?.getContext('2d')
+            if (!ctx2d) return
+            ctx2d.save()
+            ctx2d.font = '8px Arial'
+            ctx2d.textAlign = 'center'
+            c.data.datasets.forEach((ds, di) => {
+              if (ds._isObj || ds._tipo !== 'bar') return
+              const meta = c.getDatasetMeta(di)
+              meta.data.forEach((bar, i) => {
+                const val = ds.data[i]
+                if (val == null) return
+                ctx2d.fillStyle = '#555'
+                ctx2d.fillText(Math.round(val), bar.x, bar.y - 4)
+              })
+            })
+            ctx2d.restore()
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#fff', borderColor: '#e1e0d9', borderWidth: 1,
+            titleColor: '#0b0b0b', bodyColor: '#52514e', padding: 10,
+            callbacks: {
+              title: items => {
+                const idx = items[0].dataIndex
+                const col = columnas[idx]
+                if (!col) return ''
+                if (tlAgrup === 'dia') return format(col.fecha, "d 'de' MMM", { locale: es })
+                if (tlAgrup === 'semana') return `S${getISOWeek(col.fecha)} (${format(col.fecha, 'd MMM', { locale: es })})`
+                return format(col.fecha, 'MMMM yyyy', { locale: es })
+              },
+              label: item => {
+                const sfx = item.dataset.yAxisID === 'y2' ? ' (sec)' : ''
+                return item.dataset.label + ': ' + Math.round(item.parsed.y) + sfx
+              }
+            }
+          }
+        },
+        scales: {
+          x:  { display: false, offset: true, categoryPercentage: 0.5, barPercentage: 0.8 },
+          // Ejes ocultos dentro del canvas — el plot area ocupa el 100% del ancho
+          // Los ticks se renderizan fuera como overlays absolutos (ver JSX)
+          y1: { position: 'left',  display: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+          y2: { position: 'right', display: false, grid: { drawOnChartArea: false } }
+        }
+      }
+    })
+
+    return () => {
+      if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
+      else { const c = Chart.getChart(canvas); if (c) c.destroy() }
+    }
+  }, [varPrincipal, varSecundaria, columnas, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques])
+
+  const colW    = colWProp || (tlAgrup === 'dia' ? 52 : tlAgrup === 'semana' ? 80 : 120)
+  const canvasW = columnas.length * colW
+
+  return (
+    <div style={{ height: chartH, minWidth: totalW, overflow: 'hidden' }}>
+      <canvas ref={canvasRef} width={canvasW} height={chartH} style={{ display: 'block' }} />
+    </div>
+  )
+}
+
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 
 export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext, recargarPlan }) {
@@ -95,6 +280,18 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   const [notasSemanaText, setNotasSemanaText] = useState('')
   const [savingNotaSemana, setSavingNotaSemana] = useState(false)
   const notasTimer = useRef(null)
+
+  // ── Timeline nuevo ──
+  const [tlRows,            setTlRows]            = useState({ cal: true, per: true, pla: true, pro: true, com: true })
+  const [tlAgrup,           setTlAgrup]           = useState('dia')
+  const [varCarga,          setVarCarga]          = useState('carga_interna')
+  const [var2Carga,         setVar2Carga]         = useState(null)
+  const [alturaPlanificacion, setAlturaPlanificacion] = useState(106)
+  const [tlTooltip,         setTlTooltip]         = useState({ visible: false, x: 0, y: 0, data: null })
+  const tlTodayRef  = useRef(null)
+  const tlZonaBRef  = useRef(null)
+  const tlZonaCRef  = useRef(null)
+  const tlZonaDRef  = useRef(null)
 
   // ── Modal unificado ──
   const [modalTipo,      setModalTipo]      = useState(null)
@@ -170,6 +367,27 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   useEffect(() => {
     if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) }
   }, [clienteSeleccionado, recargarPlan])
+  useEffect(() => {
+    if (tlTodayRef.current && tlZonaDRef.current && vista === 'timeline') {
+      const el = tlTodayRef.current
+      const d  = tlZonaDRef.current
+      const target = el.offsetLeft - d.clientWidth / 2 + el.offsetWidth / 2
+      d.scrollLeft = Math.max(0, target)
+    }
+  }, [tlAgrup, planificacion?.id, vista])
+
+  useEffect(() => {
+    const d = tlZonaDRef.current
+    if (!d) return
+    const fn = () => {
+      if (tlZonaBRef.current) tlZonaBRef.current.scrollLeft = d.scrollLeft
+      if (tlZonaCRef.current) tlZonaCRef.current.scrollTop  = d.scrollTop
+    }
+    d.addEventListener('scroll', fn, { passive: true })
+    return () => d.removeEventListener('scroll', fn)
+  }, [vista, tlAgrup])
+
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // CARGA DE DATOS
@@ -1603,6 +1821,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Dropdown de variable con position:fixed — se renderiza fuera de Zona C para no quedar cortado
   return (
     <div>
       {/* ── CABECERA ── */}
@@ -1850,211 +2069,553 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           )}
 
           {/* ══ TIMELINE ══════════════════════════════════════════════════ */}
-          {vista === 'timeline' && totalSemanas > 0 && (
-            <div>
-              {/* Pills de filtro */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                {[['bloques','Bloques'],['sub','Sub bloques'],['semanas','Semanas'],['sesiones','Sesiones'],['eventos','Comp. / Evaluación']].map(([key, label]) => (
-                  <button key={key} onClick={() => setFiltros(f => ({ ...f, [key]: !f[key] }))}
-                    style={{ padding: '4px 13px', borderRadius: 20, border: `1.5px solid ${filtros[key] ? 'var(--accent)' : 'var(--border)'}`, background: filtros[key] ? 'var(--accent-light)' : 'var(--bg)', color: filtros[key] ? 'var(--accent)' : 'var(--text3)', fontSize: 12, fontWeight: filtros[key] ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
-                    {label}
-                  </button>
+          {vista === 'timeline' && totalSemanas > 0 && (() => {
+            if (!planificacion?.fecha_inicio || !planificacion?.fecha_fin) return null
+            const planIni   = parseISO(planificacion.fecha_inicio)
+            const planFin   = parseISO(planificacion.fecha_fin)
+            if (isNaN(planIni) || isNaN(planFin) || planFin < planIni) return null
+            const totalDias = Math.max(differenceInDays(planFin, planIni) + 1, 1)
+            const hoy       = startOfDay(new Date())
+
+            // Columns
+            const COL_W = tlAgrup === 'dia' ? 52 : tlAgrup === 'semana' ? 80 : 120
+            let columnas = []
+            if (tlAgrup === 'dia') {
+              columnas = eachDayOfInterval({ start: planIni, end: planFin }).map(d => ({ key: d.toISOString(), fecha: d }))
+            } else if (tlAgrup === 'semana') {
+              columnas = eachWeekOfInterval({ start: planIni, end: planFin }, { weekStartsOn: 1 }).map(d => {
+                const fin = endOfWeek(d, { weekStartsOn: 1 })
+                return { key: d.toISOString(), fecha: d, fechaFin: fin }
+              })
+            } else {
+              columnas = eachMonthOfInterval({ start: planIni, end: planFin }).map(d => {
+                return { key: d.toISOString(), fecha: d, fechaFin: endOfMonth(d) }
+              })
+            }
+            const totalCols = columnas.length
+            const totalW    = totalCols * COL_W
+
+            // Pill config
+            const PILLS = [
+              { key: 'cal', label: '🗓 Calendarización', color: '#3b82f6', bg: '#eff6ff' },
+              { key: 'per', label: '📊 Periodización',   color: '#ef4444', bg: '#fff5f5' },
+              { key: 'pla', label: '📈 Planificación',   color: '#f59e0b', bg: '#fffbeb' },
+              { key: 'pro', label: '🏋️ Programación',    color: '#10b981', bg: '#f0fdf4' },
+              { key: 'com', label: '💬 Comentarios',     color: '#64748b', bg: '#f8fafc' },
+            ]
+
+            // Helper: etiqueta izquierda fija
+            const LabelCol = ({ lines, color = 'var(--text3)', height }) => (
+              <div style={{ width: 110, minWidth: 110, flexShrink: 0, position: 'sticky', left: 0, zIndex: 20, background: 'var(--bg)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: height, alignSelf: 'stretch', gap: 4, padding: '4px 8px' }}>
+                {lines.map((l, i) => (
+                  <span key={i} style={{ fontSize: 10, color: l.color || color, fontWeight: 600, textAlign: 'center', letterSpacing: '0.03em' }}>{l.text}</span>
                 ))}
               </div>
+            )
 
-              {/* Zoom */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                <span style={{ fontSize: 11, color: 'var(--text3)' }}>Zoom:</span>
-                <button onClick={() => setZoomTL(z => Math.max(11, z - 11))}
-                  style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 16, lineHeight: 1, fontWeight: 700 }}>−</button>
-                <button onClick={() => setZoomTL(44)}
-                  style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg2)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--mono)', minWidth: 48 }}>{Math.round(zoomTL / 44 * 100)}%</button>
-                <button onClick={() => setZoomTL(z => Math.min(110, z + 11))}
-                  style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontSize: 16, lineHeight: 1, fontWeight: 700 }}>+</button>
-              </div>
+            // Helper: % position in the timeline
+            const pctLeft  = dias => Math.max(0, Math.min(dias / totalDias * 100, 100))
+            const pctWidth = dias => Math.max(0, Math.min(dias / totalDias * 100, 100))
 
-              {/* Barra de progreso */}
-              {(() => {
-                const hoy   = new Date()
-                const ini   = parseISO(planificacion.fecha_inicio)
-                const fin   = parseISO(planificacion.fecha_fin)
-                const total = (fin - ini) / (1000 * 60 * 60 * 24)
-                const trans = Math.max(0, Math.min((hoy - ini) / (1000 * 60 * 60 * 24), total))
-                const pct   = Math.round((trans / total) * 100)
-                const semAc = Math.max(1, Math.min(Math.ceil(trans / 7), totalSemanas))
-                if (hoy < ini || hoy > fin) return null
-                return (
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{format(ini, 'dd MMM yyyy', { locale: es })}</span>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 700 }}>S{semAc} / {totalSemanas} — {pct}%</span>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{format(fin, 'dd MMM yyyy', { locale: es })}</span>
-                    </div>
-                    <div style={{ height: 4, background: 'var(--bg2)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.3s' }} />
-                    </div>
-                  </div>
-                )
-              })()}
+            // Is today in the column?
+            const colEsHoy = col => {
+              if (tlAgrup === 'dia')    return isSameDay(col.fecha, hoy)
+              if (tlAgrup === 'semana') return hoy >= col.fecha && hoy <= col.fechaFin
+              return isSameMonth(col.fecha, hoy)
+            }
 
-              <div className="card" style={{ overflowX: 'auto', padding: '16px 14px' }}>
-                <div style={{ minWidth: Math.max(totalSemanas * zoomTL, 400), position: 'relative' }}>
+            const sesionesSinFecha = sesiones.filter(s => !s.fecha)
+            const COLOR_TIPO = { programada: 'var(--accent)', flexible: '#8b5cf6', opcional: '#94a3b8' }
 
-                  {/* FILA 1 — BLOQUES */}
-                  {filtros.bloques && (
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Bloques</div>
-                      <div style={{ display: 'flex', gap: 2 }}>
-                        {bloques.map((b, bidx) => {
-                          const semIni = calcOffsetSemanaGlobal(bloques, b.id, 1)
-                          const semFin = calcOffsetSemanaGlobal(bloques, b.id, b.semanas)
-                          const fIni  = format(parseISO(b.fecha_inicio), 'dd MMM', { locale: es })
-                          const fFin  = format(addWeeks(parseISO(b.fecha_inicio), b.semanas), 'dd MMM', { locale: es })
-                          return (
-                            <div key={b.id}
-                              style={{ flex: b.semanas, background: b.color || '#2d6a4f', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', overflow: 'hidden', minWidth: 0 }}
-                              onClick={() => openModal('bloque', b)}
-                              onMouseEnter={e => setTooltip({ visible: true, tipo: 'bloque', item: b, bidx, numSubs: (subbloques[b.id] || []).length, x: e.clientX, y: e.clientY })}
-                              onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>B{bidx + 1} {b.nombre}</div>
-                              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--mono)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fIni} – {fFin}</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FILA 2 — SUB BLOQUES */}
-                  {filtros.sub && !esSalud && (
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Sub bloques</div>
-                      <div style={{ position: 'relative', height: 30 }}>
-                        {bloques.map((b, bidx) => {
-                          const subsDelBloque = subbloques[b.id] || []
-                          const offsetB = bloques.slice(0, bidx).reduce((s, x) => s + x.semanas, 0)
-                          return subsDelBloque.map((sub, subidx) => {
-                            const left  = (offsetB + sub.semana_inicio - 1) / totalSemanas * 100
-                            const width = (sub.semana_fin - sub.semana_inicio + 1) / totalSemanas * 100
-                            return (
-                              <div key={sub.id}
-                                style={{ position: 'absolute', left: `${left}%`, width: `${width}%`, height: 28, background: (b.color || '#2d6a4f') + '88', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', overflow: 'hidden', border: `1px solid ${b.color || '#2d6a4f'}55`, display: 'flex', alignItems: 'center' }}
-                                onClick={() => openModal('subbloque', { ...sub, bloque_id: b.id })}
-                                onMouseEnter={e => setTooltip({ visible: true, tipo: 'subbloque', item: sub, bloque: b, bidx, subidx, x: e.clientX, y: e.clientY })}
-                                onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                                <div style={{ fontSize: 9, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.nombre}</div>
-                              </div>
-                            )
-                          })
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FILA 3 — EVENTOS */}
-                  {filtros.eventos && (
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Eventos</div>
-                      <div style={{ position: 'relative', height: 38 }}>
-                        {competiciones.map(comp => {
-                          const pct = Math.max(0, Math.min(differenceInWeeks(parseISO(comp.fecha), parseISO(planificacion.fecha_inicio)) / totalSemanas * 100, 96))
-                          return (
-                            <div key={comp.id}
-                              style={{ position: 'absolute', left: `${pct}%`, top: 0, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 2 }}
-                              onClick={() => openModal('comp', comp)}
-                              onMouseEnter={e => setTooltip({ visible: true, tipo: 'comp', item: comp, x: e.clientX, y: e.clientY })}
-                              onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                              <div style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: 10, padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <span style={{ fontSize: 10 }}>🏆</span>
-                                <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 600, fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>{comp.nombre}</span>
-                              </div>
-                              <div style={{ fontSize: 8, color: '#ef4444', fontFamily: 'var(--mono)', marginTop: 1 }}>{format(parseISO(comp.fecha), 'dd/MM', { locale: es })}</div>
-                            </div>
-                          )
-                        })}
-                        {controles.map(ctrl => {
-                          const pct = Math.max(0, Math.min(differenceInWeeks(parseISO(ctrl.fecha), parseISO(planificacion.fecha_inicio)) / totalSemanas * 100, 96))
-                          return (
-                            <div key={ctrl.id}
-                              style={{ position: 'absolute', left: `${pct}%`, top: 0, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', zIndex: 2 }}
-                              onClick={() => openModal('control', ctrl)}
-                              onMouseEnter={e => setTooltip({ visible: true, tipo: 'control', item: ctrl, x: e.clientX, y: e.clientY })}
-                              onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                              <div style={{ background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 10, padding: '2px 6px', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <span style={{ fontSize: 10 }}>🔬</span>
-                                <span style={{ fontSize: 9, color: '#3b82f6', fontWeight: 600, fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>{ctrl.nombre}</span>
-                              </div>
-                              <div style={{ fontSize: 8, color: '#3b82f6', fontFamily: 'var(--mono)', marginTop: 1 }}>{format(parseISO(ctrl.fecha), 'dd/MM', { locale: es })}</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FILA 4 — SEMANAS */}
-                  {filtros.semanas && (
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginBottom: 4 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Semanas</div>
-                      <div style={{ display: 'flex' }}>
-                        {todasLasSemanas.map(({ bloque: b, bidx, numLocal, numGlobal, fi, esActual, semData }) => {
-                          const carga = semData?.carga ? CARGAS[semData.carga] : null
-                          return (
-                            <div key={`${b.id}-${numLocal}`}
-                              style={{ flex: 1, textAlign: 'center', padding: '3px 1px', borderRight: '1px solid var(--border)', background: esActual ? 'var(--accent-light)' : 'transparent', cursor: 'pointer', borderRadius: esActual ? 3 : 0, minWidth: 28 }}
-                              onClick={() => openModal('semana', { bloque: b, numero: numLocal, semanaData: semData, fechaIni: format(fi, 'yyyy-MM-dd') })}
-                              onMouseEnter={e => setTooltip({ visible: true, tipo: 'semana', item: semData, bloque: b, numGlobal, numLocal, x: e.clientX, y: e.clientY })}
-                              onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}>
-                              <div style={{ fontSize: 9, fontFamily: 'var(--mono)', fontWeight: esActual ? 700 : 500, color: esActual ? 'var(--accent)' : (bidx % 2 === 0 ? 'var(--text2)' : 'var(--text3)') }}>{format(fi, 'd/M')}</div>
-                              <div style={{ fontSize: 7, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>S{numGlobal}</div>
-                              {carga && <div style={{ width: 6, height: 3, background: carga.color, borderRadius: 2, margin: '2px auto 0' }} />}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FILA 5 — SESIONES */}
-                  {filtros.sesiones && (
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: filtros.semanas ? 2 : 6 }}>
-                      <div style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Sesiones</div>
-                      <div style={{ display: 'flex' }}>
-                        {todasLasSemanas.map(({ bloque: b, numLocal, fi, ff }) => {
-                          const sesionesSem = sesiones.filter(s => { if (!s.fecha) return false; const f = parseISO(s.fecha); return f >= fi && f < ff })
-                          return (
-                            <div key={`${b.id}-${numLocal}-ses`}
-                              style={{ flex: 1, minWidth: 28, borderRight: '1px solid var(--border)', padding: '2px', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                              {sesionesSem.slice(0, 3).map(s => {
-                                const est = iconoEstado(s)
-                                return (
-                                  <div key={s.id}
-                                    onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
-                                    onMouseEnter={e => setTooltip({ visible: true, tipo: 'sesion', item: s, x: e.clientX, y: e.clientY })}
-                                    onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
-                                    style={{ width: 18, height: 18, borderRadius: '50%', background: est ? est.bg : (b.color || '#2d6a4f') + '22', border: est ? `1.5px solid ${est.border}` : s.tipo_sesion === 'flexible' ? `1.5px dashed ${b.color || '#2d6a4f'}` : `1.5px solid ${b.color || '#2d6a4f'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, cursor: 'pointer', color: est?.color }}
-                                    title={s.titulo}>
-                                    {est ? est.icono : (s.icono || iconoSesion(s))}
-                                  </div>
-                                )
-                              })}
-                              {sesionesSem.length > 3 && <div style={{ fontSize: 7, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>+{sesionesSem.length - 3}</div>}
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#2d6a4f22', border: '1.5px solid #2d6a4f' }} /><span style={{ fontSize: 10, color: 'var(--text3)' }}>Programada</span></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#2d6a4f22', border: '1.5px dashed #2d6a4f' }} /><span style={{ fontSize: 10, color: 'var(--text3)' }}>Flexible</span></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><div style={{ width: 12, height: 12, borderRadius: '50%', background: '#6b728022', border: '1.5px solid #6b7280' }} /><span style={{ fontSize: 10, color: 'var(--text3)' }}>Opcional</span></div>
-                      </div>
-                    </div>
-                  )}
-
+            return (
+            <div>
+              {/* ── Barra superior ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {/* Pills toggleables */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {PILLS.map(p => {
+                    const on = tlRows[p.key]
+                    return (
+                      <button key={p.key}
+                        onClick={() => setTlRows(r => ({ ...r, [p.key]: !r[p.key] }))}
+                        style={{ padding: '5px 13px', borderRadius: 20, border: `1.5px solid ${on ? p.color : 'var(--border)'}`, background: on ? p.bg : 'var(--bg)', color: on ? p.color : 'var(--text3)', fontSize: 12, fontWeight: on ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {/* Selector agrupación */}
+                <div style={{ display: 'flex', gap: 2, background: 'var(--bg2)', borderRadius: 8, padding: 3 }}>
+                  {[['dia','Día'],['semana','Semana'],['mes','Mes']].map(([v, l]) => (
+                    <button key={v} onClick={() => setTlAgrup(v)}
+                      style={{ padding: '4px 14px', borderRadius: 6, border: 'none', background: tlAgrup === v ? 'var(--bg)' : 'transparent', color: tlAgrup === v ? 'var(--text)' : 'var(--text3)', fontSize: 12, fontWeight: tlAgrup === v ? 600 : 400, cursor: 'pointer', boxShadow: tlAgrup === v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+                      {l}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* ── Sesiones sin fecha ── */}
+              {sesionesSinFecha.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10, padding: '6px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 600 }}>Sin fecha:</span>
+                  {sesionesSinFecha.map(s => (
+                    <div key={s.id} title={s.titulo}
+                      onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
+                      style={{ flexShrink: 0, background: 'var(--bg)', border: `1.5px dashed ${COLOR_TIPO[s.tipo_sesion] || 'var(--accent)'}`, borderRadius: 6, padding: '3px 8px', fontSize: 10, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {iconoSesion(s)} {s.titulo}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Grid de timeline ── */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gridTemplateRows: '56px 1fr', height: 'calc(100vh - 220px)', overflow: 'hidden' }}>
+
+                  {/* ── ZONA A — esquina superior izquierda ── */}
+                  <div style={{ gridColumn: 1, gridRow: 1, background: 'var(--bg)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 30 }} />
+
+                  {/* ── ZONA B — cabecera de fechas (scroll horizontal sincronizado) ── */}
+                  <div ref={tlZonaBRef} style={{ gridColumn: 2, gridRow: 1, overflowX: 'hidden', overflowY: 'hidden', background: 'var(--bg)', borderBottom: '1px solid var(--border)', zIndex: 20 }}>
+                    <div style={{ display: 'flex', height: 56, minWidth: totalW }}>
+                      {columnas.map((col, ci) => {
+                        const esHoy    = colEsHoy(col)
+                        const compsCol = competiciones.filter(c => {
+                          const f = parseISO(c.fecha)
+                          if (tlAgrup === 'dia')    return isSameDay(f, col.fecha)
+                          if (tlAgrup === 'semana') return f >= col.fecha && f <= col.fechaFin
+                          return isSameMonth(f, col.fecha)
+                        })
+                        const ctrlsCol = controles.filter(c => {
+                          const f = parseISO(c.fecha)
+                          if (tlAgrup === 'dia')    return isSameDay(f, col.fecha)
+                          if (tlAgrup === 'semana') return f >= col.fecha && f <= col.fechaFin
+                          return isSameMonth(f, col.fecha)
+                        })
+                        return (
+                          <div key={col.key} ref={esHoy ? tlTodayRef : null}
+                            style={{ width: COL_W, minWidth: COL_W, flexShrink: 0, borderRight: '1px solid var(--border)', background: esHoy ? 'rgba(59,130,246,0.06)' : 'transparent', padding: '5px 4px 3px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, boxSizing: 'border-box' }}>
+                            {tlAgrup === 'dia' && <>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1 }}>{format(col.fecha, 'EEEEEE', { locale: es })}</span>
+                              <span style={{ fontSize: 13, fontWeight: esHoy ? 700 : 500, color: esHoy ? '#3b82f6' : 'var(--text)', lineHeight: 1 }}>{format(col.fecha, 'd')}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text3)', lineHeight: 1 }}>{format(col.fecha, 'MMM', { locale: es })}</span>
+                            </>}
+                            {tlAgrup === 'semana' && <>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', fontWeight: 600, color: esHoy ? '#3b82f6' : 'var(--text)', lineHeight: 1 }}>S{getISOWeek(col.fecha)}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text3)', lineHeight: 1 }}>{format(col.fecha, 'd', { locale: es })}–{format(col.fechaFin, 'd MMM', { locale: es })}</span>
+                            </>}
+                            {tlAgrup === 'mes' && <>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: esHoy ? '#3b82f6' : 'var(--text)', lineHeight: 1 }}>{format(col.fecha, 'MMMM', { locale: es })}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text3)', lineHeight: 1 }}>{format(col.fecha, 'yyyy')}</span>
+                            </>}
+                            <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', marginTop: 1 }}>
+                              {compsCol.slice(0, 2).map(c => (
+                                <span key={c.id} title={c.nombre} style={{ background: '#fee2e2', border: '1px solid #ef4444', borderRadius: 8, padding: '1px 4px', fontSize: 8, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis' }}>🏆 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nombre}</span></span>
+                              ))}
+                              {ctrlsCol.slice(0, 2).map(c => (
+                                <span key={c.id} title={c.nombre} style={{ background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 8, padding: '1px 4px', fontSize: 8, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis' }}>🔬 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nombre}</span></span>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── ZONA C — columna de etiquetas (scroll vertical sincronizado) ── */}
+                  <div ref={tlZonaCRef} style={{ gridColumn: 1, gridRow: 2, overflowX: 'hidden', overflowY: 'hidden', background: 'var(--bg)', borderRight: '1px solid var(--border)', zIndex: 20 }}>
+                    {tlRows.per && (
+                      <div style={{ height: 45, borderBottom: '1px solid var(--border)', background: '#fff5f5', display: 'flex', flexDirection: 'column', justifyContent: 'space-around', alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>Bloque</span>
+                        <div style={{ height: 1, background: 'var(--border)', width: '100%' }} />
+                        <span style={{ fontSize: 10, color: '#fca5a5', fontWeight: 600 }}>Sub bloque</span>
+                      </div>
+                    )}
+                    {tlRows.pla && (() => {
+                      const VARS_OPT = [
+                        { key: 'carga_interna', label: 'RPE×min' },
+                        { key: 'rpe',           label: 'RPE' },
+                        { key: 'duracion',      label: 'Duración' },
+                        ...(esResistencia ? [{ key: 'fc_zonas', label: 'FC Zonas' }] : []),
+                      ]
+                      const TicksCol = ({ ticks, color, h }) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: h, padding: '2px 0', flexShrink: 0 }}>
+                          {ticks.map((t, i) => (
+                            <span key={i} style={{ fontSize: 7, color, lineHeight: 1, textAlign: 'right', whiteSpace: 'nowrap' }}>{t}</span>
+                          ))}
+                        </div>
+                      )
+
+                      const mitad = Math.floor(alturaPlanificacion / 2)
+                      const rowH  = var2Carga ? mitad - 1 : alturaPlanificacion
+                      const tp1 = calcTicksForVar(varCarga,  columnas, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques)
+                      const tp2 = var2Carga ? calcTicksForVar(var2Carga, columnas, tlAgrup, sesiones, feedbacks, todasLasSemanas, bloques, subbloques) : null
+
+                      return (
+                        <div style={{ height: alturaPlanificacion, borderBottom: '1px solid var(--border)', background: '#fffef0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          {/* Fila 1: selector gráfica principal + ticks */}
+                          <div style={{ height: rowH, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '4px 4px 4px 5px', overflow: 'hidden' }}>
+                              <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 3 }}>Carga</span>
+                              {VARS_OPT.map(op => (
+                                <button key={op.key} onClick={() => setVarCarga(op.key)}
+                                  style={{ display: 'block', width: '100%', padding: '2px 4px', marginBottom: 2, fontSize: 9, borderRadius: 4,
+                                    border: varCarga === op.key ? '1px solid #eda100' : '1px solid var(--border)',
+                                    background: varCarga === op.key ? '#fef3c7' : 'transparent',
+                                    color: varCarga === op.key ? '#854f0b' : 'var(--text3)',
+                                    cursor: 'pointer', textAlign: 'left' }}>
+                                  {op.label}
+                                </button>
+                              ))}
+                              {var2Carga === null ? (
+                                <button onClick={() => { setVar2Carga(VARS_OPT.find(v => v.key !== varCarga)?.key || 'rpe'); setAlturaPlanificacion(196) }}
+                                  style={{ display: 'block', width: '100%', marginTop: 3, padding: '2px 4px', fontSize: 9, borderRadius: 4, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer', textAlign: 'left' }}>
+                                  + 2ª gráfica
+                                </button>
+                              ) : (
+                                <button onClick={() => { setVar2Carga(null); setAlturaPlanificacion(106) }}
+                                  style={{ display: 'block', width: '100%', marginTop: 3, padding: '2px 4px', fontSize: 9, borderRadius: 4, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer', textAlign: 'left' }}>
+                                  × 2ª gráfica
+                                </button>
+                              )}
+                            </div>
+                            <TicksCol ticks={tp1} color="#aaa" h={rowH} />
+                          </div>
+                          {/* Fila 2: selector gráfica secundaria + ticks (si existe) */}
+                          {var2Carga !== null && <>
+                            <div style={{ height: 1, flexShrink: 0, background: 'var(--border)' }} />
+                            <div style={{ height: rowH, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '4px 4px 4px 5px', overflow: 'hidden' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 3 }}>Carga 2</span>
+                                {VARS_OPT.map(op => (
+                                  <button key={op.key} onClick={() => setVar2Carga(op.key)}
+                                    style={{ display: 'block', width: '100%', padding: '2px 4px', marginBottom: 2, fontSize: 9, borderRadius: 4,
+                                      border: var2Carga === op.key ? '1px solid #3b82f6' : '1px solid var(--border)',
+                                      background: var2Carga === op.key ? '#dbeafe' : 'transparent',
+                                      color: var2Carga === op.key ? '#1e40af' : 'var(--text3)',
+                                      cursor: 'pointer', textAlign: 'left' }}>
+                                    {op.label}
+                                  </button>
+                                ))}
+                              </div>
+                              {tp2 && <TicksCol ticks={tp2} color="#2a78d6" h={rowH} />}
+                            </div>
+                          </>}
+                        </div>
+                      )
+                    })()}
+                    {tlRows.pro && (
+                      <div style={{ height: 120, borderBottom: '1px solid var(--border)', background: '#f0fff4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 10, color: '#2d6a4f', fontWeight: 600 }}>Sesiones</span>
+                      </div>
+                    )}
+                    {tlRows.com && (
+                      <div style={{ height: 80, borderBottom: '1px solid var(--border)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Comentarios</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── ZONA D — contenido (scrollea en ambos ejes) ── */}
+                  <div ref={tlZonaDRef} style={{ gridColumn: 2, gridRow: 2, overflowX: 'auto', overflowY: 'auto' }}>
+
+                    {/* ── FILA 2 — PERIODIZACIÓN ── */}
+                    {tlRows.per && (
+                      <div style={{ height: 45, minWidth: totalW, position: 'relative', borderBottom: '1px solid var(--border)', background: '#fff5f5' }}>
+                        <div style={{ height: 24, position: 'relative', overflow: 'hidden' }}>
+                          {bloques.map((b, bidx) => {
+                            const bIni = parseISO(b.fecha_inicio)
+                            const lPct = pctLeft(differenceInDays(bIni, planIni))
+                            const wPct = pctWidth(b.semanas * 7)
+                            const subs = subbloques[b.id] || []
+                            return (
+                              <div key={b.id}
+                                onClick={() => openModal('bloque', b)}
+                                onMouseEnter={e => setTooltip({ visible: true, tipo: 'bloque', item: b, bidx, numSubs: subs.length, x: e.clientX, y: e.clientY })}
+                                onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
+                                style={{ position: 'absolute', left: `${lPct}%`, top: 1, width: `${wPct}%`, height: 22, background: (b.color || '#2d6a4f') + 'd9', borderRadius: 5, display: 'flex', alignItems: 'center', paddingLeft: 7, cursor: 'pointer', overflow: 'hidden', zIndex: 2 }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.nombre}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div style={{ height: 1, background: 'rgba(239,68,68,0.15)' }} />
+                        <div style={{ height: 20, position: 'relative', overflow: 'hidden' }}>
+                          {bloques.map((b, bidx) => {
+                            const bIni = parseISO(b.fecha_inicio)
+                            const subs = subbloques[b.id] || []
+                            return subs.map(sub => {
+                              const subIni = addDays(bIni, (sub.semana_inicio - 1) * 7)
+                              const subW   = (sub.semana_fin - sub.semana_inicio + 1) * 7
+                              const slPct  = pctLeft(differenceInDays(subIni, planIni))
+                              const swPct  = pctWidth(subW)
+                              return (
+                                <div key={sub.id}
+                                  onClick={() => openModal('subbloque', { ...sub, bloque_id: b.id })}
+                                  onMouseEnter={e => setTooltip({ visible: true, tipo: 'subbloque', item: sub, bloque: b, bidx, x: e.clientX, y: e.clientY })}
+                                  onMouseLeave={() => setTooltip(t => ({ ...t, visible: false }))}
+                                  style={{ position: 'absolute', left: `${slPct}%`, top: 2, width: `${swPct}%`, height: 16, background: (b.color || '#2d6a4f') + '77', borderRadius: 3, display: 'flex', alignItems: 'center', paddingLeft: 4, cursor: 'pointer', overflow: 'hidden', zIndex: 2 }}>
+                                  <span style={{ fontSize: 9, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.nombre}</span>
+                                </div>
+                              )
+                            })
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── FILA 3 — PLANIFICACIÓN (Chart.js) ── */}
+                    {tlRows.pla && (() => {
+                      const mitad = Math.floor(alturaPlanificacion / 2)
+                      const rowH  = var2Carga ? mitad - 1 : alturaPlanificacion
+                      return (
+                        <div style={{ height: alturaPlanificacion, minWidth: totalW, background: '#fffef0', borderBottom: '1px solid var(--border)' }}>
+                          <GraficaTimeline
+                            varPrincipal={varCarga} varSecundaria={null}
+                            columnas={columnas} totalW={totalW} colW={COL_W} chartH={rowH}
+                            tlAgrup={tlAgrup} sesiones={sesiones} feedbacks={feedbacks}
+                            todasLasSemanas={todasLasSemanas} bloques={bloques} subbloques={subbloques}
+                          />
+                          {var2Carga && <>
+                            <div style={{ height: 1, background: 'var(--border)', minWidth: totalW }} />
+                            <div style={{ position: 'relative', minWidth: totalW }}>
+                              <GraficaTimeline
+                                varPrincipal={var2Carga} varSecundaria={null}
+                                columnas={columnas} totalW={totalW} colW={COL_W} chartH={rowH}
+                                tlAgrup={tlAgrup} sesiones={sesiones} feedbacks={feedbacks}
+                                todasLasSemanas={todasLasSemanas} bloques={bloques} subbloques={subbloques}
+                              />
+                              <button
+                                onClick={() => { setVar2Carga(null); setAlturaPlanificacion(106) }}
+                                style={{ position: 'absolute', top: 4, right: 4, padding: '1px 6px', fontSize: 10, borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text3)', cursor: 'pointer', zIndex: 2 }}>
+                                × eliminar
+                              </button>
+                            </div>
+                          </>}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Tooltip flotante gráfica */}
+                    {tlTooltip.visible && tlTooltip.data && (
+                      <div style={{ position: 'fixed', top: tlTooltip.y + 12, left: Math.min(tlTooltip.x + 12, window.innerWidth - 220), background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 2000, pointerEvents: 'none', fontSize: 11, lineHeight: 1.6, maxWidth: 210 }}>
+                        {tlTooltip.data.tipo === 'fc_zonas' ? (
+                          <>
+                            <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>FC Zonas</div>
+                            {[['Z1-Z2','z12','#10b981'],['Z3-Z4','z34','#f59e0b'],['Z5+','z5','#ef4444']].map(([lbl,k,c]) => (
+                              <div key={k} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: 'inline-block', flexShrink: 0 }} />
+                                <span style={{ color: 'var(--text2)' }}>{lbl}:</span>
+                                <span style={{ color: 'var(--text)', fontFamily: 'var(--mono)' }}>{tlTooltip.data.rd[k]||0}%</span>
+                                <span style={{ color: 'var(--text3)', fontSize: 10 }}>obj {tlTooltip.data.od[k]||0}%</span>
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <div style={{ color: 'var(--text2)' }}>{tlTooltip.data.tipLabel}</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── FILA 4 — PROGRAMACIÓN (sesiones) ── */}
+                    {tlRows.pro && (() => {
+
+                      // Badge de estado feedback
+                      const badgeFb = s => {
+                        const fb = feedbacks.find(f => f.sesion_id === s.id)
+                        if (!fb) return { icono: '○', color: '#cbd5e1' }
+                        const status = fb.data?.completion?.status
+                        if (status === 'completed') return { icono: '●', color: '#16a34a' }
+                        if (status === 'partial')   return { icono: '◐', color: '#3b82f6' }
+                        if (status === 'missed')    return { icono: '●', color: '#dc2626' }
+                        return { icono: '●', color: '#16a34a' }
+                      }
+
+                      // Card individual de sesión
+                      const SesCard = ({ s, colW }) => {
+                        const bd = badgeFb(s)
+                        const borde = COLOR_TIPO[s.tipo_sesion] || 'var(--accent)'
+                        const tip = [
+                          s.titulo,
+                          s.fecha ? format(parseISO(s.fecha), "d 'de' MMMM yyyy", { locale: es }) : 'Sin fecha',
+                          s.tipo_sesion,
+                          s.duracion_min ? `${s.duracion_min} min` : null,
+                        ].filter(Boolean).join(' · ')
+                        return (
+                          <div title={tip}
+                            onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
+                            style={{ position: 'relative', width: '100%', height: 52, borderRadius: 8, background: 'var(--bg)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', borderLeft: `3px solid ${borde}`, padding: '6px 8px', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, boxSizing: 'border-box' }}>
+                            {/* Badge estado */}
+                            <span style={{ position: 'absolute', top: 5, right: 6, fontSize: 8, color: bd.color }}>{bd.icono}</span>
+                            {/* Línea 1: icono + título */}
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 12, lineHeight: 1.3 }}>
+                              {iconoSesion(s)} {s.titulo}
+                            </div>
+                            {/* Línea 2: duración */}
+                            {s.duracion_min && (
+                              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3, lineHeight: 1.2 }}>{s.duracion_min} min</div>
+                            )}
+                          </div>
+                        )
+                      }
+
+                      // Card de competición
+                      const CompCard = ({ c }) => (
+                        <div title={c.nombre} onClick={() => openModal('comp', c)}
+                          style={{ width: '100%', height: 52, borderRadius: 8, background: '#fff5f5', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', borderLeft: '3px solid #ef4444', padding: '6px 8px', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, boxSizing: 'border-box' }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🏆 {c.nombre}</div>
+                        </div>
+                      )
+
+                      // Card de control
+                      const CtrlCard = ({ c }) => (
+                        <div title={c.nombre} onClick={() => openModal('control', c)}
+                          style={{ width: '100%', height: 52, borderRadius: 8, background: '#eff6ff', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', borderLeft: '3px solid #3b82f6', padding: '6px 8px', cursor: 'pointer', overflow: 'hidden', flexShrink: 0, boxSizing: 'border-box' }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: '#1d4ed8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🔬 {c.nombre}</div>
+                        </div>
+                      )
+
+                      return (
+                        <div style={{ height: 120, minWidth: totalW, display: 'flex', background: '#f0fff4', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
+                            {columnas.map((col, ci) => {
+                              const esHoy = colEsHoy(col)
+                              const colFin = col.fechaFin || col.fecha
+
+                              if (tlAgrup === 'mes') {
+                                // Modo mes: solo contador, clic cambia a semana
+                                const sesMes = sesiones.filter(s => {
+                                  if (!s.fecha) return false
+                                  const f = parseISO(s.fecha)
+                                  return isSameMonth(f, col.fecha)
+                                })
+                                return (
+                                  <div key={col.key}
+                                    onClick={() => setTlAgrup('semana')}
+                                    style={{ width: COL_W, minWidth: COL_W, flexShrink: 0, borderRight: '1px solid var(--border)', background: esHoy ? 'rgba(16,185,129,0.06)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                    {sesMes.length > 0
+                                      ? <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>{sesMes.length} sesiones</span>
+                                      : <span style={{ fontSize: 10, color: 'var(--text3)' }}>—</span>}
+                                  </div>
+                                )
+                              }
+
+                              // Modo día o semana
+                              const sesDia = sesiones.filter(s => {
+                                if (!s.fecha) return false
+                                const f = parseISO(s.fecha)
+                                if (tlAgrup === 'dia') return isSameDay(f, col.fecha)
+                                return f >= col.fecha && f <= colFin
+                              })
+                              const compsDia = competiciones.filter(c => {
+                                const f = parseISO(c.fecha)
+                                if (tlAgrup === 'dia') return isSameDay(f, col.fecha)
+                                return f >= col.fecha && f <= colFin
+                              })
+                              const ctrlsDia = controles.filter(c => {
+                                const f = parseISO(c.fecha)
+                                if (tlAgrup === 'dia') return isSameDay(f, col.fecha)
+                                return f >= col.fecha && f <= colFin
+                              })
+                              const items = [...compsDia.map(c => ({ _t: 'comp', _d: c })), ...ctrlsDia.map(c => ({ _t: 'ctrl', _d: c })), ...sesDia.map(s => ({ _t: 'ses', _d: s }))]
+                              const MAX_VIS = tlAgrup === 'semana' ? 3 : 99
+                              const visibles = items.slice(0, MAX_VIS)
+                              const resto   = items.length - visibles.length
+
+                              return (
+                                <div key={col.key}
+                                  style={{ width: COL_W, minWidth: COL_W, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', background: esHoy ? 'rgba(16,185,129,0.06)' : 'transparent', padding: '5px 3px', display: 'flex', flexDirection: 'column', gap: 4, boxSizing: 'border-box' }}>
+                                  {visibles.map((item, ii) => (
+                                    item._t === 'comp' ? <CompCard key={item._d.id} c={item._d} /> :
+                                    item._t === 'ctrl' ? <CtrlCard key={item._d.id} c={item._d} /> :
+                                    <SesCard key={item._d.id} s={item._d} colW={COL_W} />
+                                  ))}
+                                  {resto > 0 && (
+                                    <div style={{ fontSize: 9, color: 'var(--text3)', textAlign: 'center', fontFamily: 'var(--mono)', padding: '2px 0' }}>+{resto} más</div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                        </div>
+                      )
+                    })()}
+
+                    {/* ═══ FILA 5 — COMENTARIOS ═══ */}
+                    {tlRows.com && (() => {
+                      return (
+                        <div style={{ height: 80, minWidth: totalW, display: 'flex', background: '#fff', borderBottom: '1px solid var(--border)' }}>
+                            {columnas.map((col) => {
+                              const colFin = col.fechaFin || col.fecha
+                              const esHoy = colEsHoy(col)
+
+                              // Sesiones del periodo con comentario o feedback
+                              const sesPeriodo = sesiones.filter(s => {
+                                if (!s.fecha) return false
+                                const f = parseISO(s.fecha)
+                                if (tlAgrup === 'dia') return isSameDay(f, col.fecha)
+                                if (tlAgrup === 'mes') return isSameMonth(f, col.fecha)
+                                return f >= col.fecha && f <= colFin
+                              })
+
+                              const comentCards = sesPeriodo
+                                .filter(s => s.comentario_entrenadora)
+                                .map(s => ({ type: 'coach', s }))
+
+                              const feedbackCards = sesPeriodo
+                                .filter(s => {
+                                  const fb = feedbacks.find(f => f.sesion_id === s.id)
+                                  return fb && fb.data?.generalComments
+                                })
+                                .map(s => {
+                                  const fb = feedbacks.find(f => f.sesion_id === s.id)
+                                  return { type: 'client', s, fb }
+                                })
+
+                              const allCards = [...comentCards, ...feedbackCards]
+
+                              return (
+                                <div key={col.key}
+                                  style={{ width: COL_W, minWidth: COL_W, flexShrink: 0, borderRight: '1px solid rgba(0,0,0,0.05)', background: esHoy ? 'rgba(16,185,129,0.04)' : 'transparent', padding: '5px 3px', display: 'flex', flexDirection: 'column', gap: 4, boxSizing: 'border-box', minHeight: 80 }}>
+                                  {comentCards.map(({ s }) => (
+                                    <div key={`ce-${s.id}`}
+                                      onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
+                                      title={s.comentario_entrenadora}
+                                      style={{ borderRadius: 6, background: '#f0fdf4', border: '2px solid #86efac', padding: '4px 6px', cursor: 'pointer', fontSize: 10, lineHeight: 1.3, overflow: 'hidden', flexShrink: 0 }}>
+                                      <div style={{ fontSize: 9, color: '#16a34a', fontWeight: 600, marginBottom: 2 }}>📝 {s.titulo}</div>
+                                      <div style={{ color: '#166534', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.comentario_entrenadora}</div>
+                                    </div>
+                                  ))}
+                                  {feedbackCards.map(({ s, fb }) => {
+                                    const rpe = fb.data?.rpe?.value
+                                    const status = fb.data?.completion?.status
+                                    return (
+                                      <div key={`fb-${s.id}`}
+                                        onClick={() => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
+                                        title={fb.data.generalComments}
+                                        style={{ borderRadius: 6, background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '4px 6px', cursor: 'pointer', fontSize: 10, lineHeight: 1.3, overflow: 'hidden', flexShrink: 0 }}>
+                                        <div style={{ fontSize: 9, color: '#475569', fontWeight: 600, marginBottom: 2, display: 'flex', gap: 4 }}>
+                                          <span>💬 {s.titulo}</span>
+                                          {rpe && <span style={{ color: '#7c3aed' }}>RPE {rpe}</span>}
+                                          {status === 'completada' && <span style={{ color: '#059669' }}>✓</span>}
+                                        </div>
+                                        <div style={{ color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fb.data.generalComments}</div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )
+                            })}
+                        </div>
+                      )
+                    })()}
+
+                  </div>{/* end Zona D */}
+                </div>{/* end grid */}
+              </div>{/* end card */}
             </div>
-          )}
+            )
+          })()}
+
 
           {vista === 'timeline' && totalSemanas === 0 && (
             <div className="empty">
@@ -2063,6 +2624,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
               <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => openModal('bloque')}><Plus size={13} /> Añadir bloque</button>
             </div>
           )}
+
         </>
       )}
 
