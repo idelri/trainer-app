@@ -151,6 +151,17 @@ const BORG_RPE = {
   9:  { label: 'Muy, muy intenso',  desc: 'Casi insostenible. Esfuerzo máximo sostenido solo unos pocos minutos.' },
   10: { label: 'Máximo absoluto',   desc: 'Esfuerzo total. No puedes más. Solo aguantable unos segundos.' },
 }
+const METODOS_SESION = [
+  { id: 'individual', icono: '⬜', nombre: 'Individual',        desc: 'Completa todas las series de cada ejercicio antes de pasar al siguiente. Descansa entre series el tiempo indicado.' },
+  { id: 'superserie', icono: '⇅',  nombre: 'Superserie',        desc: 'Haz el ejercicio A y pasa directamente al B sin descansar. Cuando termines los dos, descansa y repite.' },
+  { id: 'triserie',   icono: '↓↓', nombre: 'Triserie',          desc: 'Haz A, B y C sin descansar entre ellos. Al terminar los tres, descansa y repite.' },
+  { id: 'circuito',   icono: '🔄', nombre: 'Circuito',          desc: 'Pasa de ejercicio en ejercicio sin descansar hasta completar la vuelta. Luego descansa y repite.' },
+  { id: 'complejo',   icono: '🔗', nombre: 'Complejo',          desc: 'Todos los ejercicios seguidos sin soltar el implemento. Solo descansas al completar la secuencia.' },
+  { id: 'contrast',   icono: '↯',  nombre: 'Contrast Training', desc: 'Ejercicio pesado seguido de uno explosivo del mismo patrón. Luego descansas completo y repites.' },
+  { id: 'cluster',    icono: '⏸',  nombre: 'Cluster',           desc: 'Series divididas en mini-grupos con microdescansos entre ellos.' },
+  { id: 'emom',       icono: '⏱',  nombre: 'EMOM',              desc: 'Al inicio de cada minuto completa el trabajo. El tiempo restante es tu descanso.' },
+  { id: 'amrap',      icono: '🔁', nombre: 'AMRAP',             desc: 'Máximo trabajo en el tiempo fijo. Anota las rondas completadas.' },
+]
 const EMPTY_SESION = { titulo: '', fecha: '', objetivo: '', notas_entrenador: '', duracion_min: '', sinFecha: false, tipo_sesion: 'programada', estado: 'pendiente', tipo_editor: 'fuerza', con_feedback: true, icono: '', tipo_sesion_detalle: null, modalidad: 'autonoma', lugar: '', lista: false, publicada: true }
 function ytId(url) {
   if (!url) return null
@@ -637,6 +648,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [ejercicios, setEjercicios] = useState({})
 
   const [dirty, setDirty] = useState(false)
+  const [mostrarSelectorMetodo, setMostrarSelectorMetodo] = useState(false)
   const [avisoSinGuardar, setAvisoSinGuardar] = useState(false)
   const [modalSesion, setModalSesion] = useState(null)
   const [modalComentario, setModalComentario] = useState(null) // { sesionId, sesionTitulo, clienteEmail, inicial }
@@ -1177,14 +1189,26 @@ async function guardarSesion() {
     setDirty(true)
   }
 
-  async function añadirBloque() {
+  function añadirBloque() {
+    setMostrarSelectorMetodo(true)
+  }
+
+  async function crearBloqueConMetodo(metodo) {
+    const def = METODOS_SESION.find(m => m.id === metodo)
     const { data: b } = await supabase.from('sesion_bloques').insert({
-      sesion_id: sesionAbierta.id, nombre: `Bloque ${bloques.length + 1}`, color: COLORES[bloques.length % COLORES.length], nota: '', orden: bloques.length,
+      sesion_id: sesionAbierta.id,
+      nombre: def?.nombre || 'Bloque',
+      color: COLORES[bloques.length % COLORES.length],
+      nota: '',
+      orden: bloques.length,
+      metodo,
+      descripcion_metodo: def?.desc || null,
     }).select().single()
     if (b) {
       setBloques(bs => [...bs, b])
       setEjercicios(e => ({ ...e, [b.id]: [] }))
       setDirty(true)
+      setMostrarSelectorMetodo(false)
     }
   }
 
@@ -1999,10 +2023,13 @@ async function guardarSesion() {
                         style={{ width: 16, height: 16, borderRadius: '50%', background: c, cursor: 'pointer', border: b.color === c ? '2px solid var(--text)' : '2px solid transparent' }} />
                     ))}
                   </div>
-                  <div style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                  <div style={{ flex: 1, fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                     <InlineInput value={b.nombre} placeholder={`Bloque ${idx + 1}`} fontSize={14}
                       style={{ fontWeight: 600 }}
                       onSave={v => actualizarBloque(b.id, 'nombre', v)} />
+                    <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: '#f1efe8', color: '#52514e', fontWeight: 500, textTransform: 'capitalize', flexShrink: 0 }}>
+                      {b.metodo || 'individual'}
+                    </span>
                   </div>
                   <button className="btn btn-ghost btn-sm" title="Guardar en biblioteca de bloques" onClick={() => guardarBloqueEnBiblioteca(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>🧱</button>
                   <button className="btn btn-ghost btn-sm" title="Copiar bloque a otra sesión" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', fontSize: 11 }}>📋</button>
@@ -2397,6 +2424,30 @@ async function guardarSesion() {
       )}
 
       {/* Modal sesión: solo título, fecha, duración (lo mínimo que necesita una identidad) */}
+      {mostrarSelectorMetodo && (
+        <div className="modal-backdrop" onClick={() => setMostrarSelectorMetodo(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <span className="modal-title">Elige el método del bloque</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setMostrarSelectorMetodo(false)}><X size={14} /></button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '4px 0 8px' }}>
+              {METODOS_SESION.map(m => (
+                <button key={m.id} type="button"
+                  onClick={() => crearBloqueConMetodo(m.id)}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 16 }}>{m.icono}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{m.nombre}</span>
+                  </div>
+                  <span style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1.4 }}>{m.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalSesion && (
         <div className="modal-backdrop" onClick={() => setModalSesion(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
