@@ -148,6 +148,29 @@ function RirChip({ valor, colorMap, bgMap, T }) {
   )
 }
 
+const METODO_BADGE = {
+  individual:  { label: 'Individual',  bg: 'rgba(100,100,100,0.1)',  color: '#555' },
+  superserie:  { label: 'Superserie',  bg: 'rgba(30,58,138,0.1)',    color: '#1e3a8a' },
+  triserie:    { label: 'Triserie',    bg: 'rgba(91,33,182,0.1)',    color: '#5b21b6' },
+  contrast:    { label: 'Contrast',    bg: 'rgba(91,33,182,0.1)',    color: '#5b21b6' },
+  circuito:    { label: 'Circuito',    bg: 'rgba(5,150,105,0.1)',    color: '#047857' },
+  complejo:    { label: 'Complejo',    bg: 'rgba(180,83,9,0.1)',     color: '#b45309' },
+  cluster:     { label: 'Cluster',     bg: 'rgba(133,77,14,0.1)',    color: '#92400e' },
+  emom:        { label: 'EMOM',        bg: 'rgba(153,27,27,0.1)',    color: '#991b1b' },
+  amrap:       { label: 'AMRAP',       bg: 'rgba(157,23,77,0.1)',    color: '#9d174d' },
+}
+
+const DESCRIPCION_METODO = {
+  superserie: 'Dos ejercicios encadenados sin descanso entre ellos.',
+  triserie:   'Tres ejercicios encadenados sin descanso entre ellos.',
+  contrast:   'Carga pesada seguida de movimiento explosivo del mismo patrón.',
+  circuito:   'Todos los ejercicios en circuito continuo sin descanso.',
+  complejo:   'Misma carga, ejercicios encadenados sin soltarla.',
+  cluster:    'Series con micro-descansos dentro de la propia serie.',
+  emom:       'Un movimiento al comienzo de cada minuto.',
+  amrap:      'Tantas repeticiones como sea posible en el tiempo.',
+}
+
 export default function SesionPublica({ token }) {
   const [sesion, setSesion] = useState(null)
   const [cliente, setCliente] = useState(null)
@@ -172,6 +195,14 @@ export default function SesionPublica({ token }) {
   const [comentarioVisto, setComentarioVisto] = useState(false)
 
   useEffect(() => { cargar() }, [token])
+
+  useEffect(() => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap'
+    document.head.appendChild(link)
+    return () => { try { document.head.removeChild(link) } catch {} }
+  }, [])
 
   async function cargar() {
     const [sesArr, fssArr, grpsArr, cliArr, blsArr, ejsArr, fbArr, pendingClonArr] = await Promise.all([
@@ -312,21 +343,41 @@ export default function SesionPublica({ token }) {
       <div style={{ maxWidth: 620, margin: '0 auto', padding: '18px 14px 44px' }}>
 
         {/* HERO */}
-        <header style={{ position: 'relative', overflow: 'hidden', background: T.hero, color: '#fff', borderRadius: 18, padding: '24px 22px 22px' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 4, background: T.accent }} />
-         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <p style={{ margin: '0 0 9px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accent }}>Ficha de entrenamiento</p>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.55)', flexShrink: 0, whiteSpace: 'nowrap' }}>{cliente?.nombre}</span>
+        <header style={{ position: 'relative', overflow: 'hidden', background: T.hero, color: '#fff', borderRadius: 18, padding: '28px 20px 22px', marginBottom: 4 }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 3, background: T.accent }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.accent, fontFamily: "'JetBrains Mono', monospace" }}>Ficha de entrenamiento</p>
+            <span style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(255,255,255,0.4)', flexShrink: 0, whiteSpace: 'nowrap' }}>{cliente?.nombre}</span>
           </div>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{sesion.titulo}</h1>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 9, marginTop: 12, fontSize: 13, color: 'rgba(255,255,255,0.66)' }}>
-            {sesion.duracion_min && <><span>{sesion.duracion_min} min</span><span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} /></>}
-           {sesion.fecha && <span style={{ textTransform: 'capitalize' }}>{format(parseISO(sesion.fecha), 'dd MMM yyyy', { locale: es })}</span>}
+          <h1 style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 400, fontFamily: "'DM Serif Display', Georgia, serif", lineHeight: 1.1 }}>{sesion.titulo}</h1>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+            {sesion.fecha && <span style={{ textTransform: 'capitalize' }}>{format(parseISO(sesion.fecha), 'EEEE d MMM yyyy', { locale: es })}</span>}
+            {sesion.fecha && sesion.duracion_min && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />}
+            {sesion.duracion_min && <span>{sesion.duracion_min} min</span>}
+            {(sesion.fecha || sesion.duracion_min) && sesion.tipo_sesion && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />}
+            {sesion.tipo_sesion && <span style={{ textTransform: 'capitalize' }}>{sesion.tipo_sesion}</span>}
           </div>
           {sesion.objetivo && (
-            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.13)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>🎯 Objetivo</div>
-              <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.9)', whiteSpace: 'pre-wrap' }}>{sesion.objetivo}</p>
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 5, fontFamily: "'JetBrains Mono', monospace" }}>Objetivo</div>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'rgba(255,255,255,0.85)', whiteSpace: 'pre-wrap' }}>{sesion.objetivo}</p>
+            </div>
+          )}
+          {sesion.comentario_entrenadora && (
+            <div id="comentario" style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.accent, fontFamily: "'JetBrains Mono', monospace" }}>💬 Mensaje de tu entrenadora</div>
+                {comentarioVisto && <span style={{ fontSize: 10, color: T.accent, opacity: 0.7 }}>👁 Leído</span>}
+              </div>
+              <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.8)', whiteSpace: 'pre-wrap' }}>{sesion.comentario_entrenadora}</p>
+              {!comentarioVisto && (
+                <button onClick={async () => {
+                  await supabase.rpc('marcar_comentario_visto', { p_token: token })
+                  setComentarioVisto(true)
+                }} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: T.accent, background: 'transparent', border: `1.5px solid ${T.accent}66`, borderRadius: 8, padding: '5px 14px', cursor: 'pointer' }}>
+                  Marcar como leído
+                </button>
+              )}
             </div>
           )}
         </header>
@@ -498,229 +549,301 @@ export default function SesionPublica({ token }) {
         })()}
 
         {/* BLOQUES */}
-        {bloques.map((b, idx) => (
-          <section key={b.id} style={{ marginTop: 30 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 14, background: b.color || '#E29A2E' }}>
-                {String(idx + 1).padStart(2, '0')}
-              </div>
-              <h2 style={{ margin: 0, fontSize: 16.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.18, flex: 1 }}>{b.nombre}</h2>
-              {(() => {
-                const ejsBloque = ejercicios[b.id] || []
-                if (!ejsBloque.length) return null
-                const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
-                if (sesionFlexibleGuardada || sesionFijaGuardada || clonToken) {
-                  return (
-                    <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a', whiteSpace: 'nowrap' }}>
-                      ✓ Bloque hecho
-                    </span>
-                  )
-                }
-                return (
-                  <button onClick={() => marcarBloque(ejsBloque)}
-                    style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${bloqueHecho ? '#16a34a' : (b.color || '#E29A2E')}`, background: bloqueHecho ? '#f0fdf4' : 'transparent', color: bloqueHecho ? '#16a34a' : (b.color || '#875708'), cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {bloqueHecho ? '✓ Bloque hecho' : '✓ Todo el bloque'}
-                  </button>
-                )
-              })()}
-            </div>
-            {b.nota && (
-              <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', borderRadius: 11, padding: '11px 13px', marginBottom: 13, fontSize: 13, lineHeight: 1.45, background: COLORES_TINT(b.color || '#E29A2E'), color: b.color || '#875708' }}>
-                <span>📝</span>
-                <span>{b.nota}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-             {(ejercicios[b.id] || []).map((e, eIdx) => {
-                const yid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
-                const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : ((e.media_tipo === 'imagen' || e.media_tipo === 'gif') ? e.media_url : null)
-                const esVideoArchivo = e.media_tipo === 'video' && e.media_url
-                const videoLink = e.media_tipo === 'youtube' ? e.media_url : e.video_url
-                const activas = e.variables_activas || []
-                const prog = progreso[e.id] || { series: [false], hecho: false }
-                const vrEj = valoresReales[e.id] || {}
-                const hecho = prog.hecho
-                const rirColorMap = { '4+': '#16a34a', '2-3': '#ca8a04', '1-0': '#dc2626' }
-                const rirBgMap = { '4+': '#f0fdf4', '2-3': '#fffbeb', '1-0': '#fef2f2' }
-                return (
-                  <article key={e.id} style={{ position: 'relative', overflow: 'hidden', background: hecho ? '#f0fdf4' : T.card, border: `1px solid ${hecho ? '#bbf7d0' : T.line}`, borderRadius: 14, padding: '14px 14px 14px 18px', boxShadow: '0 1px 2px rgba(20,23,28,0.05), 0 4px 12px rgba(20,23,28,0.03)', transition: 'background 0.2s, border-color 0.2s' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, background: hecho ? '#16a34a' : (b.color || '#E29A2E') }} />
-                    <div>
-                        <h3 style={{ margin: '0 0 9px', fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>
-                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: T.ink, fontWeight: 600, marginRight: 6 }}>{idx + 1}.{eIdx + 1}.</span>
-                          {e.nombre}
-                        </h3>
-                        {(esVideoArchivo || yid || thumb) && (
-                          <div style={{ marginBottom: 12 }}>
-                            {esVideoArchivo
-                              ? <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: '#000' }} />
-                              : yid
-                                ? <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', borderRadius: 10, overflow: 'hidden', border: `1px solid ${T.line}` }}>
-                                    <iframe
-                                      src={`https://www.youtube-nocookie.com/embed/${yid}`}
-                                      title={e.nombre}
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                      allowFullScreen
-                                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                                    />
-                                  </div>
-                                : <img src={thumb} alt={e.nombre} style={{ width: '100%', maxHeight: 260, borderRadius: 10, objectFit: 'contain', border: `1px solid ${T.line}`, background: T.paper, display: 'block' }} />
-                            }
-                          </div>
-                        )}
-                        {!yid && videoLink && (
-                          <a href={videoLink} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.accent, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', padding: '6px 12px', borderRadius: 9, lineHeight: 1, marginBottom: 10 }}>
-                            ▶ Vídeo
+        {bloques.map((b, idx) => {
+          const ejsBloque = ejercicios[b.id] || []
+          const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
+          const bc = b.color || '#E29A2E'
+          const badge = METODO_BADGE[b.metodo]
+          const descMetodo = b.descripcion_metodo || DESCRIPCION_METODO[b.metodo]
+
+          function renderEj(e, eIdx, totalEjs) {
+            const yid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+            const esVideoArchivo = e.media_tipo === 'video' && e.media_url
+            const esImagen = (e.media_tipo === 'imagen' || e.media_tipo === 'gif') && e.media_url
+            const videoLink = !yid && e.video_url ? e.video_url : null
+            const activas = e.variables_activas || []
+            const prog = progreso[e.id] || { series: [false], hecho: false }
+            const vrEj = valoresReales[e.id] || {}
+            const hecho = prog.hecho
+            const rirColorMap = { '4+': '#16a34a', '2-3': '#ca8a04', '1-0': '#dc2626' }
+            const rirBgMap   = { '4+': '#f0fdf4', '2-3': '#fffbeb', '1-0': '#fef2f2' }
+            const label = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
+            const isLast = eIdx === totalEjs - 1
+            const locked = sesionFlexibleGuardada || sesionFijaGuardada || clonToken
+            const hasMedia = esVideoArchivo || yid || esImagen
+
+            return (
+              <div key={e.id}>
+                {/* EMOM: minute badge above */}
+                {b.metodo === 'emom' && (
+                  <div style={{ padding: '5px 14px', background: `${bc}10`, borderBottom: `0.5px solid ${bc}22`, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 5, background: 'rgba(153,27,27,0.12)', color: '#991b1b', fontFamily: "'JetBrains Mono', monospace" }}>MIN {eIdx + 1}</span>
+                  </div>
+                )}
+                {/* Name row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: `0.5px solid ${T.line}`, background: hecho ? '#f6fef9' : T.card }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: bc, flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, flex: 1, lineHeight: 1.25, color: T.ink }}>{e.nombre}</span>
+                  {locked ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 99, padding: '2px 9px', flexShrink: 0 }}>✓</span>
+                  ) : (
+                    <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
+                      style={{ fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 99, border: `1px solid ${hecho ? '#bbf7d0' : T.line}`, background: hecho ? '#f0fdf4' : 'transparent', color: hecho ? '#16a34a' : T.ink3, cursor: 'pointer', flexShrink: 0 }}>
+                      {hecho ? '✓' : 'Marcar'}
+                    </button>
+                  )}
+                </div>
+                {/* 2-col: media + data */}
+                <div style={{ display: 'flex', alignItems: 'stretch', background: hecho ? '#f6fef9' : T.card, transition: 'background 0.2s' }}>
+                  {/* Media col 42% */}
+                  <div style={{ flex: '0 0 42%', borderRight: `0.5px solid ${T.line}`, overflow: 'hidden', position: 'relative' }}>
+                    {esVideoArchivo ? (
+                      <video src={e.media_url} controls muted preload="metadata"
+                        style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
+                    ) : yid ? (
+                      <div style={{ position: 'relative', width: '100%', paddingBottom: '133%', overflow: 'hidden' }}>
+                        <iframe src={`https://www.youtube-nocookie.com/embed/${yid}`} title={e.nombre}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                      </div>
+                    ) : esImagen ? (
+                      <img src={e.media_url} alt={e.nombre}
+                        style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ width: '100%', aspectRatio: '3/4', background: T.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 24, opacity: 0.18 }}>▶</span>
+                        {videoLink && (
+                          <a href={videoLink} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 10.5, fontWeight: 700, color: T.accent, textDecoration: 'none', padding: '4px 10px', border: `1px solid ${T.accent}`, borderRadius: 6 }}>
+                            Ver vídeo
                           </a>
                         )}
-                        {/* Variables */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                          {e.series && (
-                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Series</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.series}</span>
-                            </span>
-                          )}
-                          {e.reps && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>{e.reps_por_lado ? 'Reps/lado' : 'Reps'}</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.reps}{e.reps_por_lado ? '/lado' : ''}</span>
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="number" min="0" step="1" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
-                                  placeholder={e.reps_por_lado ? 'reps/lado reales' : 'reps reales'}
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>{e.reps_por_lado ? 'reps/lado' : 'reps'}</span>
-                              </div>
-                            </div>
-                          )}
-                          {activas.includes('Peso') && e.peso && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Peso</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.peso} kg</span>
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="number" min="0" step="0.5" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
-                                  placeholder="kgs reales"
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>kg</span>
-                              </div>
-                            </div>
-                          )}
-                          {activas.includes('Peso/lado') && (e.peso_der || e.peso_izq) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Peso/lado</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>D: {e.peso_der || '—'} · I: {e.peso_izq || '—'} kg</span>
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 11, color: T.ink2, fontWeight: 600 }}>D</span>
-                                <input type="number" min="0" step="0.5" value={vrEj.peso_der || ''} onChange={ev => actualizarValorReal(e.id, 'peso_der', ev.target.value)}
-                                  placeholder={e.peso_der || '—'}
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 60 }} />
-                                <span style={{ fontSize: 11, color: T.ink2, fontWeight: 600 }}>I</span>
-                                <input type="number" min="0" step="0.5" value={vrEj.peso_izq || ''} onChange={ev => actualizarValorReal(e.id, 'peso_izq', ev.target.value)}
-                                  placeholder={e.peso_izq || '—'}
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 60 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>kg</span>
-                              </div>
-                            </div>
-                          )}
-                          {activas.includes('Duración') && e.duracion && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Duración</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.duracion} s</span>
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="number" min="0" step="1" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
-                                  placeholder="seg reales"
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>s</span>
-                              </div>
-                            </div>
-                          )}
-                          {activas.includes('RIR') && e.rpe && (
-                            <RirChip valor={e.rpe} colorMap={rirColorMap} bgMap={rirBgMap} T={T} />
-                          )}
-                          {activas.includes('Distancia') && e.distancia && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Distancia</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.distancia} m</span>
-                              </span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="number" min="0" step="0.5" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
-                                  placeholder="m reales"
-                                  style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 7, padding: '4px 8px', outline: 'none', background: '#fff', color: T.ink2, width: 80 }} />
-                                <span style={{ fontSize: 11, color: T.ink3 }}>m</span>
-                              </div>
-                            </div>
-                          )}
-                          {activas.includes('Altura') && e.altura && (
-                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Altura</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.altura} cm</span>
-                            </span>
-                          )}
-                          {activas.includes('Descanso') && e.descanso && (
-                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Descanso</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>{e.descanso}</span>
-                            </span>
-                          )}
-                          {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
-                            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, background: T.paper, borderRadius: 9, padding: '7px 12px' }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.ink3 }}>Ejecución</span>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: T.ink }}>
-                                {e.ejecucion_tipo !== 'Personalizado' ? e.ejecucion_tipo : ''}{e.ejecucion_texto ? (e.ejecucion_tipo !== 'Personalizado' ? ` — ${e.ejecucion_texto}` : e.ejecucion_texto) : ''}
-                              </span>
-                            </span>
-                          )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Data col 58% */}
+                  <div style={{ flex: 1, padding: '10px 11px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                    {/* Chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {e.series && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Series</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.series}</span>
                         </div>
-                        {/* Marcar ejercicio + checks de series */}
-                        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? (
-                            <span style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a' }}>
-                              ✓ Ejercicio completado
-                            </span>
-                          ) : (
-                            <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
-                              style={{ alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${hecho ? '#16a34a' : T.line}`, background: hecho ? '#f0fdf4' : T.card, color: hecho ? '#16a34a' : T.ink2, cursor: 'pointer' }}>
-                              {hecho ? '✓ Ejercicio completado' : '✓ Marcar ejercicio'}
-                            </button>
-                          )}
-                          {prog.series.map((hecha, sIdx) => (
-                            <label key={sIdx} onClick={sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? undefined : () => toggleSerie(e.id, sIdx)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? 'default' : 'pointer', opacity: hecha ? 0.55 : 1, transition: 'opacity 0.2s' }}>
-                              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${hecha ? '#16a34a' : T.line}`, background: hecha ? '#16a34a' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                                {hecha && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
-                              </div>
-                              <span style={{ fontSize: 13, color: hecha ? '#16a34a' : T.ink2 }}>Serie {sIdx + 1}</span>
-                            </label>
-                          ))}
+                      )}
+                      {e.reps && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>{e.reps_por_lado ? 'R/lado' : 'Reps'}</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.reps}{e.reps_por_lado ? '/l' : ''}</span>
                         </div>
-                        {activas.includes('Indicaciones') && e.notas && (
-                          <p style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '12px 0 0', paddingTop: 12, borderTop: `1px solid ${T.line}`, fontSize: 12.5, color: T.ink2, lineHeight: 1.45 }}>
-                            <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
-                            <span>{e.notas}</span>
-                          </p>
-                        )}
-                        {!activas.includes('Indicaciones') && e.notas && (
-                          <p style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '12px 0 0', paddingTop: 12, borderTop: `1px solid ${T.line}`, fontSize: 12.5, color: T.ink2, lineHeight: 1.45 }}>
-                            <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
-                            <span>{e.notas}</span>
-                          </p>
-                        )}
+                      )}
+                      {activas.includes('Peso') && e.peso && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>kg</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.peso}</span>
+                        </div>
+                      )}
+                      {activas.includes('Duración') && e.duracion && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>seg</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.duracion}</span>
+                        </div>
+                      )}
+                      {activas.includes('Distancia') && e.distancia && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>m</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.distancia}</span>
+                        </div>
+                      )}
+                      {activas.includes('Altura') && e.altura && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>cm</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.altura}</span>
+                        </div>
+                      )}
+                      {activas.includes('RIR') && e.rpe && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: rirBgMap[e.rpe] || T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: rirColorMap[e.rpe] || T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>RIR</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: rirColorMap[e.rpe] || T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.rpe}</span>
+                        </div>
+                      )}
+                      {activas.includes('Descanso') && e.descanso && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>desc</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: T.ink }}>{e.descanso}</span>
+                        </div>
+                      )}
+                      {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
+                        <div style={{ display: 'flex', flexDirection: 'column', background: T.paper, borderRadius: 8, padding: '5px 9px', maxWidth: '100%' }}>
+                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Ejec.</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: T.ink }}>{e.ejecucion_tipo !== 'Personalizado' ? e.ejecucion_tipo : ''}{e.ejecucion_texto ? (e.ejecucion_tipo !== 'Personalizado' ? ` · ${e.ejecucion_texto}` : e.ejecucion_texto) : ''}</span>
+                        </div>
+                      )}
                     </div>
-                  </article>
-                )
-              })}
-            </div>
-         </section>
-        ))}
+                    {/* Inputs valores reales */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {e.reps && (
+                        <input type="number" min="0" step="1" value={vrEj.reps || ''} onChange={ev => actualizarValorReal(e.id, 'reps', ev.target.value)}
+                          placeholder={e.reps_por_lado ? 'r/l real' : 'reps real'}
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 72 }} />
+                      )}
+                      {activas.includes('Peso') && e.peso && (
+                        <input type="number" min="0" step="0.5" value={vrEj.peso || ''} onChange={ev => actualizarValorReal(e.id, 'peso', ev.target.value)}
+                          placeholder="kg real"
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 68 }} />
+                      )}
+                      {activas.includes('Peso/lado') && (e.peso_der || e.peso_izq) && (<>
+                        <input type="number" min="0" step="0.5" value={vrEj.peso_der || ''} onChange={ev => actualizarValorReal(e.id, 'peso_der', ev.target.value)}
+                          placeholder="D kg"
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 56 }} />
+                        <input type="number" min="0" step="0.5" value={vrEj.peso_izq || ''} onChange={ev => actualizarValorReal(e.id, 'peso_izq', ev.target.value)}
+                          placeholder="I kg"
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 56 }} />
+                      </>)}
+                      {activas.includes('Duración') && e.duracion && (
+                        <input type="number" min="0" step="1" value={vrEj.duracion || ''} onChange={ev => actualizarValorReal(e.id, 'duracion', ev.target.value)}
+                          placeholder="seg real"
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 72 }} />
+                      )}
+                      {activas.includes('Distancia') && e.distancia && (
+                        <input type="number" min="0" step="0.5" value={vrEj.distancia || ''} onChange={ev => actualizarValorReal(e.id, 'distancia', ev.target.value)}
+                          placeholder="m real"
+                          style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 72 }} />
+                      )}
+                    </div>
+                    {/* Series checkboxes */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Series completadas</span>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {prog.series.map((hecha, sIdx) => (
+                          <div key={sIdx}
+                            onClick={locked ? undefined : () => toggleSerie(e.id, sIdx)}
+                            style={{ width: 27, height: 27, borderRadius: 6, border: `1.5px solid ${hecha ? '#16a34a' : `${bc}55`}`, background: hecha ? '#16a34a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: locked ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: hecha ? '#fff' : T.ink3, transition: 'all 0.15s' }}>
+                            {hecha ? '✓' : sIdx + 1}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Nota */}
+                    {e.notas && (
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'flex-start', paddingTop: 6, borderTop: `0.5px solid ${T.line}`, fontSize: 11.5, color: T.ink2, lineHeight: 1.4 }}>
+                        <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
+                        <span>{e.notas}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Separator between exercises (superserie / triserie) */}
+                {!isLast && (b.metodo === 'superserie' || b.metodo === 'triserie') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', background: `${bc}08`, borderTop: `0.5px solid ${bc}22`, borderBottom: `0.5px solid ${bc}22` }}>
+                    <div style={{ flex: 1, height: 0.5, background: `${bc}33` }} />
+                    <span style={{ fontSize: 14, color: bc, opacity: 0.7 }}>{b.metodo === 'triserie' ? '↓' : '⇅'}</span>
+                    <div style={{ flex: 1, height: 0.5, background: `${bc}33` }} />
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          return (
+            <section key={b.id} style={{ marginTop: 22 }}>
+              <div style={{ background: T.card, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(20,23,28,0.06), 0 1px 2px rgba(20,23,28,0.04)', border: `1px solid ${T.line}` }}>
+                {/* Block header */}
+                <div style={{ padding: '12px 14px', borderBottom: `0.5px solid ${T.line}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: bc }}>
+                      {String(idx + 1).padStart(2, '0')}
+                    </div>
+                    <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1, lineHeight: 1.2, color: T.ink }}>{b.nombre}</h2>
+                    {badge && (
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: badge.bg, color: badge.color, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace" }}>
+                        {badge.label}
+                      </span>
+                    )}
+                  </div>
+                  {descMetodo && (
+                    <p style={{ margin: '5px 0 0 40px', fontSize: 11.5, color: T.ink3, fontStyle: 'italic', lineHeight: 1.4 }}>{descMetodo}</p>
+                  )}
+                  {b.nota && (
+                    <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start', marginTop: 8, padding: '8px 10px', borderRadius: 8, background: `${bc}18`, fontSize: 12, lineHeight: 1.4, color: bc }}>
+                      <span>📝</span><span>{b.nota}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Exercises */}
+                {b.metodo === 'contrast' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `0.5px solid ${T.line}` }}>
+                    {ejsBloque.map((e, eIdx) => {
+                      const yid2 = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
+                      const esVideo2 = e.media_tipo === 'video' && e.media_url
+                      const esImg2 = (e.media_tipo === 'imagen' || e.media_tipo === 'gif') && e.media_url
+                      const activas2 = e.variables_activas || []
+                      const prog2 = progreso[e.id] || { series: [false], hecho: false }
+                      const vrEj2 = valoresReales[e.id] || {}
+                      const hecho2 = prog2.hecho
+                      const label2 = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
+                      const locked = sesionFlexibleGuardada || sesionFijaGuardada || clonToken
+                      return (
+                        <div key={e.id} style={{ borderRight: eIdx % 2 === 0 ? `0.5px solid ${T.line}` : 'none', padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0, background: hecho2 ? '#f6fef9' : T.card }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: bc, flexShrink: 0 }}>{label2}</span>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, flex: 1, lineHeight: 1.2, color: T.ink, minWidth: 0 }}>{e.nombre}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {e.series && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 7, padding: '4px 8px' }}><span style={{ fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>S</span><span style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.series}</span></div>}
+                            {e.reps && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 7, padding: '4px 8px' }}><span style={{ fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>R</span><span style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.reps}</span></div>}
+                            {activas2.includes('Peso') && e.peso && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 7, padding: '4px 8px' }}><span style={{ fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>kg</span><span style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.peso}</span></div>}
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {prog2.series.map((hecha, sIdx) => (
+                              <div key={sIdx}
+                                onClick={locked ? undefined : () => toggleSerie(e.id, sIdx)}
+                                style={{ width: 24, height: 24, borderRadius: 5, border: `1.5px solid ${hecha ? '#16a34a' : `${bc}44`}`, background: hecha ? '#16a34a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: locked ? 'default' : 'pointer', fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: hecha ? '#fff' : T.ink3, transition: 'all 0.15s' }}>
+                                {hecha ? '✓' : sIdx + 1}
+                              </div>
+                            ))}
+                          </div>
+                          {(esVideo2 || yid2 || esImg2) && (
+                            <div style={{ borderRadius: 8, overflow: 'hidden', aspectRatio: '9/16', position: 'relative', maxHeight: 190 }}>
+                              {esVideo2 ? (
+                                <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : yid2 ? (
+                                <div style={{ position: 'relative', width: '100%', paddingBottom: '177%' }}>
+                                  <iframe src={`https://www.youtube-nocookie.com/embed/${yid2}`} title={e.nombre} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                                </div>
+                              ) : (
+                                <img src={e.media_url} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              )}
+                            </div>
+                          )}
+                          {e.notas && <div style={{ fontSize: 10.5, color: T.ink3, lineHeight: 1.4 }}>📝 {e.notas}</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div>
+                    {ejsBloque.map((e, eIdx) => renderEj(e, eIdx, ejsBloque.length))}
+                  </div>
+                )}
+
+                {/* Block footer */}
+                <div style={{ padding: '9px 14px', borderTop: `0.5px solid ${T.line}`, background: `${bc}06`, display: 'flex', justifyContent: 'flex-end' }}>
+                  {sesionFlexibleGuardada || sesionFijaGuardada || clonToken ? (
+                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a' }}>✓ Bloque hecho</span>
+                  ) : (
+                    <button onClick={() => marcarBloque(ejsBloque)}
+                      style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 8, border: `1.5px solid ${bloqueHecho ? '#16a34a' : bc}`, background: bloqueHecho ? '#f0fdf4' : 'transparent', color: bloqueHecho ? '#16a34a' : bc, cursor: 'pointer' }}>
+                      {bloqueHecho ? '✓ Bloque hecho' : '✓ Todo el bloque'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          )
+        })}
 
         {/* MARCAR SESIÓN COMPLETA — botón pequeño al final */}
         {!sesionFlexibleGuardada && !sesionFijaGuardada && !feedbackEnviado && !clonToken && (() => {
@@ -862,27 +985,6 @@ export default function SesionPublica({ token }) {
           </div>
         )}
 
-        {/* COMENTARIO DE LA ENTRENADORA — al final, después del feedback */}
-        {sesion.comentario_entrenadora && (
-          <div id="comentario" style={{ marginTop: 24, background: T.accent + '12', border: `2px solid ${T.accent}55`, borderRadius: 14, padding: '16px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: T.accent }}>
-                💬 Mensaje de tu entrenadora
-              </div>
-              {comentarioVisto && <span style={{ fontSize: 10, color: T.accent, opacity: 0.7 }}>👁 Leído</span>}
-            </div>
-            <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6, color: T.ink, whiteSpace: 'pre-wrap' }}>{sesion.comentario_entrenadora}</p>
-            {!comentarioVisto && (
-              <button onClick={async () => {
-                await supabase.rpc('marcar_comentario_visto', { p_token: token })
-                setComentarioVisto(true)
-              }}
-                style={{ marginTop: 14, fontSize: 12, fontWeight: 600, color: T.accent, background: 'transparent', border: `1.5px solid ${T.accent}66`, borderRadius: 8, padding: '6px 16px', cursor: 'pointer', display: 'block' }}>
-                Marcar como leído
-              </button>
-            )}
-          </div>
-        )}
 
       </div>
     </div>
