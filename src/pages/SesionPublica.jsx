@@ -160,15 +160,16 @@ const METODO_BADGE = {
   amrap:       { label: 'AMRAP',       bg: 'rgba(157,23,77,0.1)',    color: '#9d174d' },
 }
 
-const DESCRIPCION_METODO = {
-  superserie: 'Dos ejercicios encadenados sin descanso entre ellos.',
-  triserie:   'Tres ejercicios encadenados sin descanso entre ellos.',
-  contrast:   'Carga pesada seguida de movimiento explosivo del mismo patrón.',
-  circuito:   'Todos los ejercicios en circuito continuo sin descanso.',
-  complejo:   'Misma carga, ejercicios encadenados sin soltarla.',
-  cluster:    'Series con micro-descansos dentro de la propia serie.',
-  emom:       'Un movimiento al comienzo de cada minuto.',
-  amrap:      'Tantas repeticiones como sea posible en el tiempo.',
+const DESCRIPCIONES_METODO = {
+  individual: 'Completa todas las series de cada ejercicio antes de pasar al siguiente. Descansa entre series el tiempo indicado.',
+  superserie: 'Haz el ejercicio A y pasa directamente al B sin descansar. Cuando termines los dos, descansa el tiempo indicado y repite.',
+  triserie:   'Haz A, luego B, luego C sin descansar entre ellos. Al terminar los tres, descansa y repite desde el principio.',
+  circuito:   'Pasa de un ejercicio al siguiente sin descansar hasta completar todos. Al terminar la vuelta completa, descansa y repite.',
+  complejo:   'Realiza todos los ejercicios seguidos sin soltar el implemento entre ellos. Solo descansas al completar la secuencia entera.',
+  contrast:   'Haz el primer ejercicio (carga pesada), descansa brevemente y pasa al segundo (explosivo) del mismo patrón. Luego descansas completo y repites.',
+  cluster:    'Dentro de cada serie, haz las repeticiones en mini-grupos con pausas cortas entre ellos. Por ejemplo: 2 reps, pausa 15", 2 reps, pausa 15", 2 reps. Luego descansa entre series.',
+  emom:       'Al inicio de cada minuto realiza el trabajo indicado. El tiempo que sobre hasta el siguiente minuto es tu descanso. Repite durante el tiempo total.',
+  amrap:      'Completa tantas rondas como puedas de los ejercicios indicados en el tiempo establecido. Anota las rondas completadas.',
 }
 
 export default function SesionPublica({ token }) {
@@ -554,7 +555,7 @@ export default function SesionPublica({ token }) {
           const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
           const bc = b.color || '#E29A2E'
           const badge = METODO_BADGE[b.metodo]
-          const descMetodo = b.descripcion_metodo || DESCRIPCION_METODO[b.metodo]
+          const descTexto = b.descripcion_metodo || DESCRIPCIONES_METODO[b.metodo || 'individual']
 
           function renderEj(e, eIdx, totalEjs) {
             const yid = e.media_tipo === 'youtube' ? ytId(e.media_url) : null
@@ -764,15 +765,19 @@ export default function SesionPublica({ token }) {
                       </span>
                     )}
                   </div>
-                  {descMetodo && (
-                    <p style={{ margin: '5px 0 0 40px', fontSize: 11.5, color: T.ink3, fontStyle: 'italic', lineHeight: 1.4 }}>{descMetodo}</p>
-                  )}
                   {b.nota && (
                     <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start', marginTop: 8, padding: '8px 10px', borderRadius: 8, background: `${bc}18`, fontSize: 12, lineHeight: 1.4, color: bc }}>
                       <span>📝</span><span>{b.nota}</span>
                     </div>
                   )}
                 </div>
+
+                {/* Descripción del método */}
+                {descTexto && (
+                  <div style={{ fontSize: 11, color: '#8B93A4', fontStyle: 'italic', padding: '8px 14px 10px 14px', lineHeight: 1.5, borderBottom: `0.5px solid ${T.line}` }}>
+                    {descTexto}
+                  </div>
+                )}
 
                 {/* Exercises */}
                 {b.metodo === 'contrast' ? (
