@@ -581,17 +581,9 @@ export default function SesionPublica({ token }) {
                   </div>
                 )}
                 {/* Name row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderBottom: `0.5px solid ${T.line}`, background: hecho ? '#f6fef9' : T.card }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: bc, flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, flex: 1, lineHeight: 1.25, color: T.ink }}>{e.nombre}</span>
-                  {locked ? (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 99, padding: '2px 9px', flexShrink: 0 }}>✓</span>
-                  ) : (
-                    <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
-                      style={{ fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 99, border: `1px solid ${hecho ? '#bbf7d0' : T.line}`, background: hecho ? '#f0fdf4' : 'transparent', color: hecho ? '#16a34a' : T.ink3, cursor: 'pointer', flexShrink: 0 }}>
-                      {hecho ? '✓' : 'Marcar'}
-                    </button>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: `${bc}12`, borderBottom: `0.5px solid ${bc}30` }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'monospace', color: bc, background: `${bc}20`, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, flex: 1, lineHeight: 1.25, color: T.ink }}>{e.nombre}</span>
                 </div>
                 {/* 2-col: media + data */}
                 <div style={{ display: 'flex', alignItems: 'stretch', background: hecho ? '#f6fef9' : T.card, transition: 'background 0.2s' }}>
@@ -716,20 +708,20 @@ export default function SesionPublica({ token }) {
                     </div>{/* /chips+inputs */}
                     {/* Series — parte inferior separada */}
                     {parseInt(e.series) > 0 && (
-                      <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `0.5px solid ${T.line}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ marginTop: 'auto', paddingTop: 6, marginTop: 6, borderTop: `0.5px solid ${T.line}`, display: 'flex', flexDirection: 'column', gap: 5 }}>
                         {!locked && (
                           <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
-                            style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: `1px solid ${T.line}`, background: 'transparent', color: T.ink2, fontSize: 12, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
+                            style={{ width: '100%', padding: '4px 8px', borderRadius: 4, border: `1px solid ${T.line}`, background: 'transparent', color: T.ink2, fontSize: 10, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
                             ✓ Marcar todas las series
                           </button>
                         )}
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           {prog.series.map((hecha, sIdx) => (
                             <div key={sIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 9, color: T.ink3, fontFamily: 'monospace' }}>{sIdx + 1}</span>
+                              <span style={{ fontSize: 8, color: T.ink3, fontFamily: 'monospace' }}>{sIdx + 1}</span>
                               <input type="checkbox" checked={hecha} disabled={!!locked}
                                 onChange={locked ? undefined : () => toggleSerie(e.id, sIdx)}
-                                style={{ width: 18, height: 18, cursor: locked ? 'default' : 'pointer', accentColor: bc }} />
+                                style={{ width: 14, height: 14, cursor: locked ? 'default' : 'pointer', accentColor: bc }} />
                             </div>
                           ))}
                         </div>
