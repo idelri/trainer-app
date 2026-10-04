@@ -623,8 +623,9 @@ export default function SesionPublica({ token }) {
                     )}
                   </div>
                   {/* Data col 58% */}
-                  <div style={{ flex: 1, padding: '10px 11px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                    {/* Chips */}
+                  <div style={{ flex: 1, padding: '10px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    {/* Chips + inputs — zona superior */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {e.series && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
@@ -712,27 +713,36 @@ export default function SesionPublica({ token }) {
                           style={{ fontSize: 11, border: `1px solid ${T.line}`, borderRadius: 6, padding: '3px 7px', outline: 'none', background: '#fff', color: T.ink2, width: 72 }} />
                       )}
                     </div>
-                    {/* Series checkboxes */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Series completadas</span>
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                        {prog.series.map((hecha, sIdx) => (
-                          <div key={sIdx}
-                            onClick={locked ? undefined : () => toggleSerie(e.id, sIdx)}
-                            style={{ width: 27, height: 27, borderRadius: 6, border: `1.5px solid ${hecha ? '#16a34a' : `${bc}55`}`, background: hecha ? '#16a34a' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: locked ? 'default' : 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: hecha ? '#fff' : T.ink3, transition: 'all 0.15s' }}>
-                            {hecha ? '✓' : sIdx + 1}
-                          </div>
-                        ))}
+                    </div>{/* /chips+inputs */}
+                    {/* Series — parte inferior separada */}
+                    {parseInt(e.series) > 0 && (
+                      <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `0.5px solid ${T.line}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {!locked && (
+                          <button onClick={() => marcarEjercicio(e.id, prog.series.length)}
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: `1px solid ${T.line}`, background: 'transparent', color: T.ink2, fontSize: 12, fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}>
+                            ✓ Marcar todas las series
+                          </button>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {prog.series.map((hecha, sIdx) => (
+                            <div key={sIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                              <span style={{ fontSize: 9, color: T.ink3, fontFamily: 'monospace' }}>{sIdx + 1}</span>
+                              <input type="checkbox" checked={hecha} disabled={!!locked}
+                                onChange={locked ? undefined : () => toggleSerie(e.id, sIdx)}
+                                style={{ width: 18, height: 18, cursor: locked ? 'default' : 'pointer', accentColor: bc }} />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                     {/* Nota */}
                     {e.notas && (
-                      <div style={{ display: 'flex', gap: 5, alignItems: 'flex-start', paddingTop: 6, borderTop: `0.5px solid ${T.line}`, fontSize: 11.5, color: T.ink2, lineHeight: 1.4 }}>
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: `0.5px solid ${T.line}`, display: 'flex', gap: 5, alignItems: 'flex-start', fontSize: 11.5, color: T.ink2, lineHeight: 1.4 }}>
                         <span style={{ flexShrink: 0, color: T.ink3 }}>📝</span>
                         <span>{e.notas}</span>
                       </div>
                     )}
-                  </div>
+                  </div>{/* /data col */}
                 </div>
                 {/* Separator between exercises (superserie / triserie) */}
                 {!isLast && (b.metodo === 'superserie' || b.metodo === 'triserie') && (
