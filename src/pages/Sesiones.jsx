@@ -696,8 +696,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [ejExpandido, setEjExpandido] = useState(null)
-  const [descansoEnMin, setDescansoEnMin] = useState(false)
-  const [descEjEnMin, setDescEjEnMin] = useState(false)
+  const [descansoEnMin, setDescansoEnMin] = useState({})
+  const [descEjEnMin, setDescEjEnMin] = useState({})
   const [editandoMetodo, setEditandoMetodo] = useState(null)
   const [editandoDescripcion, setEditandoDescripcion] = useState(null)
   const [colorPickerBloque, setColorPickerBloque] = useState(null) // { bloqueId, x, y }
@@ -2492,12 +2492,12 @@ async function guardarSesion() {
                       <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3, textAlign: 'center' }}>{getLabelDescansoEntre(b.metodo)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <input type="number" placeholder="—"
-                          defaultValue={b.descanso_seg ? (descansoEnMin ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
-                          key={`ds-${b.id}-${descansoEnMin}`}
-                          onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
+                          defaultValue={b.descanso_seg ? (descansoEnMin[b.id] ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
+                          key={`ds-${b.id}-${descansoEnMin[b.id]}`}
+                          onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
                           style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
-                        <button onClick={() => setDescansoEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
-                          {descansoEnMin ? 'min' : 'seg'}
+                        <button onClick={() => setDescansoEnMin(prev => ({ ...prev, [b.id]: !(prev[b.id]) }))} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
+                          {descansoEnMin[b.id] ? 'min' : 'seg'}
                         </button>
                       </div>
                     </div>
@@ -2506,12 +2506,12 @@ async function guardarSesion() {
                       <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Entre ejercicios</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <input type="number" placeholder="—"
-                          defaultValue={b.descanso_ejercicios_seg ? (descEjEnMin ? Math.round(b.descanso_ejercicios_seg / 60) : b.descanso_ejercicios_seg) : ''}
-                          key={`dej-${b.id}-${descEjEnMin}`}
-                          onBlur={ev => { const v = ev.target.value === '' ? null : (descEjEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
+                          defaultValue={b.descanso_ejercicios_seg ? (descEjEnMin[b.id] ? Math.round(b.descanso_ejercicios_seg / 60) : b.descanso_ejercicios_seg) : ''}
+                          key={`dej-${b.id}-${descEjEnMin[b.id]}`}
+                          onBlur={ev => { const v = ev.target.value === '' ? null : (descEjEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
                           style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
-                        <button onClick={() => setDescEjEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
-                          {descEjEnMin ? 'min' : 'seg'}
+                        <button onClick={() => setDescEjEnMin(prev => ({ ...prev, [b.id]: !(prev[b.id]) }))} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
+                          {descEjEnMin[b.id] ? 'min' : 'seg'}
                         </button>
                       </div>
                     </div>
