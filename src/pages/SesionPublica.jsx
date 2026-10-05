@@ -815,8 +815,8 @@ export default function SesionPublica({ token }) {
                   </div>
                 )}
 
-                {(b.vueltas || b.descanso_seg || b.descanso_ejercicios_seg) && (
-                  <div style={{ display: 'flex', borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
+                {METODOS_SERIES_BLOQUE.includes(b.metodo) && (b.vueltas || b.descanso_seg || b.descanso_ejercicios_seg) && (
+                  <div style={{ display: 'flex', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08`, marginBottom: 0 }}>
                     {b.vueltas && (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: `0.5px solid ${T.line}` }}>
                         <span style={{ fontSize: 9, color: '#8B93A4', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{getLabelVueltas(b.metodo)}</span>
