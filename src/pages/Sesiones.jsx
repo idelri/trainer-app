@@ -165,6 +165,17 @@ const METODOS_SESION = [
 ]
 const DESCRIPCIONES_METODO = Object.fromEntries(METODOS_SESION.map(m => [m.id, m.desc]))
 const METODO_COLOR = { individual: '#4a6fa5', superserie: '#3a8a6e', triserie: '#3a8a6e', circuito: '#4a6fa5', complejo: '#c07a3a', contrast: '#6b5b9e', cluster: '#c07a3a', emom: '#b04a4a', amrap: '#3a8a7e' }
+
+const getLabelEjercicio = (metodo, eIdx) => {
+  const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
+  switch (metodo) {
+    case 'circuito': return circ[eIdx] || `${eIdx+1}`
+    case 'amrap':    return circ[eIdx] || `${eIdx+1}`
+    case 'contrast': return ['P','E','V'][eIdx] || String.fromCharCode(65+eIdx)
+    case 'emom':     return `M${eIdx+1}`
+    default:         return String.fromCharCode(65+eIdx)
+  }
+}
 const COLORES_BLOQUE = ['#4a6fa5','#3a8a6e','#c07a3a','#6b5b9e','#b04a4a','#3a8a7e','#7a6a3a','#4a8a8a','#8a4a6a','#6a7a4a']
 const VARS_DEFAULT_METODO = {
   individual:  ['Peso', 'RIR'],
@@ -672,6 +683,8 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [ejExpandido, setEjExpandido] = useState(null)
+  const [descansoEnMin, setDescansoEnMin] = useState(false)
+  const [editandoMetodo, setEditandoMetodo] = useState(null)
   const [editandoDescripcion, setEditandoDescripcion] = useState(null)
   const [colorPickerBloque, setColorPickerBloque] = useState(null) // { bloqueId, x, y }
   const [vistaPrevia, setVistaPrevia] = useState(false)
@@ -2108,8 +2121,7 @@ async function guardarSesion() {
                   const ytEmbedId = e.media_tipo === 'youtube' ? (getYtId(e.video_url) || getYtId(e.media_url)) : null
                   const activas = e.variables_activas || []
                   const menuKey = `${b.id}-${e.id}`
-                  const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                  const label = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
+                  const label = `${idx + 1}${getLabelEjercicio(b.metodo, eIdx)}`
                   const varsText = formatVarsCompacto(e)
 
                   const mediaMini = e.media_url || e.media_tipo === 'youtube' ? (
@@ -2118,9 +2130,17 @@ async function guardarSesion() {
                       : e.media_tipo === 'youtube'
                         ? expandido && ytEmbedId
                           ? <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1&mute=1&controls=1`} style={{ width: 160, height: 90, borderRadius: 4, border: 'none', flexShrink: 0 }} allow="autoplay" allowFullScreen title="yt" />
-                          : <div style={{ width: 56, height: 56, borderRadius: 4, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <span style={{ fontSize: 18, color: '#ff0000' }}>▶</span>
-                            </div>
+                          : ytEmbedId
+                            ? <div style={{ position: 'relative', width: 56, height: 56, borderRadius: 4, flexShrink: 0, overflow: 'hidden' }}>
+                                <img src={`https://img.youtube.com/vi/${ytEmbedId}/hqdefault.jpg`} alt=""
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                <div style={{ position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <svg width="6" height="6" viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9"/></svg>
+                                </div>
+                              </div>
+                            : <div style={{ width: 56, height: 56, borderRadius: 4, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 18, color: '#ff0000' }}>▶</span>
+                              </div>
                         : <img src={e.media_url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
                   ) : null
 
@@ -2444,9 +2464,14 @@ async function guardarSesion() {
                 const footerStd = (labelMetodo, mc) => (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
                     <span>⏱ Descanso entre {labelMetodo}</span>
-                    <input type="number" defaultValue={b.descanso_seg || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
+                    <input type="number"
+                      defaultValue={b.descanso_seg ? (descansoEnMin ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
+                      key={`${b.id}-${descansoEnMin}`}
+                      onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
                       style={{ width: 44, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
-                    <span>s</span>
+                    <button onClick={() => setDescansoEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'monospace' }}>
+                      {descansoEnMin ? 'min' : 'seg'}
+                    </button>
                     <span style={{ flex: 1 }} />
                     <input type="number" defaultValue={b.vueltas || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
                       style={{ width: 36, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
@@ -2701,7 +2726,10 @@ async function guardarSesion() {
                           style={{ width: 22, height: 22, borderRadius: '50%', background: `${bc}22`, border: `1.5px solid ${bc}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: bc, filter: 'brightness(0.7)' }}>
                           {idx + 1}
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${bc}18`, color: bc, border: `1px solid ${bc}33`, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.05em' }}>
+                        <span
+                          title="Cambiar método"
+                          onClick={ev => { ev.stopPropagation(); setEditandoMetodo(editandoMetodo === b.id ? null : b.id) }}
+                          style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: `${bc}18`, color: bc, border: `1px solid ${bc}33`, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '.05em', cursor: 'pointer' }}>
                           {nombreMetodo}
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -2713,6 +2741,24 @@ async function guardarSesion() {
                         <button className="btn btn-ghost btn-sm" title="Copiar bloque" onClick={() => copiarBloqueFuerza(b)} style={{ color: 'var(--text3)', opacity: .5 }}>📋</button>
                         <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', opacity: .5 }} onClick={() => eliminarBloque(b.id)}><Trash2 size={12} /></button>
                       </div>
+                      {editandoMetodo === b.id && (
+                        <div style={{ padding: '8px 10px', borderBottom: '0.5px solid var(--border)', background: 'var(--surface2, #f8f9fa)' }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 6 }}>Cambiar método</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                            {METODOS_SESION.map(m => (
+                              <button key={m.id} type="button"
+                                onClick={async () => {
+                                  await supabase.from('sesion_bloques').update({ metodo: m.id, descripcion_metodo: DESCRIPCIONES_METODO[m.id] }).eq('id', b.id)
+                                  setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, metodo: m.id, descripcion_metodo: DESCRIPCIONES_METODO[m.id] } : bl))
+                                  setEditandoMetodo(null)
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 8px', borderRadius: 7, border: b.metodo === m.id ? `1.5px solid ${bc}` : '1px solid var(--border)', background: b.metodo === m.id ? `${bc}12` : 'var(--bg)', cursor: 'pointer', fontSize: 10, fontWeight: b.metodo === m.id ? 700 : 400, color: b.metodo === m.id ? bc : 'var(--text2)' }}>
+                                <span>{m.icono}</span><span>{m.nombre}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div style={{ fontSize: 9, color: 'var(--text3)', fontStyle: 'italic', padding: '0 10px 5px 18px', lineHeight: 1.4, cursor: 'text', fontFamily: "'Inter', system-ui, sans-serif", background: 'var(--surface2, #f8f9fa)', borderBottom: '0.5px solid var(--border)' }}>
                         {editandoDescripcion === b.id ? (
                           <textarea

@@ -148,16 +148,27 @@ function RirChip({ valor, colorMap, bgMap, T }) {
   )
 }
 
-const METODO_BADGE = {
-  individual:  { label: 'Individual',  bg: 'rgba(100,100,100,0.1)',  color: '#555' },
-  superserie:  { label: 'Superserie',  bg: 'rgba(30,58,138,0.1)',    color: '#1e3a8a' },
-  triserie:    { label: 'Triserie',    bg: 'rgba(91,33,182,0.1)',    color: '#5b21b6' },
-  contrast:    { label: 'Contrast',    bg: 'rgba(91,33,182,0.1)',    color: '#5b21b6' },
-  circuito:    { label: 'Circuito',    bg: 'rgba(5,150,105,0.1)',    color: '#047857' },
-  complejo:    { label: 'Complejo',    bg: 'rgba(180,83,9,0.1)',     color: '#b45309' },
-  cluster:     { label: 'Cluster',     bg: 'rgba(133,77,14,0.1)',    color: '#92400e' },
-  emom:        { label: 'EMOM',        bg: 'rgba(153,27,27,0.1)',    color: '#991b1b' },
-  amrap:       { label: 'AMRAP',       bg: 'rgba(157,23,77,0.1)',    color: '#9d174d' },
+const METODO_LABEL = {
+  individual: 'Individual',
+  superserie: 'Superserie',
+  triserie:   'Triserie',
+  circuito:   'Circuito',
+  complejo:   'Complejo',
+  contrast:   'Contrast',
+  cluster:    'Cluster',
+  emom:       'EMOM',
+  amrap:      'AMRAP',
+}
+
+const getLabelEjercicio = (metodo, eIdx) => {
+  const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
+  switch (metodo) {
+    case 'circuito': return circ[eIdx] || `${eIdx+1}`
+    case 'amrap':    return circ[eIdx] || `${eIdx+1}`
+    case 'contrast': return ['P','E','V'][eIdx] || String.fromCharCode(65+eIdx)
+    case 'emom':     return `M${eIdx+1}`
+    default:         return String.fromCharCode(65+eIdx)
+  }
 }
 
 const DESCRIPCIONES_METODO = {
@@ -194,6 +205,7 @@ export default function SesionPublica({ token }) {
   const [sesionFijaGuardada, setSesionFijaGuardada] = useState(false)
   const [clonToken, setClonToken] = useState(null)
   const [comentarioVisto, setComentarioVisto] = useState(false)
+  const [videoActivo, setVideoActivo] = useState({})
 
   useEffect(() => { cargar() }, [token])
 
@@ -554,7 +566,7 @@ export default function SesionPublica({ token }) {
           const ejsBloque = ejercicios[b.id] || []
           const bloqueHecho = ejsBloque.every(e => progreso[e.id]?.hecho)
           const bc = b.color || '#E29A2E'
-          const badge = METODO_BADGE[b.metodo]
+          const metodoLabel = METODO_LABEL[b.metodo || 'individual']
           const descTexto = b.descripcion_metodo || DESCRIPCIONES_METODO[b.metodo || 'individual']
 
           function renderEj(e, eIdx, totalEjs) {
@@ -568,7 +580,7 @@ export default function SesionPublica({ token }) {
             const hecho = prog.hecho
             const rirColorMap = { '4+': '#16a34a', '2-3': '#ca8a04', '1-0': '#dc2626' }
             const rirBgMap   = { '4+': '#f0fdf4', '2-3': '#fffbeb', '1-0': '#fef2f2' }
-            const label = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
+            const label = `${idx + 1}${getLabelEjercicio(b.metodo, eIdx)}`
             const isLast = eIdx === totalEjs - 1
             const locked = sesionFlexibleGuardada || sesionFijaGuardada || clonToken
             const hasMedia = esVideoArchivo || yid || esImagen
@@ -595,10 +607,21 @@ export default function SesionPublica({ token }) {
                         style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', display: 'block' }} />
                     ) : yid ? (
                       <div style={{ position: 'relative', width: '100%', paddingBottom: '133%', overflow: 'hidden' }}>
-                        <iframe src={`https://www.youtube-nocookie.com/embed/${yid}`} title={e.nombre}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                        {videoActivo[e.id] ? (
+                          <iframe src={`https://www.youtube-nocookie.com/embed/${yid}?autoplay=1`} title={e.nombre}
+                            allow="autoplay; fullscreen"
+                            allowFullScreen
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                        ) : (
+                          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                            onClick={() => setVideoActivo(v => ({ ...v, [e.id]: true }))}>
+                            <img src={`https://img.youtube.com/vi/${yid}/hqdefault.jpg`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="" />
+                            <div style={{ position: 'absolute', bottom: 8, left: 8, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: '1.5px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9"/></svg>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : esImagen ? (
                       <img src={e.media_url} alt={e.nombre}
@@ -759,9 +782,9 @@ export default function SesionPublica({ token }) {
                       {String(idx + 1).padStart(2, '0')}
                     </div>
                     <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1, lineHeight: 1.2, color: T.ink }}>{b.nombre}</h2>
-                    {badge && (
-                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: badge.bg, color: badge.color, flexShrink: 0, fontFamily: "'JetBrains Mono', monospace" }}>
-                        {badge.label}
+                    {metodoLabel && (
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 8px', borderRadius: 99, background: `${bc}18`, color: bc, border: `1px solid ${bc}33`, flexShrink: 0, fontFamily: 'monospace' }}>
+                        {metodoLabel}
                       </span>
                     )}
                   </div>
@@ -779,6 +802,18 @@ export default function SesionPublica({ token }) {
                   </div>
                 )}
 
+                {b.descanso_seg && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 11, color: '#8B93A4', borderBottom: `0.5px solid ${T.line}` }}>
+                    <span>⏱</span>
+                    <span>Descanso entre series:</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
+                      {b.descanso_seg >= 60
+                        ? `${Math.floor(b.descanso_seg / 60)}min${b.descanso_seg % 60 > 0 ? ` ${b.descanso_seg % 60}s` : ''}`
+                        : `${b.descanso_seg}s`}
+                    </span>
+                  </div>
+                )}
+
                 {/* Exercises */}
                 {b.metodo === 'contrast' ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `0.5px solid ${T.line}` }}>
@@ -790,7 +825,7 @@ export default function SesionPublica({ token }) {
                       const prog2 = progreso[e.id] || { series: [false], hecho: false }
                       const vrEj2 = valoresReales[e.id] || {}
                       const hecho2 = prog2.hecho
-                      const label2 = `${idx + 1}${String.fromCharCode(65 + eIdx)}`
+                      const label2 = `${idx + 1}${getLabelEjercicio(b.metodo, eIdx)}`
                       const locked = sesionFlexibleGuardada || sesionFijaGuardada || clonToken
                       return (
                         <div key={e.id} style={{ borderRight: eIdx % 2 === 0 ? `0.5px solid ${T.line}` : 'none', padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: 7, minWidth: 0, background: hecho2 ? '#f6fef9' : T.card }}>
@@ -818,7 +853,20 @@ export default function SesionPublica({ token }) {
                                 <video src={e.media_url} controls muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : yid2 ? (
                                 <div style={{ position: 'relative', width: '100%', paddingBottom: '177%' }}>
-                                  <iframe src={`https://www.youtube-nocookie.com/embed/${yid2}`} title={e.nombre} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                                  {videoActivo[e.id] ? (
+                                    <iframe src={`https://www.youtube-nocookie.com/embed/${yid2}?autoplay=1`} title={e.nombre}
+                                      allow="autoplay; fullscreen" allowFullScreen
+                                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
+                                  ) : (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                                      onClick={() => setVideoActivo(v => ({ ...v, [e.id]: true }))}>
+                                      <img src={`https://img.youtube.com/vi/${yid2}/hqdefault.jpg`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} alt="" />
+                                      <div style={{ position: 'absolute', bottom: 8, left: 8, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: '1.5px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9"/></svg>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <img src={e.media_url} alt={e.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
