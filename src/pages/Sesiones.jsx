@@ -168,6 +168,17 @@ const METODO_COLOR = { individual: '#4a6fa5', superserie: '#3a8a6e', triserie: '
 
 const METODOS_SERIES_BLOQUE = ['superserie','triserie','circuito','complejo','contrast','cluster','emom','amrap']
 
+const getLabelVueltas = (metodo) => {
+  if (metodo === 'circuito' || metodo === 'amrap') return 'vueltas'
+  if (metodo === 'emom') return 'min'
+  return 'series'
+}
+
+const getLabelDescansoEntre = (metodo) => {
+  if (metodo === 'circuito' || metodo === 'amrap') return 'Desc. entre vueltas'
+  return 'Desc. entre series'
+}
+
 const getLabelEjercicio = (metodo, eIdx) => {
   const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
   switch (metodo) {
@@ -686,6 +697,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [draggingEj, setDraggingEj] = useState(null)
   const [ejExpandido, setEjExpandido] = useState(null)
   const [descansoEnMin, setDescansoEnMin] = useState(false)
+  const [descEjEnMin, setDescEjEnMin] = useState(false)
   const [editandoMetodo, setEditandoMetodo] = useState(null)
   const [editandoDescripcion, setEditandoDescripcion] = useState(null)
   const [colorPickerBloque, setColorPickerBloque] = useState(null) // { bloqueId, x, y }
@@ -2467,26 +2479,42 @@ async function guardarSesion() {
                 }
 
                 const footerStd = (labelMetodo, mc) => (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
-                    <span>⏱ Descanso entre {labelMetodo}</span>
-                    <input type="number"
-                      defaultValue={b.descanso_seg ? (descansoEnMin ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
-                      key={`${b.id}-${descansoEnMin}`}
-                      onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
-                      style={{ width: 44, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
-                    <button onClick={() => setDescansoEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer', fontFamily: 'monospace' }}>
-                      {descansoEnMin ? 'min' : 'seg'}
-                    </button>
-                    <span style={{ flex: 1 }} />
-                    <span style={{ color: 'var(--text3)', fontSize: 11 }}>Entre ejs:</span>
-                    <input type="number" defaultValue={b.descanso_ejercicios_seg || ''}
-                      onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
-                      style={{ width: 40, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
-                    <span>s</span>
-                    <span style={{ margin: '0 2px', opacity: 0.3 }}>|</span>
-                    <input type="number" defaultValue={b.vueltas || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
-                      style={{ width: 36, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
-                    <span>series</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderTop: '1px solid var(--border)', background: `${mc}08` }}>
+                    {/* Sección 1: vueltas/series/min */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{getLabelVueltas(b.metodo)}</span>
+                      <input type="number" placeholder="—" defaultValue={b.vueltas || ''}
+                        onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
+                        style={{ width: 40, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
+                    </div>
+                    {/* Sección 2: descanso entre series/vueltas */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3, textAlign: 'center' }}>{getLabelDescansoEntre(b.metodo)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input type="number" placeholder="—"
+                          defaultValue={b.descanso_seg ? (descansoEnMin ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
+                          key={`ds-${b.id}-${descansoEnMin}`}
+                          onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
+                          style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
+                        <button onClick={() => setDescansoEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
+                          {descansoEnMin ? 'min' : 'seg'}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Sección 3: descanso entre ejercicios */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px' }}>
+                      <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Entre ejercicios</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input type="number" placeholder="—"
+                          defaultValue={b.descanso_ejercicios_seg ? (descEjEnMin ? Math.round(b.descanso_ejercicios_seg / 60) : b.descanso_ejercicios_seg) : ''}
+                          key={`dej-${b.id}-${descEjEnMin}`}
+                          onBlur={ev => { const v = ev.target.value === '' ? null : (descEjEnMin ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
+                          style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
+                        <button onClick={() => setDescEjEnMin(d => !d)} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
+                          {descEjEnMin ? 'min' : 'seg'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )
 

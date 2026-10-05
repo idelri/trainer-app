@@ -162,6 +162,17 @@ const METODO_LABEL = {
 
 const METODOS_SERIES_BLOQUE = ['superserie','triserie','circuito','complejo','contrast','cluster','emom','amrap']
 
+const getLabelVueltas = (metodo) => {
+  if (metodo === 'circuito' || metodo === 'amrap') return 'vueltas'
+  if (metodo === 'emom') return 'min'
+  return 'series'
+}
+
+const getLabelDescansoEntre = (metodo) => {
+  if (metodo === 'circuito' || metodo === 'amrap') return 'Desc. entre vueltas'
+  return 'Desc. entre series'
+}
+
 const getLabelEjercicio = (metodo, eIdx) => {
   const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
   switch (metodo) {
@@ -805,28 +816,28 @@ export default function SesionPublica({ token }) {
                 )}
 
                 {(b.vueltas || b.descanso_seg || b.descanso_ejercicios_seg) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '8px 14px', fontSize: 11, color: '#8B93A4', borderBottom: `0.5px solid ${T.line}`, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
                     {b.vueltas && (
-                      <span>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>{b.vueltas}</span>
-                        {' series'}
-                      </span>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: `0.5px solid ${T.line}` }}>
+                        <span style={{ fontSize: 9, color: '#8B93A4', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{getLabelVueltas(b.metodo)}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color: bc }}>{b.vueltas}</span>
+                      </div>
                     )}
                     {b.descanso_seg && (
-                      <span>
-                        {'⏱ Descanso series: '}
-                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: b.descanso_ejercicios_seg ? `0.5px solid ${T.line}` : 'none' }}>
+                        <span style={{ fontSize: 9, color: '#8B93A4', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3, textAlign: 'center' }}>{getLabelDescansoEntre(b.metodo)}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color: bc }}>
                           {b.descanso_seg >= 60 ? `${Math.floor(b.descanso_seg/60)}min${b.descanso_seg%60>0?` ${b.descanso_seg%60}s`:''}` : `${b.descanso_seg}s`}
                         </span>
-                      </span>
+                      </div>
                     )}
                     {b.descanso_ejercicios_seg && (
-                      <span>
-                        {'↔ Entre ejercicios: '}
-                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px' }}>
+                        <span style={{ fontSize: 9, color: '#8B93A4', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3, textAlign: 'center' }}>Entre ejercicios</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, color: bc }}>
                           {b.descanso_ejercicios_seg >= 60 ? `${Math.floor(b.descanso_ejercicios_seg/60)}min` : `${b.descanso_ejercicios_seg}s`}
                         </span>
-                      </span>
+                      </div>
                     )}
                   </div>
                 )}
