@@ -160,6 +160,8 @@ const METODO_LABEL = {
   amrap:      'AMRAP',
 }
 
+const METODOS_SERIES_BLOQUE = ['superserie','triserie','circuito','complejo','contrast','cluster','emom','amrap']
+
 const getLabelEjercicio = (metodo, eIdx) => {
   const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
   switch (metodo) {
@@ -643,7 +645,7 @@ export default function SesionPublica({ token }) {
                     {/* Chips + inputs — zona superior */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {e.series && (
+                      {e.series && !METODOS_SERIES_BLOQUE.includes(b.metodo) && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: T.paper, borderRadius: 8, padding: '5px 9px' }}>
                           <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Series</span>
                           <span style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontFamily: "'JetBrains Mono', monospace" }}>{e.series}</span>
@@ -802,15 +804,30 @@ export default function SesionPublica({ token }) {
                   </div>
                 )}
 
-                {b.descanso_seg && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 11, color: '#8B93A4', borderBottom: `0.5px solid ${T.line}` }}>
-                    <span>⏱</span>
-                    <span>Descanso entre series:</span>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
-                      {b.descanso_seg >= 60
-                        ? `${Math.floor(b.descanso_seg / 60)}min${b.descanso_seg % 60 > 0 ? ` ${b.descanso_seg % 60}s` : ''}`
-                        : `${b.descanso_seg}s`}
-                    </span>
+                {(b.vueltas || b.descanso_seg || b.descanso_ejercicios_seg) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '8px 14px', fontSize: 11, color: '#8B93A4', borderBottom: `0.5px solid ${T.line}`, alignItems: 'center' }}>
+                    {b.vueltas && (
+                      <span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>{b.vueltas}</span>
+                        {' series'}
+                      </span>
+                    )}
+                    {b.descanso_seg && (
+                      <span>
+                        {'⏱ Descanso series: '}
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
+                          {b.descanso_seg >= 60 ? `${Math.floor(b.descanso_seg/60)}min${b.descanso_seg%60>0?` ${b.descanso_seg%60}s`:''}` : `${b.descanso_seg}s`}
+                        </span>
+                      </span>
+                    )}
+                    {b.descanso_ejercicios_seg && (
+                      <span>
+                        {'↔ Entre ejercicios: '}
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: bc }}>
+                          {b.descanso_ejercicios_seg >= 60 ? `${Math.floor(b.descanso_ejercicios_seg/60)}min` : `${b.descanso_ejercicios_seg}s`}
+                        </span>
+                      </span>
+                    )}
                   </div>
                 )}
 

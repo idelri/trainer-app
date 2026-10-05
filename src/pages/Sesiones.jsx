@@ -166,6 +166,8 @@ const METODOS_SESION = [
 const DESCRIPCIONES_METODO = Object.fromEntries(METODOS_SESION.map(m => [m.id, m.desc]))
 const METODO_COLOR = { individual: '#4a6fa5', superserie: '#3a8a6e', triserie: '#3a8a6e', circuito: '#4a6fa5', complejo: '#c07a3a', contrast: '#6b5b9e', cluster: '#c07a3a', emom: '#b04a4a', amrap: '#3a8a7e' }
 
+const METODOS_SERIES_BLOQUE = ['superserie','triserie','circuito','complejo','contrast','cluster','emom','amrap']
+
 const getLabelEjercicio = (metodo, eIdx) => {
   const circ = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨']
   switch (metodo) {
@@ -2098,8 +2100,9 @@ async function guardarSesion() {
                 const EJECUCION_LABEL = { maxima: 'Máx vel', medio: 'Ritmo med', excentrico: 'Foco exc' }
                 function formatVarsCompacto(ej) {
                   const p = []
-                  if (ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}${ej.reps_por_lado ? ' c/lado' : ''}`)
-                  else if (ej.series) p.push(`${ej.series} series`)
+                  const seriesBloque = METODOS_SERIES_BLOQUE.includes(b.metodo)
+                  if (!seriesBloque && ej.series && ej.reps) p.push(`${ej.series}×${ej.reps}${ej.reps_por_lado ? ' c/lado' : ''}`)
+                  else if (!seriesBloque && ej.series) p.push(`${ej.series} series`)
                   else if (ej.reps) p.push(`${ej.reps}${ej.reps_por_lado ? ' c/lado' : ''}`)
                   if (ej.num_mini && ej.reps_mini) p.push(`${ej.num_mini}×${ej.reps_mini} mini`)
                   if (ej.microdescanso_seg) p.push(`⏸${ej.microdescanso_seg}s`)
@@ -2216,10 +2219,12 @@ async function guardarSesion() {
 
                               {/* Series + Reps */}
                               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
-                                  <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
-                                </div>
+                                {!METODOS_SERIES_BLOQUE.includes(b.metodo) && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Series</span>
+                                    <div style={{ width: 36 }}><InlineInput value={e.series} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'series', v)} /></div>
+                                  </div>
+                                )}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>Reps</span>
                                   <div style={{ width: 60 }}><InlineInput value={e.reps} placeholder="—" fontSize={11} onSave={v => actualizarEjercicio(b.id, e.id, 'reps', v)} /></div>
@@ -2473,6 +2478,12 @@ async function guardarSesion() {
                       {descansoEnMin ? 'min' : 'seg'}
                     </button>
                     <span style={{ flex: 1 }} />
+                    <span style={{ color: 'var(--text3)', fontSize: 11 }}>Entre ejs:</span>
+                    <input type="number" defaultValue={b.descanso_ejercicios_seg || ''}
+                      onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
+                      style={{ width: 40, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                    <span>s</span>
+                    <span style={{ margin: '0 2px', opacity: 0.3 }}>|</span>
                     <input type="number" defaultValue={b.vueltas || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
                       style={{ width: 36, border: 'none', borderBottom: `1px solid ${mc}66`, background: 'transparent', color: mc, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
                     <span>series</span>
