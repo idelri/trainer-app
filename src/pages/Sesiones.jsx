@@ -696,6 +696,7 @@ export default function Sesiones({ clienteInicial, sesionInicialId, fechaNuevaSe
   const [saving, setSaving] = useState(false)
   const [draggingEj, setDraggingEj] = useState(null)
   const [ejExpandido, setEjExpandido] = useState(null)
+  const [ytActivo, setYtActivo] = useState({})
   const [descansoEnMin, setDescansoEnMin] = useState({})
   const [descEjEnMin, setDescEjEnMin] = useState({})
   const [editandoMetodo, setEditandoMetodo] = useState(null)
@@ -2143,19 +2144,22 @@ async function guardarSesion() {
                     e.media_tipo === 'video'
                       ? <video src={e.media_url} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} autoPlay muted loop playsInline />
                       : e.media_tipo === 'youtube'
-                        ? expandido && ytEmbedId
-                          ? <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1&mute=1&controls=1`} style={{ width: 160, height: 90, borderRadius: 4, border: 'none', flexShrink: 0 }} allow="autoplay" allowFullScreen title="yt" />
-                          : ytEmbedId
-                            ? <div style={{ position: 'relative', width: 56, height: 56, borderRadius: 4, flexShrink: 0, overflow: 'hidden' }}>
-                                <img src={`https://img.youtube.com/vi/${ytEmbedId}/hqdefault.jpg`} alt=""
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                <div style={{ position: 'absolute', bottom: 4, left: 4, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <svg width="6" height="6" viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9"/></svg>
+                        ? ytEmbedId
+                          ? <div style={{ position: 'relative', width: expandido ? 120 : 56, height: expandido ? 160 : 56, borderRadius: expandido ? 8 : 4, flexShrink: 0, overflow: 'hidden' }}>
+                              {expandido && ytActivo[e.id] ? (
+                                <iframe src={`https://www.youtube.com/embed/${ytEmbedId}?autoplay=1`} style={{ width: '100%', height: '100%', border: 'none' }} allow="autoplay; fullscreen" allowFullScreen />
+                              ) : (
+                                <div onClick={expandido ? ev => { ev.stopPropagation(); setYtActivo(v => ({ ...v, [e.id]: true })) } : undefined} style={{ position: 'relative', width: '100%', height: '100%', cursor: expandido ? 'pointer' : 'default' }}>
+                                  <img src={`https://img.youtube.com/vi/${ytEmbedId}/hqdefault.jpg`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                  <div style={{ position: 'absolute', bottom: expandido ? 8 : 4, left: expandido ? 8 : 4, width: expandido ? 28 : 18, height: expandido ? 28 : 18, borderRadius: '50%', background: 'rgba(0,0,0,0.7)', border: `${expandido ? 1.5 : 1}px solid rgba(255,255,255,0.5)`, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                                    <svg width={expandido ? 10 : 6} height={expandido ? 10 : 6} viewBox="0 0 10 10" fill="white"><polygon points="2,1 9,5 2,9"/></svg>
+                                  </div>
                                 </div>
-                              </div>
-                            : <div style={{ width: 56, height: 56, borderRadius: 4, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span style={{ fontSize: 18, color: '#ff0000' }}>▶</span>
-                              </div>
+                              )}
+                            </div>
+                          : <div style={{ width: 56, height: 56, borderRadius: 4, flexShrink: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: 18, color: '#ff0000' }}>▶</span>
+                            </div>
                         : <img src={e.media_url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
                   ) : null
 
