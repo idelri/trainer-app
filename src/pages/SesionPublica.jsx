@@ -595,7 +595,7 @@ export default function SesionPublica({ token }) {
                 )}
                 {/* Name row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: `${bc}12`, borderBottom: `0.5px solid ${bc}30` }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'monospace', color: bc, background: `${bc}20`, padding: '2px 7px', borderRadius: 4, flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace', color: bc, background: `${bc}20`, padding: '3px 8px', borderRadius: 4, flexShrink: 0, minWidth: 24, textAlign: 'center' }}>{label}</span>
                   <span style={{ fontSize: 14, fontWeight: 700, flex: 1, lineHeight: 1.25, color: T.ink }}>{e.nombre}</span>
                 </div>
                 {/* 2-col: media + data */}
@@ -778,7 +778,7 @@ export default function SesionPublica({ token }) {
                 {/* Block header */}
                 <div style={{ padding: '12px 14px', borderBottom: `0.5px solid ${T.line}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: bc }}>
+                    <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", background: bc }}>
                       {String(idx + 1).padStart(2, '0')}
                     </div>
                     <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1, lineHeight: 1.2, color: T.ink }}>{b.nombre}</h2>

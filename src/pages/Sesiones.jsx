@@ -2190,7 +2190,7 @@ async function guardarSesion() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px', height: 32 }}>
                         <span style={{ fontSize: 11, color: 'var(--text4)', cursor: 'grab', flexShrink: 0, userSelect: 'none', lineHeight: 1 }}>⠿</span>
                         {prefixLabel && <span style={{ fontSize: 9, fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: 1, fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>{prefixLabel}</span>}
-                        <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, color: accentColor, background: mC(accentColor || '#888', 0.12), padding: '1px 5px', borderRadius: 3, flexShrink: 0, letterSpacing: '.03em' }}>{label}</span>
+                        <span style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: accentColor, background: mC(accentColor || '#888', 0.12), padding: '2px 7px', borderRadius: 3, flexShrink: 0, letterSpacing: '.03em', minWidth: 22, textAlign: 'center' }}>{label}</span>
                         <span style={{ fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>
                           {e.nombre || <span style={{ color: 'var(--text3)', fontWeight: 400 }}>Sin nombre</span>}
                         </span>
@@ -2718,12 +2718,12 @@ async function guardarSesion() {
                   const nombreMetodo = (METODOS_SESION.find(m => m.id === (b.metodo || 'individual'))?.nombre || b.metodo || 'Individual').toUpperCase()
                   return (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderBottom: '0.5px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderBottom: '0.5px solid var(--border)' }}>
                         <span style={{ color: 'var(--text4)', cursor: 'grab', fontSize: 13, userSelect: 'none', flexShrink: 0 }}>⠿</span>
                         <div
                           title="Cambiar color del bloque"
                           onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setColorPickerBloque(colorPickerBloque?.bloqueId === b.id ? null : { bloqueId: b.id, x: r.left, y: r.bottom + 6 }) }}
-                          style={{ width: 22, height: 22, borderRadius: '50%', background: `${bc}22`, border: `1.5px solid ${bc}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: bc, filter: 'brightness(0.7)' }}>
+                          style={{ width: 26, height: 26, borderRadius: '50%', background: `${bc}22`, border: `1.5px solid ${bc}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: bc, filter: 'brightness(0.7)' }}>
                           {idx + 1}
                         </div>
                         <span
