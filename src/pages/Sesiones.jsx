@@ -2718,12 +2718,12 @@ async function guardarSesion() {
                   const nombreMetodo = (METODOS_SESION.find(m => m.id === (b.metodo || 'individual'))?.nombre || b.metodo || 'Individual').toUpperCase()
                   return (
                     <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderBottom: '0.5px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 10px', borderBottom: '0.5px solid var(--border)' }}>
                         <span style={{ color: 'var(--text4)', cursor: 'grab', fontSize: 13, userSelect: 'none', flexShrink: 0 }}>⠿</span>
                         <div
                           title="Cambiar color del bloque"
                           onClick={ev => { ev.stopPropagation(); const r = ev.currentTarget.getBoundingClientRect(); setColorPickerBloque(colorPickerBloque?.bloqueId === b.id ? null : { bloqueId: b.id, x: r.left, y: r.bottom + 6 }) }}
-                          style={{ width: 26, height: 26, borderRadius: '50%', background: `${bc}22`, border: `1.5px solid ${bc}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: bc, filter: 'brightness(0.7)' }}>
+                          style={{ width: 30, height: 30, borderRadius: '50%', background: `${bc}15`, border: `2px solid ${bc}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 12, fontFamily: 'monospace', fontWeight: 700, color: bc }}>
                           {idx + 1}
                         </div>
                         <span

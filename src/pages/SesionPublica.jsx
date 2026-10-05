@@ -777,8 +777,8 @@ export default function SesionPublica({ token }) {
               <div style={{ background: T.card, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(20,23,28,0.06), 0 1px 2px rgba(20,23,28,0.04)', border: `1px solid ${T.line}` }}>
                 {/* Block header */}
                 <div style={{ padding: '12px 14px', borderBottom: `0.5px solid ${T.line}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 11, fontFamily: "'JetBrains Mono', monospace", background: bc }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: bc, fontWeight: 700, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: `${bc}15`, border: `2px solid ${bc}` }}>
                       {String(idx + 1).padStart(2, '0')}
                     </div>
                     <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1, lineHeight: 1.2, color: T.ink }}>{b.nombre}</h2>
