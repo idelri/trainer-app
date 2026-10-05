@@ -2484,7 +2484,8 @@ async function guardarSesion() {
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 10px', borderRight: '1px solid var(--border)' }}>
                       <span style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{getLabelVueltas(b.metodo)}</span>
                       <input type="number" placeholder="—" defaultValue={b.vueltas || ''}
-                        onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
+                        key={`v-${b.id}`}
+                        onBlur={async ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); const { error } = await supabase.from('sesion_bloques').update({ vueltas: v }).eq('id', b.id); if (error) console.error('[vueltas]', error); else setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, vueltas: v } : bl)) }}
                         style={{ width: 40, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
                     </div>
                     {/* Sección 2: descanso entre series/vueltas */}
@@ -2494,7 +2495,7 @@ async function guardarSesion() {
                         <input type="number" placeholder="—"
                           defaultValue={b.descanso_seg ? (descansoEnMin[b.id] ? Math.round(b.descanso_seg / 60) : b.descanso_seg) : ''}
                           key={`ds-${b.id}-${descansoEnMin[b.id]}`}
-                          onBlur={ev => { const v = ev.target.value === '' ? null : (descansoEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
+                          onBlur={async ev => { const v = ev.target.value === '' ? null : (descansoEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); const { error } = await supabase.from('sesion_bloques').update({ descanso_seg: v }).eq('id', b.id); if (error) console.error('[descanso_seg]', error); else setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_seg: v } : bl)) }}
                           style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
                         <button onClick={() => setDescansoEnMin(prev => ({ ...prev, [b.id]: !(prev[b.id]) }))} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
                           {descansoEnMin[b.id] ? 'min' : 'seg'}
@@ -2508,7 +2509,7 @@ async function guardarSesion() {
                         <input type="number" placeholder="—"
                           defaultValue={b.descanso_ejercicios_seg ? (descEjEnMin[b.id] ? Math.round(b.descanso_ejercicios_seg / 60) : b.descanso_ejercicios_seg) : ''}
                           key={`dej-${b.id}-${descEjEnMin[b.id]}`}
-                          onBlur={ev => { const v = ev.target.value === '' ? null : (descEjEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
+                          onBlur={async ev => { const v = ev.target.value === '' ? null : (descEjEnMin[b.id] ? parseInt(ev.target.value) * 60 : parseInt(ev.target.value)); const { error } = await supabase.from('sesion_bloques').update({ descanso_ejercicios_seg: v }).eq('id', b.id); if (error) console.error('[descanso_ejercicios_seg]', error); else setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, descanso_ejercicios_seg: v } : bl)) }}
                           style={{ width: 36, border: 'none', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: mc, textAlign: 'center', outline: 'none' }} />
                         <button onClick={() => setDescEjEnMin(prev => ({ ...prev, [b.id]: !(prev[b.id]) }))} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, border: `1px solid ${mc}44`, background: 'transparent', color: mc, cursor: 'pointer', fontFamily: 'monospace' }}>
                           {descEjEnMin[b.id] ? 'min' : 'seg'}
