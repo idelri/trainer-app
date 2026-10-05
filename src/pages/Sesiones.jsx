@@ -2701,15 +2701,12 @@ async function guardarSesion() {
                           <span style={{ fontSize: 11, color: 'var(--text3)' }}>min · máximas rondas posibles</span>
                         </div>
                         {ejs.map((e, eIdx) => ejCard(e, eIdx, c, eIdx === ejs.length - 1))}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text3)' }}>
-                          <span>⏱ Duración:</span>
-                          <input type="number" defaultValue={b.duracion_min || ''} onBlur={ev => { const v = ev.target.value === '' ? null : parseInt(ev.target.value); supabase.from('sesion_bloques').update({ duracion_min: v }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, duracion_min: v } : bl)) }}
-                            style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
-                          <span>min</span>
-                          <span style={{ flex: 1 }} />
-                          <span>Rondas:</span>
-                          <input type="number" defaultValue={b.nota || ''} onBlur={ev => { const v = ev.target.value; supabase.from('sesion_bloques').update({ nota: v || null }).eq('id', b.id); setBloques(bs => bs.map(bl => bl.id === b.id ? { ...bl, nota: v || null } : bl)) }}
-                            style={{ width: 36, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', color: c, fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: 11, textAlign: 'center' }} placeholder="—" />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '0.5px solid var(--border)', background: `${c}08`, padding: '8px 12px', gap: 8 }}>
+                          <span style={{ fontSize: 9, color: c, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Tiempo</span>
+                          <input type="number" placeholder="—" defaultValue={b.duracion_min || ''}
+                            onBlur={async ev => { const val = parseInt(ev.target.value); if (!isNaN(val)) { await supabase.from('sesion_bloques').update({ duracion_min: val }).eq('id', b.id); setBloques(bs => bs.map(blq => blq.id === b.id ? { ...blq, duracion_min: val } : blq)) } }}
+                            style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: c, textAlign: 'center', outline: 'none' }} />
+                          <span style={{ fontSize: 12, color: c, fontWeight: 500 }}>min</span>
                         </div>
                         {addButtons}
                       </div>

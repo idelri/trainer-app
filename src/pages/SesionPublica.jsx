@@ -816,24 +816,31 @@ export default function SesionPublica({ token }) {
                 )}
 
                 {METODOS_SERIES_BLOQUE.includes(b.metodo) && (
-                  <div style={{ display: 'flex', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px', borderRight: `0.5px solid ${T.line}` }}>
-                      <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{getLabelVueltas(b.metodo)}</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>{b.vueltas != null ? b.vueltas : '—'}</span>
+                  b.metodo === 'amrap' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 12px', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
+                      <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 2 }}>Tiempo</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: bc }}>{b.duracion_min ? `${b.duracion_min} min` : '—'}</span>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px', borderRight: `0.5px solid ${T.line}` }}>
-                      <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{getLabelDescansoEntre(b.metodo)}</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>
-                        {b.descanso_seg != null ? (b.descanso_seg >= 60 ? `${Math.floor(b.descanso_seg/60)}min` : `${b.descanso_seg}s`) : '—'}
-                      </span>
+                  ) : (
+                    <div style={{ display: 'flex', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px', borderRight: `0.5px solid ${T.line}` }}>
+                        <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{getLabelVueltas(b.metodo)}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>{b.vueltas != null ? b.vueltas : '—'}</span>
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px', borderRight: `0.5px solid ${T.line}` }}>
+                        <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{getLabelDescansoEntre(b.metodo)}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>
+                          {b.descanso_seg != null ? (b.descanso_seg >= 60 ? `${Math.floor(b.descanso_seg/60)}min` : `${b.descanso_seg}s`) : '—'}
+                        </span>
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px' }}>
+                        <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>Entre ejercicios</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>
+                          {b.descanso_ejercicios_seg != null ? (b.descanso_ejercicios_seg >= 60 ? `${Math.floor(b.descanso_ejercicios_seg/60)}min` : `${b.descanso_ejercicios_seg}s`) : '—'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 6px' }}>
-                      <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>Entre ejercicios</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: bc }}>
-                        {b.descanso_ejercicios_seg != null ? (b.descanso_ejercicios_seg >= 60 ? `${Math.floor(b.descanso_ejercicios_seg/60)}min` : `${b.descanso_ejercicios_seg}s`) : '—'}
-                      </span>
-                    </div>
-                  </div>
+                  )
                 )}
 
                 {/* Exercises */}
