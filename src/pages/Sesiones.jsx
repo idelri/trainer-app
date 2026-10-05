@@ -2708,6 +2708,21 @@ async function guardarSesion() {
                             style={{ width: 44, border: 'none', borderBottom: `1px solid ${c}66`, background: 'transparent', fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: c, textAlign: 'center', outline: 'none' }} />
                           <span style={{ fontSize: 12, color: c, fontWeight: 500 }}>min</span>
                         </div>
+                        <div style={{ borderTop: '0.5px solid var(--border)', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Rondas realizadas:</span>
+                          <input type="number" placeholder="—"
+                            defaultValue={(() => { try { return JSON.parse(b.nota || '{}').rondas || '' } catch { return '' } })()}
+                            onBlur={async ev => {
+                              const val = parseInt(ev.target.value)
+                              if (!isNaN(val)) {
+                                const notaActual = (() => { try { return JSON.parse(b.nota || '{}') } catch { return {} } })()
+                                const nuevaNota = JSON.stringify({ ...notaActual, rondas: val })
+                                await supabase.from('sesion_bloques').update({ nota: nuevaNota }).eq('id', b.id)
+                                setBloques(bs => bs.map(blq => blq.id === b.id ? { ...blq, nota: nuevaNota } : blq))
+                              }
+                            }}
+                            style={{ width: 44, border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: 'var(--text)', textAlign: 'center', outline: 'none' }} />
+                        </div>
                         {addButtons}
                       </div>
                     </div>

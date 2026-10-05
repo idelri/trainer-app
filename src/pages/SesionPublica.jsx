@@ -817,9 +817,24 @@ export default function SesionPublica({ token }) {
 
                 {METODOS_SERIES_BLOQUE.includes(b.metodo) && (
                   b.metodo === 'amrap' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 12px', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
-                      <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 2 }}>Tiempo</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: bc }}>{b.duracion_min ? `${b.duracion_min} min` : '—'}</span>
+                    <div style={{ borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 12px' }}>
+                        <span style={{ fontSize: 8, color: bc, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 2 }}>Tiempo</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: bc }}>{b.duracion_min ? `${b.duracion_min} min` : '—'}</span>
+                      </div>
+                      <div style={{ padding: '10px 14px', borderTop: `0.5px solid ${T.line}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 12, color: T.sub, flex: 1 }}>Rondas realizadas:</span>
+                        <input type="number" min="0" placeholder="—"
+                          defaultValue={(() => { try { return JSON.parse(b.nota || '{}').rondas || '' } catch { return '' } })()}
+                          onBlur={async ev => {
+                            const val = parseInt(ev.target.value)
+                            if (!isNaN(val)) {
+                              const notaActual = (() => { try { return JSON.parse(b.nota || '{}') } catch { return {} } })()
+                              await supabase.rpc('actualizar_nota_bloque', { p_token: token, p_bloque_id: b.id, p_nota: JSON.stringify({ ...notaActual, rondas: val }) })
+                            }
+                          }}
+                          style={{ width: 60, padding: '6px 8px', borderRadius: 6, border: `1px solid ${T.line}`, background: T.card, fontFamily: 'monospace', fontSize: 16, fontWeight: 700, color: bc, textAlign: 'center' }} />
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', borderTop: `0.5px solid ${T.line}`, borderBottom: `0.5px solid ${T.line}`, background: `${bc}08` }}>
