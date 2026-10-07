@@ -574,6 +574,8 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         return { nombre: item?.nombre || '', fecha: item?.fecha || '', tipo: item?.tipo || '', notas: item?.notas || '', visibilidad: item?.visibilidad || 'entrenadora' }
       case 'nota':
         return { texto: item?.texto || '', fecha: item?.fecha || format(new Date(), 'yyyy-MM-dd'), visibilidad: item?.visibilidad || 'entrenadora' }
+      case 'sesion':
+        return { titulo: '', fecha: item?.fecha || '', tipo_sesion: 'programada', objetivo: '', duracion_min: '' }
       default:
         return {}
     }
@@ -886,6 +888,22 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           const datos = { texto: formData.texto, fecha: formData.fecha || null, visibilidad: formData.visibilidad || 'entrenadora' }
           if (modalItem?.id) await supabase.from('sesion_notas').update(datos).eq('id', modalItem.id)
           else await supabase.from('sesion_notas').insert({ cliente_id: clienteSeleccionado, ...datos })
+          closeModal(); cargarPlanificacion()
+          break
+        }
+
+        case 'sesion': {
+          if (!formData.titulo) break
+          const datosSesion = {
+            cliente_id: clienteSeleccionado,
+            titulo: formData.titulo,
+            fecha: formData.fecha || null,
+            tipo_sesion: formData.tipo_sesion || 'programada',
+            objetivo: formData.objetivo || null,
+            duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null,
+            token_publico: crypto.randomUUID(),
+          }
+          await supabase.from('sesiones').insert(datosSesion)
           closeModal(); cargarPlanificacion()
           break
         }
@@ -1491,6 +1509,41 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           </div>
         )
 
+      // ── SESIÓN ────────────────────────────────────────────────────────────
+      case 'sesion':
+        return (
+          <div style={{ padding: '0 20px 4px' }}>
+            <div className="form-group">
+              <label className="form-label">Título *</label>
+              <input className="form-input" value={formData.titulo || ''} onChange={e => fd('titulo', e.target.value)} placeholder="Ej: Fuerza tren superior" autoFocus />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fecha</label>
+                <input className="form-input" type="date" value={formData.fecha || ''} onChange={e => fd('fecha', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <select className="form-select" value={formData.tipo_sesion || 'programada'} onChange={e => fd('tipo_sesion', e.target.value)}>
+                  <option value="programada">Programada</option>
+                  <option value="flexible">Flexible</option>
+                  <option value="opcional">Opcional</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Objetivo</label>
+                <input className="form-input" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Duración (min)</label>
+                <input className="form-input" type="number" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} placeholder="60" />
+              </div>
+            </div>
+          </div>
+        )
+
       // ── NOTA ──────────────────────────────────────────────────────────────
       case 'nota':
         return (
@@ -2025,7 +2078,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
                 bloquesPlan={bloques}
                 subbloquesPlan={subbloques}
                 onAbrirSesion={s => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: s.id }); if (setPage) setPage('sesiones') }}
-                onNuevaSesion={fecha => { if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva', fechaNueva: fecha }); if (setPage) setPage('sesiones') }}
+                onNuevaSesion={fecha => openModal('sesion', { fecha })}
                 onNuevaCompeticion={fecha => openModal('comp', { fecha })}
                 onNuevaValoracion={fecha => openModal('control', { fecha })}
                 onNuevaNota={fecha => openModal('nota', { fecha })}
