@@ -362,7 +362,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   // ── Effects ──
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => {
-    if (clientePlanificacion && !clienteSeleccionado) setClienteSeleccionado(clientePlanificacion)
+    if (clientePlanificacion) setClienteSeleccionado(clientePlanificacion)
   }, [clientePlanificacion])
   useEffect(() => {
     if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) }
