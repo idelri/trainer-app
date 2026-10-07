@@ -5,6 +5,7 @@ import { format, addWeeks, addDays, parseISO, differenceInWeeks, differenceInDay
 import { es } from 'date-fns/locale'
 import { Plus, X, ChevronDown, ChevronRight, Trophy, Calendar, Layers, Pencil, Lock } from 'lucide-react'
 import CalendarioSesiones from '../components/CalendarioSesiones'
+import EmojiPicker from '../components/EmojiPicker'
 import Seguimiento from './Seguimiento'
 import PortalClienteModal from '../components/PortalClienteModal'
 import { Chart, registerables } from 'chart.js'
@@ -575,7 +576,7 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
       case 'nota':
         return { texto: item?.texto || '', fecha: item?.fecha || format(new Date(), 'yyyy-MM-dd'), visibilidad: item?.visibilidad || 'entrenadora' }
       case 'sesion':
-        return { titulo: '', fecha: item?.fecha || '', tipo_sesion: 'programada', objetivo: '', duracion_min: '' }
+        return { titulo: '', fecha: item?.fecha || '', sinFecha: false, tipo_sesion: 'programada', tipo_sesion_detalle: null, tipo_editor: 'fuerza', estado: 'pendiente', modalidad: 'autonoma', lugar: '', objetivo: '', notas_entrenador: '', duracion_min: '', con_feedback: true, icono: '', lista: false, publicada: true }
       default:
         return {}
     }
@@ -897,10 +898,20 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
           const datosSesion = {
             cliente_id: clienteSeleccionado,
             titulo: formData.titulo,
-            fecha: formData.fecha || null,
+            fecha: formData.sinFecha ? null : (formData.fecha || null),
             tipo_sesion: formData.tipo_sesion || 'programada',
+            tipo_sesion_detalle: formData.tipo_sesion_detalle || null,
+            tipo_editor: formData.tipo_editor || 'fuerza',
+            estado: formData.estado || 'pendiente',
+            modalidad: formData.modalidad || 'autonoma',
+            lugar: formData.lugar || null,
             objetivo: formData.objetivo || null,
+            notas_entrenador: formData.notas_entrenador || null,
             duracion_min: formData.duracion_min ? parseInt(formData.duracion_min) : null,
+            con_feedback: formData.con_feedback !== false,
+            icono: formData.icono || null,
+            lista: formData.lista || false,
+            publicada: formData.publicada !== false,
             token_publico: crypto.randomUUID(),
           }
           await supabase.from('sesiones').insert(datosSesion)
@@ -1514,33 +1525,131 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
         return (
           <div style={{ padding: '0 20px 4px' }}>
             <div className="form-group">
+              <label className="form-label">Tipo de sesión</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['optimizadora', 'coadyuvante'].map(tipo => (
+                  <button key={tipo} type="button" onClick={() => fd('tipo_sesion_detalle', formData.tipo_sesion_detalle === tipo ? null : tipo)}
+                    style={{ padding: '6px 14px', borderRadius: 'var(--radius)', border: formData.tipo_sesion_detalle === tipo ? '1.5px solid var(--accent)' : '1px solid var(--border)', background: formData.tipo_sesion_detalle === tipo ? 'var(--accent-light)' : 'transparent', color: formData.tipo_sesion_detalle === tipo ? 'var(--accent)' : 'var(--text2)', cursor: 'pointer', fontSize: 13, fontWeight: formData.tipo_sesion_detalle === tipo ? 500 : 400, textTransform: 'capitalize' }}>
+                    {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo de editor</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['fuerza','💪','Fuerza / salud'],['carrera','🏃','Carrera / resistencia']].map(([val, ico, label]) => {
+                  const active = (formData.tipo_editor || 'fuerza') === val
+                  return (
+                    <button key={val} type="button" onClick={() => fd('tipo_editor', val)}
+                      style={{ flex: 1, padding: '8px', borderRadius: 9, border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 16 }}>{ico}</span> {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Icono de sesión</label>
+              <EmojiPicker value={formData.icono || ''} onChange={v => fd('icono', v)} />
+            </div>
+            <div className="form-group">
               <label className="form-label">Título *</label>
-              <input className="form-input" value={formData.titulo || ''} onChange={e => fd('titulo', e.target.value)} placeholder="Ej: Fuerza tren superior" autoFocus />
+              <input className="form-input" value={formData.titulo || ''} onChange={e => fd('titulo', e.target.value)} placeholder="Ej: Sesión 5 - Fuerza general" autoFocus />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Fecha</label>
-                <input className="form-input" type="date" value={formData.fecha || ''} onChange={e => fd('fecha', e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tipo</label>
-                <select className="form-select" value={formData.tipo_sesion || 'programada'} onChange={e => fd('tipo_sesion', e.target.value)}>
-                  <option value="programada">Programada</option>
-                  <option value="flexible">Flexible</option>
-                  <option value="opcional">Opcional</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Objetivo</label>
-                <input className="form-input" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Duración (min)</label>
-                <input className="form-input" type="number" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} placeholder="60" />
+            <div className="form-group">
+              <label className="form-label">Fecha</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input className="form-input" type="date" value={formData.fecha || ''} disabled={!!formData.sinFecha} style={{ flex: 1, opacity: formData.sinFecha ? 0.4 : 1 }} onChange={e => fd('fecha', e.target.value)} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <input type="checkbox" checked={!!formData.sinFecha} onChange={e => {
+                    const checked = e.target.checked
+                    setFormData(f => ({ ...f, sinFecha: checked, fecha: checked ? '' : f.fecha, tipo_sesion: checked ? (f.tipo_sesion === 'programada' ? 'flexible' : f.tipo_sesion) : (f.tipo_sesion === 'flexible' ? 'programada' : f.tipo_sesion) }))
+                  }} />
+                  Sin fecha asignada
+                </label>
               </div>
             </div>
+            <div className="form-group">
+              <label className="form-label">Tipo</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(formData.sinFecha
+                  ? [['flexible', '🔄 Flexible'], ['opcional', '⭐ Opcional']]
+                  : [['programada', '📅 Programada'], ['opcional', '⭐ Opcional']]
+                ).map(([val, label]) => {
+                  const active = (formData.tipo_sesion || 'programada') === val
+                  return (
+                    <button key={val} type="button" onClick={() => fd('tipo_sesion', val)}
+                      style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--bg)', cursor: 'pointer', fontSize: 12, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text2)' }}>
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">📋 Observaciones para el cliente</label>
+              <textarea className="form-textarea" value={formData.objetivo || ''} onChange={e => fd('objetivo', e.target.value)} rows={2} placeholder="Descripción o notas que verá el cliente..." />
+            </div>
+            <div className="form-group">
+              <label className="form-label">🔒 Notas de entrenadora <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>(solo tú)</span></label>
+              <textarea className="form-textarea" value={formData.notas_entrenador || ''} onChange={e => fd('notas_entrenador', e.target.value)} rows={2} placeholder="Notas internas, contexto, recordatorios..." />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Modalidad</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[{ val: 'presencial', label: '🏋️ Presencial' }, { val: 'online', label: '💻 Online' }, { val: 'autonoma', label: '🏃 Autónoma' }].map(({ val, label }) => (
+                  <button key={val} type="button"
+                    onClick={() => setFormData(f => ({ ...f, modalidad: val, lugar: val !== 'presencial' ? '' : f.lugar }))}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, border: '1px solid', cursor: 'pointer', background: (formData.modalidad || 'autonoma') === val ? 'var(--accent)' : 'transparent', color: (formData.modalidad || 'autonoma') === val ? '#fff' : 'var(--text2)', borderColor: (formData.modalidad || 'autonoma') === val ? 'var(--accent)' : 'var(--border)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(formData.modalidad || 'autonoma') === 'presencial' && (
+              <div className="form-group">
+                <label className="form-label">Lugar</label>
+                <input className="form-input" type="text" value={formData.lugar || ''} onChange={e => fd('lugar', e.target.value)} placeholder="Ej: Gym Norte, Centro Deportivo..." />
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Duración (min)</label>
+              <input className="form-input" type="number" min="1" value={formData.duracion_min || ''} onChange={e => fd('duracion_min', e.target.value)} style={{ maxWidth: 120 }} placeholder="Ej: 45" />
+            </div>
+            <div className="form-group" style={{ marginBottom: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div onClick={() => fd('con_feedback', formData.con_feedback === false ? true : false)}
+                  style={{ width: 36, height: 20, borderRadius: 10, background: formData.con_feedback !== false ? 'var(--accent)' : 'var(--border)', position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
+                  <div style={{ position: 'absolute', top: 2, left: formData.con_feedback !== false ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Feedback post-sesión</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formData.con_feedback !== false ? 'El cliente verá el cuestionario al terminar' : 'Sin cuestionario (sesión de activación, movilidad...)'}</div>
+                </div>
+              </label>
+            </div>
+            <div style={{ margin: '8px 0 4px', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${formData.publicada !== false ? 'var(--border)' : '#94a3b8'}`, background: formData.publicada !== false ? 'var(--bg2)' : '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+              onClick={() => fd('publicada', formData.publicada === false ? true : false)}>
+              <div style={{ width: 38, height: 22, borderRadius: 11, background: formData.publicada !== false ? 'var(--accent)' : '#94a3b8', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 3, left: formData.publicada !== false ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: formData.publicada !== false ? 'var(--text)' : '#64748b' }}>{formData.publicada !== false ? '👁 Visible para el cliente' : '🔒 Oculta al cliente (borrador)'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formData.publicada !== false ? 'El cliente puede ver esta sesión' : 'Solo tú la ves, el cliente no'}</div>
+              </div>
+            </div>
+            <div style={{ margin: '4px 0 8px', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${formData.lista ? '#16a34a' : 'var(--border)'}`, background: formData.lista ? '#f0fdf4' : 'var(--bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+              onClick={() => fd('lista', !formData.lista)}>
+              <div style={{ width: 38, height: 22, borderRadius: 11, background: formData.lista ? '#16a34a' : 'var(--border)', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 3, left: formData.lista ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: formData.lista ? '#16a34a' : 'var(--text)' }}>{formData.lista ? '✅ Sesión lista para el cliente' : '📝 Sesión en preparación'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{formData.lista ? 'Contenido completo, el cliente puede ejecutarla' : 'Pensada pero pendiente de desarrollar'}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{(formData.tipo_editor || 'fuerza') === 'carrera' ? 'Se crearán 3 fases de ejemplo (calentamiento, trabajo, vuelta a la calma).' : 'Se crearán 4 bloques con 3 ejercicios de ejemplo, listos para editar.'}</p>
           </div>
         )
 
