@@ -36,6 +36,7 @@ export default function App() {
   const [clienteFichaId, setClienteFichaId] = useState(null)
   const [sesionesContext, setSesionesContext] = useState({ clienteId: null, sesionId: null })
   const [recargarPlan, setRecargarPlan] = useState(0)
+  const [planificacionFechaInicial, setPlanificacionFechaInicial] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [publicSesionToken, setPublicSesionToken] = useState(null)
   const [publicPackToken, setPublicPackToken] = useState(null)
@@ -162,10 +163,10 @@ export default function App() {
         {page === 'dashboard'      && <Dashboard setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} />}
         {page === 'clientes' && !clienteFichaId && <Clientes setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} onAbrirFicha={setClienteFichaId} />}
         {page === 'clientes' && clienteFichaId && <ClienteFicha clienteId={clienteFichaId} onVolver={() => setClienteFichaId(null)} setPage={setPage} setClientePlanificacion={setClientePlanificacion} />}
-        {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} recargarPlan={recargarPlan} />}
+        {page === 'planificacion'  && <Planificacion setPage={setPage} setClientePlanificacion={setClientePlanificacion} clientePlanificacion={clientePlanificacion} setSesionesContext={setSesionesContext} recargarPlan={recargarPlan} planificacionFechaInicial={planificacionFechaInicial} setPlanificacionFechaInicial={setPlanificacionFechaInicial} />}
         {page === 'sesiones'       && <Sesiones clienteInicial={sesionesContext.clienteId} sesionInicialId={sesionesContext.sesionId} fechaNuevaSesion={sesionesContext.fechaNueva} esPlantilla={sesionesContext.esPlantilla} setPage={setPage} setClientePlanificacion={setClientePlanificacion} setRecargarPlan={setRecargarPlan} />}
         {page === 'biblioteca'     && <Biblioteca setPage={setPage} setSesionesContext={setSesionesContext} />}
-        {page === 'agenda'         && <Agenda setPage={setPage} setSesionesContext={setSesionesContext} />}
+        {page === 'agenda'         && <Agenda setPage={setPage} setSesionesContext={setSesionesContext} setClientePlanificacion={setClientePlanificacion} setPlanificacionFechaInicial={setPlanificacionFechaInicial} />}
       </main>
     </div>
   )

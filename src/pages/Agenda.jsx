@@ -26,7 +26,7 @@ const TIPO_CONFIG = {
   personal:   { color: '#6d28d9', bg: 'rgba(124,58,237,0.08)', border: '#8b5cf6', emoji: '🩺', label: 'Personal' },
 }
 
-export default function Agenda({ setPage, setSesionesContext }) {
+export default function Agenda({ setPage, setSesionesContext, setClientePlanificacion, setPlanificacionFechaInicial }) {
   const [vista, setVista]               = useState('semana')
   const [semana, setSemana]             = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [mesNav, setMesNav]             = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
@@ -294,8 +294,9 @@ export default function Agenda({ setPage, setSesionesContext }) {
   }
 
   function crearSesion(clienteId, fecha) {
-    setSesionesContext && setSesionesContext({ clienteId, fechaNueva: fecha })
-    setPage && setPage('sesiones')
+    if (setClientePlanificacion) setClientePlanificacion(clienteId)
+    if (setPlanificacionFechaInicial) setPlanificacionFechaInicial(fecha)
+    if (setPage) setPage('planificacion')
     setPopover(null)
   }
 

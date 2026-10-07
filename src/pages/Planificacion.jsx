@@ -239,7 +239,7 @@ function GraficaTimeline({ varPrincipal, varSecundaria, columnas, totalW, colW: 
 
 // ─── COMPONENTE PRINCIPAL ────────────────────────────────────────────────────
 
-export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext, recargarPlan }) {
+export default function Planificacion({ clientePlanificacion, setPage, setSesionesContext, recargarPlan, planificacionFechaInicial, setPlanificacionFechaInicial }) {
   // ── Datos ──
   const [clientes,            setClientes]            = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -367,6 +367,14 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   useEffect(() => {
     if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) }
   }, [clienteSeleccionado, recargarPlan])
+  useEffect(() => {
+    if (planificacionFechaInicial && clienteSeleccionado) {
+      cambiarVista('calendario')
+      if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva', fechaNueva: planificacionFechaInicial })
+      if (setPage) setPage('sesiones')
+      if (setPlanificacionFechaInicial) setPlanificacionFechaInicial(null)
+    }
+  }, [planificacionFechaInicial, clienteSeleccionado])
   useEffect(() => {
     if (tlTodayRef.current && tlZonaDRef.current && vista === 'timeline') {
       const el = tlTodayRef.current
