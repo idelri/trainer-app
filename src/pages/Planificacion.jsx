@@ -362,19 +362,14 @@ export default function Planificacion({ clientePlanificacion, setPage, setSesion
   // ── Effects ──
   useEffect(() => { cargarClientes() }, [])
   useEffect(() => {
-    if (clientePlanificacion) setClienteSeleccionado(clientePlanificacion)
+    if (clientePlanificacion) {
+      setClienteSeleccionado(clientePlanificacion)
+      cambiarVista('calendario')
+    }
   }, [clientePlanificacion])
   useEffect(() => {
     if (clienteSeleccionado) { cargarPlanificacion(); cargarClienteData(clienteSeleccionado) }
   }, [clienteSeleccionado, recargarPlan])
-  useEffect(() => {
-    if (planificacionFechaInicial && clienteSeleccionado) {
-      cambiarVista('calendario')
-      if (setSesionesContext) setSesionesContext({ clienteId: clienteSeleccionado, sesionId: 'nueva', fechaNueva: planificacionFechaInicial })
-      if (setPage) setPage('sesiones')
-      if (setPlanificacionFechaInicial) setPlanificacionFechaInicial(null)
-    }
-  }, [planificacionFechaInicial, clienteSeleccionado])
   useEffect(() => {
     if (tlTodayRef.current && tlZonaDRef.current && vista === 'timeline') {
       const el = tlTodayRef.current

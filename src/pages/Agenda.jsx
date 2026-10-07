@@ -295,7 +295,6 @@ export default function Agenda({ setPage, setSesionesContext, setClientePlanific
 
   function crearSesion(clienteId, fecha) {
     if (setClientePlanificacion) setClientePlanificacion(clienteId)
-    if (setPlanificacionFechaInicial) setPlanificacionFechaInicial(fecha)
     if (setPage) setPage('planificacion')
     setPopover(null)
   }
