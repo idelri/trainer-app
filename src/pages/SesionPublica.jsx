@@ -704,12 +704,16 @@ export default function SesionPublica({ token }) {
                           <span style={{ fontSize: 11, fontWeight: 700, color: T.ink }}>{e.descanso}</span>
                         </div>
                       )}
-                      {activas.includes('Forma de ejecución') && e.ejecucion_tipo && (
-                        <div style={{ display: 'flex', flexDirection: 'column', background: T.paper, borderRadius: 8, padding: '5px 9px', maxWidth: '100%' }}>
-                          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Ejec.</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: T.ink }}>{e.ejecucion_tipo !== 'Personalizado' ? e.ejecucion_tipo : ''}{e.ejecucion_texto ? (e.ejecucion_tipo !== 'Personalizado' ? ` · ${e.ejecucion_texto}` : e.ejecucion_texto) : ''}</span>
-                        </div>
-                      )}
+                      {(e.ejecucion_tipo || e.ejecucion_texto) && (() => {
+                        const EJEC_LABEL = { maxima: 'Máxima vel. contracción', medio: 'Ritmo medio', excentrico: 'Foco excéntrico' }
+                        const label = e.ejecucion_tipo === 'libre' ? e.ejecucion_texto : (EJEC_LABEL[e.ejecucion_tipo] || e.ejecucion_tipo)
+                        return label ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', background: T.paper, borderRadius: 8, padding: '5px 9px', maxWidth: '100%' }}>
+                            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.ink3, fontFamily: "'JetBrains Mono', monospace" }}>Ejec.</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: T.ink }}>{label}</span>
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                     {/* Inputs valores reales */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
